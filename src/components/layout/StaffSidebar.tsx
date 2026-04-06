@@ -15,6 +15,9 @@ import {
   Settings,
   LogOut,
   Scale,
+  Briefcase,
+  Mail,
+  Eye,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 
@@ -22,6 +25,9 @@ const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Casos", href: "/casos", icon: FolderOpen },
   { label: "Agenda", href: "/agenda", icon: Calendar },
+  { label: "Apoderados", href: "/apoderados", icon: Briefcase },
+  { label: "Correspondencia", href: "/correspondencia", icon: Mail },
+  { label: "Vigilancia Judicial", href: "/vigilancia", icon: Eye },
   { label: "Partes", href: "/partes", icon: Users },
   { label: "Conciliadores", href: "/conciliadores", icon: UserCog },
   { label: "Salas", href: "/salas", icon: DoorOpen },
