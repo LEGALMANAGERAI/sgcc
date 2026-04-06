@@ -38,7 +38,11 @@ export default auth((req) => {
     pathname.startsWith("/salas") ||
     pathname.startsWith("/plantillas") ||
     pathname.startsWith("/reportes") ||
-    pathname.startsWith("/configuracion")
+    pathname.startsWith("/configuracion") ||
+    pathname.startsWith("/expediente") ||
+    pathname.startsWith("/apoderados") ||
+    pathname.startsWith("/correspondencia") ||
+    pathname.startsWith("/vigilancia")
   ) {
     if (userType !== "staff") {
       return NextResponse.redirect(new URL("/login", req.url));
