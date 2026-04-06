@@ -44,6 +44,7 @@ export interface SgccStaff {
   rol: StaffRol;
   tarjeta_profesional: string | null;
   firma_url: string | null;
+  supervisor_id: string | null;
   activo: boolean;
   created_at: string;
   updated_at: string;
@@ -111,9 +112,12 @@ export type CaseMateria =
   | "arrendamiento"
   | "otro";
 
+export type TipoTramite = "conciliacion" | "insolvencia" | "acuerdo_apoyo";
+
 export interface SgccCase {
   id: string;
   center_id: string;
+  tipo_tramite: TipoTramite;
   numero_radicado: string;
   materia: CaseMateria;
   cuantia: number | null;
@@ -345,6 +349,161 @@ export interface SgccTimelineEvent {
   fecha: string | null;
   referencia_id: string | null;
   created_at: string;
+}
+
+// ─── Apoderados ────────────────────────────────────────────────────────────
+
+export interface SgccAttorney {
+  id: string;
+  nombre: string;
+  tipo_doc: TipoDoc;
+  numero_doc: string;
+  tarjeta_profesional: string | null;
+  email: string | null;
+  telefono: string | null;
+  verificado: boolean;
+  verificado_por: string | null;
+  verificado_at: string | null;
+  activo: boolean;
+  created_at: string;
+}
+
+export type MotivoCambioApoderado = "inicial" | "renuncia" | "revocatoria" | "sustitucion";
+
+export interface SgccCaseAttorney {
+  id: string;
+  case_id: string;
+  party_id: string;
+  attorney_id: string;
+  poder_url: string | null;
+  poder_vigente_desde: string | null;
+  poder_vigente_hasta: string | null;
+  motivo_cambio: MotivoCambioApoderado | null;
+  registrado_por: string | null;
+  activo: boolean;
+  created_at: string;
+  // joined
+  attorney?: SgccAttorney;
+  party?: SgccParty;
+}
+
+// ─── Checklists ────────────────────────────────────────────────────────────
+
+export type TipoChecklist = "admision" | "poderes";
+
+export interface ChecklistItem {
+  nombre: string;
+  requerido: boolean;
+  descripcion: string;
+}
+
+export interface SgccChecklist {
+  id: string;
+  center_id: string;
+  tipo_tramite: TipoTramite;
+  tipo_checklist: TipoChecklist;
+  nombre: string;
+  items: ChecklistItem[];
+  activo: boolean;
+  created_at: string;
+}
+
+export interface SgccChecklistResponse {
+  id: string;
+  case_id: string;
+  checklist_id: string;
+  item_index: number;
+  completado: boolean;
+  verificado_por_staff: string | null;
+  documento_id: string | null;
+  notas: string | null;
+  completed_at: string | null;
+}
+
+// ─── Correspondencia ───────────────────────────────────────────────────────
+
+export type CorrespondenciaTipo = "tutela" | "derecho_peticion" | "requerimiento" | "oficio";
+export type CorrespondenciaEstado = "recibido" | "en_tramite" | "respondido" | "vencido";
+
+export interface SgccCorrespondence {
+  id: string;
+  center_id: string;
+  case_id: string | null;
+  tipo: CorrespondenciaTipo;
+  asunto: string;
+  remitente: string;
+  destinatario: string;
+  fecha_radicacion: string;
+  fecha_limite_respuesta: string | null;
+  estado: CorrespondenciaEstado;
+  responsable_staff_id: string | null;
+  notas: string | null;
+  created_at: string;
+  // joined
+  responsable?: SgccStaff;
+  documentos?: SgccCorrespondenceDoc[];
+}
+
+export interface SgccCorrespondenceDoc {
+  id: string;
+  correspondence_id: string;
+  tipo: "escrito_recibido" | "respuesta" | "anexo";
+  nombre: string;
+  storage_path: string;
+  url: string | null;
+  created_at: string;
+}
+
+// ─── Vigilancia Judicial ───────────────────────────────────────────────────
+
+export type WatchedProcessEstado = "activo" | "terminado" | "archivado";
+
+export interface SgccWatchedProcess {
+  id: string;
+  center_id: string;
+  case_id: string | null;
+  numero_proceso: string;
+  despacho: string | null;
+  ciudad: string | null;
+  partes_texto: string | null;
+  ultima_actuacion: string | null;
+  ultima_actuacion_fecha: string | null;
+  estado: WatchedProcessEstado;
+  solicitado_por_staff: string | null;
+  created_at: string;
+  // joined
+  updates?: SgccProcessUpdate[];
+}
+
+export interface SgccProcessUpdate {
+  id: string;
+  watched_process_id: string;
+  fecha_actuacion: string | null;
+  tipo_actuacion: string | null;
+  anotacion: string | null;
+  detalles: string | null;
+  leida: boolean;
+  leida_por: string | null;
+  leida_at: string | null;
+  created_at: string;
+}
+
+// ─── Asistencia a Audiencias ───────────────────────────────────────────────
+
+export interface SgccHearingAttendance {
+  id: string;
+  hearing_id: string;
+  party_id: string;
+  attorney_id: string | null;
+  asistio: boolean;
+  representado_por_nombre: string | null;
+  poder_verificado: boolean;
+  notas: string | null;
+  registrado_por_staff: string | null;
+  created_at: string;
+  // joined
+  party?: SgccParty;
+  attorney?: SgccAttorney;
 }
 
 // ─── Session types ──────────────────────────────────────────────────────────
