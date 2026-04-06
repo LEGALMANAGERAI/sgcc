@@ -142,7 +142,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     consideraciones: consideraciones ?? null,
     acuerdo_texto: acuerdo_texto ?? null,
     obligaciones: obligaciones ?? null,
-    borrador_url: null,
+    borrador_url: null as string | null,
     estado_firma: "pendiente" as const,
     acta_firmada_url: null,
     conciliador_id: caso.conciliador_id,
@@ -166,14 +166,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ? renderTemplate(templateContent, ctx)
     : buildDefaultActaContent(tipo, consideraciones, acuerdo_texto, ctx);
 
-  const tipoTitulo = {
+  const tipoTituloMap: Record<string, string> = {
     acuerdo_total: "ACTA DE CONCILIACIÓN — ACUERDO TOTAL",
     acuerdo_parcial: "ACTA DE CONCILIACIÓN — ACUERDO PARCIAL",
     no_acuerdo: "ACTA DE CONCILIACIÓN — SIN ACUERDO",
     inasistencia: "CONSTANCIA DE INASISTENCIA",
     desistimiento: "ACTA DE DESISTIMIENTO",
     improcedente: "CONSTANCIA DE IMPROCEDENCIA",
-  }[tipo] ?? "ACTA DE CONCILIACIÓN";
+  };
+  const tipoTitulo = tipoTituloMap[tipo] ?? "ACTA DE CONCILIACIÓN";
 
   const docBuffer = await generateDocx(tipoTitulo, contenidoFinal, ctx);
 

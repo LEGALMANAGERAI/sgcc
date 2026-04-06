@@ -35,19 +35,19 @@ const hearingColors: Record<HearingEstado, string> = {
 };
 
 interface Props {
-  value: CaseEstado | ActaEstadoFirma | HearingEstado;
-  type: "case" | "firma" | "hearing";
+  value: string;
+  type: "case" | "firma" | "hearing" | "acta";
   size?: "sm" | "md";
 }
 
 export function StatusChip({ value, type, size = "sm" }: Props) {
   let color = "bg-gray-100 text-gray-600";
-  let label = value;
+  let label: string = value;
 
   if (type === "case") {
     color = caseColors[value as CaseEstado] ?? color;
     label = caseLabels[value as CaseEstado] ?? value;
-  } else if (type === "firma") {
+  } else if (type === "firma" || type === "acta") {
     color = firmaColors[value as ActaEstadoFirma] ?? color;
     label = value.replace(/_/g, " ");
   } else if (type === "hearing") {

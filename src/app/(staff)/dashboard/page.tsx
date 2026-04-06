@@ -39,28 +39,28 @@ import { redirect } from "next/navigation";
 
 /* ─── Tipos auxiliares ──────────────────────────────────────────────────── */
 
-interface CaseWithJoins extends SgccCase {
+type CaseWithJoins = SgccCase & {
   conciliador: { nombre: string } | null;
   secretario: { nombre: string } | null;
-}
+};
 
-interface HearingWithJoins extends SgccHearing {
+type HearingWithJoins = Omit<SgccHearing, 'sala' | 'conciliador'> & {
   caso: { id: string; numero_radicado: string } | null;
   sala: { nombre: string } | null;
   conciliador: { nombre: string } | null;
-}
+};
 
-interface CasePartyWithJoins extends SgccCaseParty {
+type CasePartyWithJoins = SgccCaseParty & {
   party: SgccParty;
-}
+};
 
-interface CaseAttorneyWithJoins extends SgccCaseAttorney {
+type CaseAttorneyWithJoins = SgccCaseAttorney & {
   attorney: {
     id: string;
     nombre: string;
     verificado: boolean;
   };
-}
+};
 
 type AlertType = {
   id: string;
@@ -564,10 +564,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                                 {attorney.attorney.nombre}
                               </span>
                               {!attorney.attorney.verificado && (
-                                <ShieldAlert
-                                  className="w-3.5 h-3.5 text-amber-500 flex-shrink-0"
-                                  title="Apoderado sin verificar"
-                                />
+                                <span title="Apoderado sin verificar">
+                                  <ShieldAlert className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                                </span>
                               )}
                             </div>
                           ) : (
