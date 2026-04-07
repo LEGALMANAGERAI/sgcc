@@ -1,7 +1,3 @@
-"use client";
-
-import { useId } from "react";
-
 interface Props {
   size?: "sm" | "md" | "lg" | "xl";
   showText?: boolean;
@@ -9,25 +5,23 @@ interface Props {
 }
 
 const SIZES = {
-  sm: { w: 140, h: 44, fs: 48, sw: 12, lineH: 2, gapH: 2, textSize: "text-[8px]", boldSize: "text-[9px]" },
-  md: { w: 185, h: 58, fs: 64, sw: 15, lineH: 2.5, gapH: 2.5, textSize: "text-[10px]", boldSize: "text-xs" },
-  lg: { w: 245, h: 76, fs: 84, sw: 18, lineH: 3, gapH: 3, textSize: "text-xs", boldSize: "text-sm" },
-  xl: { w: 330, h: 100, fs: 112, sw: 22, lineH: 4, gapH: 3.5, textSize: "text-sm", boldSize: "text-base" },
+  sm: { w: 130, h: 42, fs: 46, sw: 2, textSize: "text-[8px]", boldSize: "text-[9px]" },
+  md: { w: 170, h: 54, fs: 60, sw: 2.5, textSize: "text-[10px]", boldSize: "text-xs" },
+  lg: { w: 225, h: 72, fs: 80, sw: 3, textSize: "text-xs", boldSize: "text-sm" },
+  xl: { w: 300, h: 96, fs: 108, sw: 3.5, textSize: "text-sm", boldSize: "text-base" },
 };
 
 const LETTERS = [
-  { char: "S", color: "#1B4F9B", x: 3 },
-  { char: "G", color: "#2A9D5C", x: 37 },
-  { char: "C", color: "#E8732A", x: 55 },
-  { char: "C", color: "#D42B2B", x: 78 },
+  { char: "S", color: "#1B4F9B", x: 2 },
+  { char: "G", color: "#2A9D5C", x: 27 },
+  { char: "C", color: "#E8732A", x: 53 },
+  { char: "C", color: "#D42B2B", x: 77 },
 ];
 
 export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props) {
-  const id = useId();
   const s = SIZES[size];
   const textColor = darkBg ? "text-white/80" : "text-gray-500";
   const boldColor = darkBg ? "text-white" : "text-gray-900";
-  const step = s.lineH + s.gapH;
 
   return (
     <div className="flex items-center gap-3">
@@ -40,32 +34,16 @@ export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props
         aria-label="SGCC"
         role="img"
       >
-        <defs>
-          {LETTERS.map((l, i) => (
-            <pattern
-              key={i}
-              id={`${id}-s${i}`}
-              patternUnits="userSpaceOnUse"
-              x="0"
-              y="0"
-              width={s.w}
-              height={step}
-            >
-              <rect x="0" y="0" width={s.w} height={s.lineH} fill={l.color} />
-            </pattern>
-          ))}
-        </defs>
-
         {LETTERS.map((l, i) => (
           <text
             key={i}
             x={`${l.x}%`}
-            y="82%"
+            y="80%"
             fill="none"
-            stroke={`url(#${id}-s${i})`}
+            stroke={l.color}
             strokeWidth={s.sw}
             strokeLinejoin="round"
-            strokeLinecap="butt"
+            strokeLinecap="round"
             fontFamily="'Arial Black', 'Impact', system-ui, sans-serif"
             fontSize={s.fs}
             fontWeight={900}
