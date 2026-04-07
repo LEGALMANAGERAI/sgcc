@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Scale, Eye, EyeOff, Building2, Users, Sparkles } from "lucide-react";
@@ -14,6 +14,14 @@ const DEMO_ACCOUNTS = [
 ];
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
   const params = useSearchParams();
   const registered = params.get("registered") === "1";

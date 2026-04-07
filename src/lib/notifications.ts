@@ -3,7 +3,9 @@ import { Resend } from "resend";
 import { randomUUID } from "crypto";
 import type { NotifTipo } from "@/types";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY || "re_placeholder");
+}
 
 interface NotifyOptions {
   centerId: string;
@@ -41,7 +43,7 @@ export async function notify(opts: NotifyOptions) {
     // 2. Email
     if ((canal === "email" || canal === "both") && r.email) {
       try {
-        const result = await resend.emails.send({
+        const result = await getResend().emails.send({
           from: "SGCC <notificaciones@sgcc.app>",
           to: r.email,
           subject: opts.titulo,
