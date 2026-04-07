@@ -9,8 +9,8 @@ export default auth((req) => {
   const publicPaths = ["/login", "/registro", "/invitacion"];
   if (publicPaths.some((p) => pathname.startsWith(p))) return NextResponse.next();
 
-  // API routes de auth y activación siempre permitidas
-  if (pathname.startsWith("/api/auth") || pathname.startsWith("/api/legados/activar")) {
+  // API routes de auth, health y activación siempre permitidas
+  if (pathname.startsWith("/api/auth") || pathname.startsWith("/api/health") || pathname.startsWith("/api/legados/activar")) {
     return NextResponse.next();
   }
 
