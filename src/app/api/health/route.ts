@@ -8,7 +8,8 @@ export async function GET() {
 
   const checks: Record<string, any> = {
     supabase_url_full: url ?? "MISSING",
-    service_key_start: key ? key.substring(0, 30) : "MISSING",
+    service_key_length: key?.length ?? 0,
+    service_key_end: key ? key.substring(key.length - 10) : "MISSING",
     nextauth_secret: process.env.NEXTAUTH_SECRET ? "SET" : "MISSING",
     nextauth_url: process.env.NEXTAUTH_URL ?? "MISSING",
     node_version: process.version,
