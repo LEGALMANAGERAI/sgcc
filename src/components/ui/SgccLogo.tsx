@@ -12,9 +12,9 @@ const SIZES = {
 };
 
 const LETTERS = [
-  { char: "S", color: "#1B4F9B", x: 2 },
-  { char: "G", color: "#2A9D5C", x: 27 },
-  { char: "C", color: "#E8732A", x: 53 },
+  { char: "S", color: "#1B4F9B", x: 1 },
+  { char: "G", color: "#2A9D5C", x: 25 },
+  { char: "C", color: "#E8732A", x: 52 },
   { char: "C", color: "#D42B2B", x: 77 },
 ];
 
