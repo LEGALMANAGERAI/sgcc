@@ -5,10 +5,10 @@ interface Props {
 }
 
 const SIZES = {
-  sm: { fontSize: 28, lineH: 2, lineGap: 5, textSize: "text-[8px]", boldSize: "text-[9px]", gap: 2 },
-  md: { fontSize: 40, lineH: 3, lineGap: 7, textSize: "text-[10px]", boldSize: "text-xs", gap: 3 },
-  lg: { fontSize: 56, lineH: 3, lineGap: 9, textSize: "text-xs", boldSize: "text-sm", gap: 4 },
-  xl: { fontSize: 80, lineH: 4, lineGap: 12, textSize: "text-sm", boldSize: "text-base", gap: 5 },
+  sm: { fontSize: 32, stripeH: 3, gapH: 2, textSize: "text-[8px]", boldSize: "text-[9px]" },
+  md: { fontSize: 46, stripeH: 4, gapH: 2.5, textSize: "text-[10px]", boldSize: "text-xs" },
+  lg: { fontSize: 62, stripeH: 5, gapH: 3, textSize: "text-xs", boldSize: "text-sm" },
+  xl: { fontSize: 88, stripeH: 7, gapH: 4, textSize: "text-sm", boldSize: "text-base" },
 };
 
 const LETTERS = [
@@ -22,45 +22,31 @@ export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props
   const s = SIZES[size];
   const textColor = darkBg ? "text-white/80" : "text-gray-500";
   const boldColor = darkBg ? "text-white" : "text-gray-900";
-  const cutColor = darkBg ? "#0D2340" : "#ffffff";
+  const bgColor = darkBg ? "#0D2340" : "#ffffff";
+  const total = s.stripeH + s.gapH;
 
   return (
     <div className="flex items-center gap-3">
-      {/* Letras con cortes horizontales reales */}
-      <div className="flex" style={{ gap: s.gap }}>
+      {/* Letras formadas por franjas horizontales de color */}
+      <div className="flex" style={{ gap: 2 }}>
         {LETTERS.map((l, i) => (
-          <div
+          <span
             key={i}
-            className="relative inline-block select-none overflow-hidden"
-            style={{ lineHeight: 1 }}
+            className="select-none"
+            style={{
+              fontSize: s.fontSize,
+              fontWeight: 900,
+              lineHeight: 1,
+              letterSpacing: "-0.02em",
+              color: "transparent",
+              background: `repeating-linear-gradient(to bottom, ${l.color} 0px, ${l.color} ${s.stripeH}px, ${bgColor} ${s.stripeH}px, ${bgColor} ${total}px)`,
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
           >
-            {/* Letra base */}
-            <span
-              style={{
-                fontSize: s.fontSize,
-                color: l.color,
-                fontWeight: 900,
-                letterSpacing: "-0.02em",
-                display: "block",
-              }}
-            >
-              {l.char}
-            </span>
-
-            {/* Líneas de corte horizontales */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                backgroundImage: `repeating-linear-gradient(
-                  to bottom,
-                  transparent 0px,
-                  transparent ${s.lineGap}px,
-                  ${cutColor} ${s.lineGap}px,
-                  ${cutColor} ${s.lineGap + s.lineH}px
-                )`,
-              }}
-            />
-          </div>
+            {l.char}
+          </span>
         ))}
       </div>
 
