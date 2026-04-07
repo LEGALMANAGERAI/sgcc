@@ -18,6 +18,7 @@ import {
   Briefcase,
   Mail,
   Eye,
+  PenTool,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 
@@ -28,6 +29,7 @@ const navItems = [
   { label: "Apoderados", href: "/apoderados", icon: Briefcase },
   { label: "Correspondencia", href: "/correspondencia", icon: Mail },
   { label: "Vigilancia Judicial", href: "/vigilancia", icon: Eye },
+  { label: "Firmas", href: "/firmas", icon: PenTool },
   { label: "Partes", href: "/partes", icon: Users },
   { label: "Conciliadores", href: "/conciliadores", icon: UserCog },
   { label: "Salas", href: "/salas", icon: DoorOpen },
