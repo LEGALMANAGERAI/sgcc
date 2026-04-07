@@ -8,12 +8,11 @@ interface Props {
   darkBg?: boolean;
 }
 
-/* Proporciones: ~5-6 franjas visibles por letra, gaps anchos y claros */
 const SIZES = {
-  sm: { w: 110, h: 34, fs: 40, stripe: 4, gap: 3, textSize: "text-[8px]", boldSize: "text-[9px]" },
-  md: { w: 150, h: 46, fs: 54, stripe: 5, gap: 4, textSize: "text-[10px]", boldSize: "text-xs" },
-  lg: { w: 200, h: 62, fs: 72, stripe: 6, gap: 5, textSize: "text-xs", boldSize: "text-sm" },
-  xl: { w: 280, h: 86, fs: 100, stripe: 8, gap: 6, textSize: "text-sm", boldSize: "text-base" },
+  sm: { w: 120, h: 38, fs: 42, sw: 2.5, dash: "6,3", textSize: "text-[8px]", boldSize: "text-[9px]" },
+  md: { w: 160, h: 50, fs: 56, sw: 3, dash: "8,4", textSize: "text-[10px]", boldSize: "text-xs" },
+  lg: { w: 210, h: 66, fs: 74, sw: 3.5, dash: "10,5", textSize: "text-xs", boldSize: "text-sm" },
+  xl: { w: 290, h: 90, fs: 102, sw: 4.5, dash: "14,6", textSize: "text-sm", boldSize: "text-base" },
 };
 
 const LETTERS = [
@@ -24,13 +23,9 @@ const LETTERS = [
 ];
 
 export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props) {
-  const id = useId();
   const s = SIZES[size];
   const textColor = darkBg ? "text-white/80" : "text-gray-500";
   const boldColor = darkBg ? "text-white" : "text-gray-900";
-  const step = s.stripe + s.gap;
-
-  /* Posiciones X para cada letra (porcentajes del viewBox) */
   const positions = [0, 28, 54, 78];
 
   return (
@@ -44,30 +39,16 @@ export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props
         aria-label="SGCC"
         role="img"
       >
-        <defs>
-          {LETTERS.map((l, i) => (
-            <pattern
-              key={i}
-              id={`${id}-${i}`}
-              patternUnits="userSpaceOnUse"
-              x="0"
-              y="0"
-              width={s.w}
-              height={step}
-            >
-              {/* Solo la franja de color, el resto queda transparente */}
-              <rect x="0" y="0" width={s.w} height={s.stripe} fill={l.color} />
-            </pattern>
-          ))}
-        </defs>
-
         {LETTERS.map((l, i) => (
           <text
             key={i}
             x={`${positions[i]}%`}
             y="80%"
-            fill={`url(#${id}-${i})`}
-            stroke="none"
+            fill="none"
+            stroke={l.color}
+            strokeWidth={s.sw}
+            strokeDasharray={s.dash}
+            strokeLinecap="round"
             fontFamily="'Arial Black', 'Impact', system-ui, sans-serif"
             fontSize={s.fs}
             fontWeight={900}
