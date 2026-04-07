@@ -216,7 +216,7 @@ export async function POST(req: Request) {
         await notify({
           centerId: body.center_id,
           caseId,
-          tipo: "solicitud",
+          tipo: "nueva_solicitud",
           titulo: `Nueva solicitud de ${body.tipo_tramite}`,
           mensaje: `Se ha recibido una nueva solicitud de ${body.tipo_tramite} (${body.materia}) con radicado ${radicado}. Convocante: ${body.convocante.nombres ?? body.convocante.razon_social ?? body.convocante.email}.`,
           recipients: admins.map((a) => ({ staffId: a.id, email: a.email })),
