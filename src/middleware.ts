@@ -6,11 +6,11 @@ export default auth((req) => {
   const session = req.auth;
 
   // Rutas públicas
-  const publicPaths = ["/login", "/registro", "/invitacion"];
+  const publicPaths = ["/login", "/registro", "/invitacion", "/widget"];
   if (publicPaths.some((p) => pathname.startsWith(p))) return NextResponse.next();
 
   // API routes de auth, health y activación siempre permitidas
-  if (pathname.startsWith("/api/auth") || pathname.startsWith("/api/health") || pathname.startsWith("/api/legados/activar")) {
+  if (pathname.startsWith("/api/auth") || pathname.startsWith("/api/health") || pathname.startsWith("/api/legados/activar") || pathname.startsWith("/api/widget")) {
     return NextResponse.next();
   }
 

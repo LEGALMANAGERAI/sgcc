@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "./supabase";
+import { sumarDiasHabiles } from "./dias-habiles-colombia";
 
 /**
  * Resuelve el centerId del staff autenticado.
@@ -34,15 +35,10 @@ export async function generateRadicado(centerId: string): Promise<string> {
 }
 
 /**
- * Suma días hábiles a una fecha (excluye sábados y domingos).
+ * Suma dias habiles a una fecha.
+ * Usa el motor de dias habiles de Colombia que incluye festivos
+ * y la Ley Emiliani (Ley 51 de 1983).
  */
 export function addBusinessDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  let added = 0;
-  while (added < days) {
-    result.setDate(result.getDate() + 1);
-    const dow = result.getDay();
-    if (dow !== 0 && dow !== 6) added++;
-  }
-  return result;
+  return sumarDiasHabiles(date, days);
 }
