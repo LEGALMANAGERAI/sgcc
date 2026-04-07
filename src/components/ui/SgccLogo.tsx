@@ -8,11 +8,33 @@ interface Props {
   darkBg?: boolean;
 }
 
+/*
+ * Cada letra se dibuja con N capas de stroke alternando
+ * color → fondo → color → fondo → color
+ * para crear contornos concéntricos que siguen la forma de la letra.
+ * El step entre cada capa define el grosor de cada anillo y gap.
+ */
 const SIZES = {
-  sm: { w: 130, h: 42, fs: 46, barH: 4, gapH: 3, textSize: "text-[8px]", boldSize: "text-[9px]" },
-  md: { w: 170, h: 54, fs: 60, barH: 5, gapH: 3.5, textSize: "text-[10px]", boldSize: "text-xs" },
-  lg: { w: 230, h: 72, fs: 80, barH: 7, gapH: 5, textSize: "text-xs", boldSize: "text-sm" },
-  xl: { w: 310, h: 96, fs: 108, barH: 9, gapH: 6, textSize: "text-sm", boldSize: "text-base" },
+  sm: {
+    w: 130, h: 42, fs: 46,
+    layers: [14, 11.5, 9, 6.5, 4] as number[],
+    textSize: "text-[8px]", boldSize: "text-[9px]",
+  },
+  md: {
+    w: 170, h: 54, fs: 60,
+    layers: [18, 15, 12, 9, 6, 3] as number[],
+    textSize: "text-[10px]", boldSize: "text-xs",
+  },
+  lg: {
+    w: 230, h: 72, fs: 80,
+    layers: [22, 18.5, 15, 11.5, 8, 4.5, 2] as number[],
+    textSize: "text-xs", boldSize: "text-sm",
+  },
+  xl: {
+    w: 310, h: 96, fs: 108,
+    layers: [28, 24, 20, 16, 12, 8, 4, 1.5] as number[],
+    textSize: "text-sm", boldSize: "text-base",
+  },
 };
 
 const LETTERS = [
@@ -23,13 +45,11 @@ const LETTERS = [
 ];
 
 export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props) {
-  const id = useId();
   const s = SIZES[size];
   const textColor = darkBg ? "text-white/80" : "text-gray-500";
   const boldColor = darkBg ? "text-white" : "text-gray-900";
-  const positions = [2, 35, 68, 100];
-  const step = s.barH + s.gapH;
-  const numBars = Math.ceil(s.h / step) + 1;
+  const bgColor = darkBg ? "#0D2340" : "#ffffff";
+  const positions = [2, 36, 70, 103];
 
   return (
     <div className="flex items-center gap-3">
@@ -42,36 +62,27 @@ export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props
         aria-label="SGCC"
         role="img"
       >
-        <defs>
-          {LETTERS.map((l, i) => (
-            <clipPath key={i} id={`${id}-c${i}`}>
-              <text
-                x={positions[i]}
-                y={s.h * 0.82}
-                fontFamily="'Arial Black', 'Impact', system-ui, sans-serif"
-                fontSize={s.fs}
-                fontWeight={900}
-              >
-                {l.char}
-              </text>
-            </clipPath>
-          ))}
-        </defs>
-
-        {LETTERS.map((l, i) => (
-          <g key={i} clipPath={`url(#${id}-c${i})`}>
-            {Array.from({ length: numBars }, (_, j) => (
-              <rect
-                key={j}
-                x={0}
-                y={j * step}
-                width={s.w}
-                height={s.barH}
-                fill={l.color}
-              />
-            ))}
-          </g>
-        ))}
+        {LETTERS.map((l, li) =>
+          /* Cada capa se dibuja de mayor a menor stroke-width */
+          s.layers.map((sw, ri) => (
+            <text
+              key={`${li}-${ri}`}
+              x={positions[li]}
+              y={s.h * 0.82}
+              fill="none"
+              stroke={ri % 2 === 0 ? l.color : bgColor}
+              strokeWidth={sw}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              fontFamily="'Arial Black', 'Impact', system-ui, sans-serif"
+              fontSize={s.fs}
+              fontWeight={900}
+              paintOrder="stroke"
+            >
+              {l.char}
+            </text>
+          ))
+        )}
       </svg>
 
       {showText && (
