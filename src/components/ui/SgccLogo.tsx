@@ -1,38 +1,38 @@
 "use client";
 
-import { useId } from "react";
-
 interface Props {
   size?: "sm" | "md" | "lg" | "xl";
   showText?: boolean;
   darkBg?: boolean;
 }
 
-/*
- * Cada letra se dibuja con N capas de stroke alternando
- * color → fondo → color → fondo → color
- * para crear contornos concéntricos que siguen la forma de la letra.
- * El step entre cada capa define el grosor de cada anillo y gap.
- */
 const SIZES = {
   sm: {
-    w: 130, h: 42, fs: 46,
-    layers: [14, 11.5, 9, 6.5, 4] as number[],
+    w: 140, h: 44, fs: 48, sw: 1.8,
+    scales: [1, 0.78, 0.56, 0.34],
+    offsets: [{ x: 3, y: 36 }, { x: 33, y: 36 }, { x: 66, y: 36 }, { x: 96, y: 36 }],
+    centers: [{ x: 17, y: 22 }, { x: 50, y: 22 }, { x: 80, y: 22 }, { x: 113, y: 22 }],
     textSize: "text-[8px]", boldSize: "text-[9px]",
   },
   md: {
-    w: 170, h: 54, fs: 60,
-    layers: [18, 15, 12, 9, 6, 3] as number[],
+    w: 185, h: 58, fs: 64, sw: 2.2,
+    scales: [1, 0.8, 0.6, 0.4],
+    offsets: [{ x: 4, y: 48 }, { x: 44, y: 48 }, { x: 88, y: 48 }, { x: 128, y: 48 }],
+    centers: [{ x: 23, y: 29 }, { x: 67, y: 29 }, { x: 107, y: 29 }, { x: 150, y: 29 }],
     textSize: "text-[10px]", boldSize: "text-xs",
   },
   lg: {
-    w: 230, h: 72, fs: 80,
-    layers: [22, 18.5, 15, 11.5, 8, 4.5, 2] as number[],
+    w: 245, h: 76, fs: 84, sw: 2.5,
+    scales: [1, 0.82, 0.64, 0.46, 0.28],
+    offsets: [{ x: 5, y: 63 }, { x: 58, y: 63 }, { x: 116, y: 63 }, { x: 169, y: 63 }],
+    centers: [{ x: 30, y: 38 }, { x: 88, y: 38 }, { x: 141, y: 38 }, { x: 199, y: 38 }],
     textSize: "text-xs", boldSize: "text-sm",
   },
   xl: {
-    w: 310, h: 96, fs: 108,
-    layers: [28, 24, 20, 16, 12, 8, 4, 1.5] as number[],
+    w: 330, h: 100, fs: 112, sw: 3,
+    scales: [1, 0.83, 0.66, 0.49, 0.32],
+    offsets: [{ x: 6, y: 83 }, { x: 78, y: 83 }, { x: 155, y: 83 }, { x: 227, y: 83 }],
+    centers: [{ x: 40, y: 50 }, { x: 117, y: 50 }, { x: 189, y: 50 }, { x: 266, y: 50 }],
     textSize: "text-sm", boldSize: "text-base",
   },
 };
@@ -48,8 +48,6 @@ export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props
   const s = SIZES[size];
   const textColor = darkBg ? "text-white/80" : "text-gray-500";
   const boldColor = darkBg ? "text-white" : "text-gray-900";
-  const bgColor = darkBg ? "#0D2340" : "#ffffff";
-  const positions = [2, 36, 70, 103];
 
   return (
     <div className="flex items-center gap-3">
@@ -62,27 +60,29 @@ export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props
         aria-label="SGCC"
         role="img"
       >
-        {LETTERS.map((l, li) =>
-          /* Cada capa se dibuja de mayor a menor stroke-width */
-          s.layers.map((sw, ri) => (
+        {LETTERS.map((l, li) => {
+          const o = s.offsets[li];
+          const c = s.centers[li];
+
+          return s.scales.map((sc, ri) => (
             <text
               key={`${li}-${ri}`}
-              x={positions[li]}
-              y={s.h * 0.82}
+              x={o.x}
+              y={o.y}
               fill="none"
-              stroke={ri % 2 === 0 ? l.color : bgColor}
-              strokeWidth={sw}
-              strokeLinejoin="round"
-              strokeLinecap="round"
+              stroke={l.color}
+              strokeWidth={s.sw / sc}
+              strokeLinecap="butt"
+              strokeLinejoin="miter"
               fontFamily="'Arial Black', 'Impact', system-ui, sans-serif"
               fontSize={s.fs}
               fontWeight={900}
-              paintOrder="stroke"
+              transform={`translate(${c.x * (1 - sc)}, ${c.y * (1 - sc)}) scale(${sc})`}
             >
               {l.char}
             </text>
-          ))
-        )}
+          ));
+        })}
       </svg>
 
       {showText && (
