@@ -22,6 +22,7 @@ export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props
   const s = SIZES[size];
   const textColor = darkBg ? "text-white/80" : "text-gray-500";
   const boldColor = darkBg ? "text-white" : "text-gray-900";
+  const bgFill = darkBg ? "#0D2340" : "#ffffff";
 
   return (
     <div className="flex items-center gap-3">
@@ -39,11 +40,12 @@ export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props
             key={i}
             x={`${l.x}%`}
             y="80%"
-            fill="none"
+            fill={bgFill}
             stroke={l.color}
             strokeWidth={s.sw}
             strokeLinejoin="round"
             strokeLinecap="round"
+            paintOrder="stroke fill"
             fontFamily="'Arial Black', 'Impact', system-ui, sans-serif"
             fontSize={s.fs}
             fontWeight={900}
