@@ -4,7 +4,7 @@ interface Props {
   darkBg?: boolean;
 }
 
-const SCALE = { sm: 0.45, md: 0.6, lg: 0.8, xl: 1.05 };
+const SCALE = { sm: 0.5, md: 0.65, lg: 0.85, xl: 1.1 };
 const TEXT_SIZES = {
   sm: { textSize: "text-[8px]", boldSize: "text-[9px]" },
   md: { textSize: "text-[10px]", boldSize: "text-xs" },
@@ -13,26 +13,22 @@ const TEXT_SIZES = {
 };
 
 /*
- * Letras como paths abiertos (sin cerrar) para que las terminales
- * no tengan línea de conexión. Cada letra es un trazo libre.
- * Coordenadas diseñadas en un viewBox de 230 x 70.
+ * Letras construidas con arcos SVG geométricos (A command).
+ * Paths abiertos = terminales sin línea de conexión.
+ * ViewBox: 0 0 200 72
  */
 
-/* S: dos arcos invertidos formando la S */
-const S_PATH =
-  "M 34,12 C 34,4 8,2 8,18 C 8,30 34,30 34,44 C 34,60 8,60 8,50";
+/* S: dos arcos elípticos conectados formando la S */
+const S_PATH = "M 36,12 A 18,16 0 1,0 10,36 A 18,16 0 1,1 36,60";
 
-/* G: arco tipo C con barra horizontal entrando desde la derecha */
-const G_PATH =
-  "M 76,12 C 60,2 44,8 44,34 C 44,60 60,64 76,54 L 76,36 L 60,36";
+/* G: arco grande (como C) + barra horizontal entrando */
+const G_PATH = "M 90,12 A 22,26 0 1,0 90,60 L 90,38 L 68,38";
 
-/* C1: arco abierto */
-const C1_PATH =
-  "M 118,12 C 102,2 86,8 86,34 C 86,60 102,64 118,54";
+/* C: arco abierto limpio */
+const C1_PATH = "M 140,12 A 22,26 0 1,0 140,60";
 
-/* C2: arco abierto */
-const C2_PATH =
-  "M 160,12 C 144,2 128,8 128,34 C 128,60 144,64 160,54";
+/* C: arco abierto limpio */
+const C2_PATH = "M 190,12 A 22,26 0 1,0 190,60";
 
 const LETTERS = [
   { path: S_PATH, color: "#1B4F9B" },
@@ -46,14 +42,13 @@ export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props
   const ts = TEXT_SIZES[size];
   const textColor = darkBg ? "text-white/80" : "text-gray-500";
   const boldColor = darkBg ? "text-white" : "text-gray-900";
-  const sw = 5;
 
   return (
     <div className="flex items-center gap-3">
       <svg
-        width={170 * sc}
-        height={70 * sc}
-        viewBox="0 0 170 70"
+        width={200 * sc}
+        height={72 * sc}
+        viewBox="0 0 200 72"
         xmlns="http://www.w3.org/2000/svg"
         className="flex-shrink-0"
         aria-label="SGCC"
@@ -65,7 +60,7 @@ export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props
             d={l.path}
             fill="none"
             stroke={l.color}
-            strokeWidth={sw}
+            strokeWidth={5.5}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
