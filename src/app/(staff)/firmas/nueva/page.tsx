@@ -218,7 +218,7 @@ export default function NuevaFirmaPage() {
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
               dragActive
-                ? "border-[#B8860B] bg-amber-50"
+                ? "border-[#1B4F9B] bg-amber-50"
                 : archivo
                 ? "border-green-300 bg-green-50"
                 : "border-gray-300 hover:border-[#0D2340] hover:bg-gray-50"
@@ -367,7 +367,7 @@ export default function NuevaFirmaPage() {
             <button
               type="button"
               onClick={addFirmante}
-              className="flex items-center gap-1 text-sm text-[#B8860B] hover:text-[#8a6508] font-medium transition-colors"
+              className="flex items-center gap-1 text-sm text-[#1B4F9B] hover:text-[#8a6508] font-medium transition-colors"
             >
               <Plus className="w-4 h-4" />
               Agregar firmante

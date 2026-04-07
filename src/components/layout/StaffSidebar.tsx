@@ -14,13 +14,13 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  Scale,
   Briefcase,
   Mail,
   Eye,
   PenTool,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
+import { SgccLogo } from "@/components/ui/SgccLogo";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -54,14 +54,9 @@ export function StaffSidebar({ centerName }: Props) {
   return (
     <aside className="fixed inset-y-0 left-0 w-60 bg-[#0D2340] flex flex-col z-30">
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-white/10">
-        <div className="flex items-center gap-2">
-          <Scale className="w-6 h-6 text-[#B8860B]" />
-          <div>
-            <p className="text-white font-bold text-sm leading-tight">SGCC</p>
-            <p className="text-white/50 text-xs truncate max-w-[140px]">{centerName}</p>
-          </div>
-        </div>
+      <div className="px-4 py-4 border-b border-white/10">
+        <SgccLogo size="sm" showText={false} darkBg />
+        <p className="text-white/50 text-xs truncate mt-1.5">{centerName}</p>
       </div>
 
       {/* Nav */}
@@ -74,7 +69,7 @@ export function StaffSidebar({ centerName }: Props) {
                 className={clsx(
                   "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
                   isActive(item.href)
-                    ? "bg-[#B8860B] text-white font-medium"
+                    ? "bg-[#1B4F9B] text-white font-medium"
                     : "text-white/70 hover:bg-white/10 hover:text-white"
                 )}
               >
@@ -95,7 +90,7 @@ export function StaffSidebar({ centerName }: Props) {
             className={clsx(
               "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
               isActive(item.href)
-                ? "bg-[#B8860B] text-white font-medium"
+                ? "bg-[#1B4F9B] text-white font-medium"
                 : "text-white/70 hover:bg-white/10 hover:text-white"
             )}
           >

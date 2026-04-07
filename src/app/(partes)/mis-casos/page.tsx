@@ -166,7 +166,7 @@ export default async function MisCasosPage() {
                       <td className="px-4 py-3">
                         <Link
                           href={`/mis-casos/${caso.id}`}
-                          className="text-[#B8860B] font-medium hover:underline"
+                          className="text-[#1B4F9B] font-medium hover:underline"
                         >
                           {caso.numero_radicado}
                         </Link>
@@ -223,7 +223,7 @@ export default async function MisCasosPage() {
                   className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-[#B8860B]">
+                    <span className="font-medium text-[#1B4F9B]">
                       {caso.numero_radicado}
                     </span>
                     <span

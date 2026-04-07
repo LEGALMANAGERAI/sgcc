@@ -50,7 +50,7 @@ export function ConfirmarAsistenciaButton({
       <button
         onClick={handleConfirmar}
         disabled={loading}
-        className="px-3 py-1.5 bg-[#B8860B] text-white text-xs font-medium rounded-lg hover:bg-[#9a7209] transition-colors disabled:opacity-50"
+        className="px-3 py-1.5 bg-[#1B4F9B] text-white text-xs font-medium rounded-lg hover:bg-[#9a7209] transition-colors disabled:opacity-50"
       >
         {loading ? "Confirmando..." : "Confirmar asistencia"}
       </button>

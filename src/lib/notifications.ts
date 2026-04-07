@@ -77,7 +77,7 @@ function buildEmailHtml(titulo: string, mensaje: string, url?: string): string {
       <div style="background: #f9f9f9; padding: 24px; border-radius: 0 0 8px 8px; border: 1px solid #e0e0e0; border-top: none;">
         <h3 style="color: #0D2340; margin-top: 0;">${titulo}</h3>
         <p style="white-space: pre-line; line-height: 1.6;">${mensaje}</p>
-        ${url ? `<a href="${url}" style="display: inline-block; background: #B8860B; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; margin-top: 16px;">Ver documento</a>` : ""}
+        ${url ? `<a href="${url}" style="display: inline-block; background: #1B4F9B; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; margin-top: 16px;">Ver documento</a>` : ""}
         <hr style="margin-top: 24px; border: none; border-top: 1px solid #e0e0e0;" />
         <p style="font-size: 12px; color: #888; margin-bottom: 0;">Este es un mensaje automático del Sistema de Gestión de Centros de Conciliación.</p>
       </div>

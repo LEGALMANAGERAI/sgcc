@@ -169,7 +169,7 @@ export function TabChecklistAdmision({
         <div className="w-full bg-gray-200 rounded-full h-2.5">
           <div
             className={`h-2.5 rounded-full transition-all duration-500 ${
-              allRequiredDone ? "bg-green-500" : "bg-[#B8860B]"
+              allRequiredDone ? "bg-green-500" : "bg-[#1B4F9B]"
             }`}
             style={{ width: `${progressPct}%` }}
           />
@@ -300,7 +300,7 @@ export function TabChecklistAdmision({
                             type="text"
                             value={noteText}
                             onChange={(e) => setNoteText(e.target.value)}
-                            className="text-xs border border-gray-200 rounded px-2 py-1 w-40 focus:outline-none focus:ring-1 focus:ring-[#B8860B]"
+                            className="text-xs border border-gray-200 rounded px-2 py-1 w-40 focus:outline-none focus:ring-1 focus:ring-[#1B4F9B]"
                             placeholder="Agregar nota..."
                             autoFocus
                             onKeyDown={(e) => {
@@ -314,7 +314,7 @@ export function TabChecklistAdmision({
                           <button
                             onClick={() => handleSaveNotes(idx)}
                             disabled={isSaving}
-                            className="text-xs text-[#B8860B] hover:underline"
+                            className="text-xs text-[#1B4F9B] hover:underline"
                           >
                             {isSaving ? "..." : "OK"}
                           </button>

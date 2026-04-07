@@ -40,7 +40,7 @@ export default function RegistroSelectorPage() {
         {/* Header */}
         <div className="bg-[#0D2340] px-8 py-8 text-center">
           <div className="flex justify-center mb-3">
-            <div className="bg-[#B8860B] p-3 rounded-full">
+            <div className="bg-[#1B4F9B] p-3 rounded-full">
               <Scale className="w-8 h-8 text-white" />
             </div>
           </div>
@@ -56,10 +56,10 @@ export default function RegistroSelectorPage() {
             <Link
               key={opt.href}
               href={opt.href}
-              className="group flex items-center gap-5 border border-gray-200 rounded-xl p-5 hover:border-[#B8860B] hover:shadow-lg transition-all"
+              className="group flex items-center gap-5 border border-gray-200 rounded-xl p-5 hover:border-[#1B4F9B] hover:shadow-lg transition-all"
             >
-              <div className="flex-shrink-0 bg-[#0D2340]/5 group-hover:bg-[#B8860B]/10 p-4 rounded-xl transition-colors">
-                <opt.icon className="w-7 h-7 text-[#0D2340] group-hover:text-[#B8860B] transition-colors" />
+              <div className="flex-shrink-0 bg-[#0D2340]/5 group-hover:bg-[#1B4F9B]/10 p-4 rounded-xl transition-colors">
+                <opt.icon className="w-7 h-7 text-[#0D2340] group-hover:text-[#1B4F9B] transition-colors" />
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="text-[#0D2340] font-semibold text-base">
@@ -69,7 +69,7 @@ export default function RegistroSelectorPage() {
                   {opt.description}
                 </p>
               </div>
-              <span className="flex-shrink-0 bg-[#0D2340] text-white text-xs font-medium px-4 py-2 rounded-lg group-hover:bg-[#B8860B] transition-colors">
+              <span className="flex-shrink-0 bg-[#0D2340] text-white text-xs font-medium px-4 py-2 rounded-lg group-hover:bg-[#1B4F9B] transition-colors">
                 {opt.cta}
               </span>
             </Link>
@@ -82,7 +82,7 @@ export default function RegistroSelectorPage() {
             ¿Ya tienes cuenta?{" "}
             <Link
               href="/login"
-              className="text-[#B8860B] hover:underline font-medium"
+              className="text-[#1B4F9B] hover:underline font-medium"
             >
               Ingresar
             </Link>

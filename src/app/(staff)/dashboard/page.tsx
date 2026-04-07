@@ -434,7 +434,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               </h2>
               <Link
                 href="/casos"
-                className="text-xs text-[#B8860B] hover:underline flex items-center gap-1"
+                className="text-xs text-[#1B4F9B] hover:underline flex items-center gap-1"
               >
                 Ver todos <ArrowRight className="w-3 h-3" />
               </Link>
@@ -602,7 +602,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             <div className="px-5 py-3 border-t border-gray-100 text-center">
               <Link
                 href="/casos"
-                className="text-sm text-[#B8860B] hover:underline"
+                className="text-sm text-[#1B4F9B] hover:underline"
               >
                 Ver los {filteredCases.length} casos →
               </Link>
@@ -621,7 +621,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               </h2>
               <Link
                 href="/agenda"
-                className="text-xs text-[#B8860B] hover:underline flex items-center gap-1"
+                className="text-xs text-[#1B4F9B] hover:underline flex items-center gap-1"
               >
                 Agenda <ArrowRight className="w-3 h-3" />
               </Link>
@@ -731,7 +731,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       {team.length > 0 && (
         <div className="mb-8">
           <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <Users className="w-5 h-5 text-[#B8860B]" />
+            <Users className="w-5 h-5 text-[#1B4F9B]" />
             Mi Equipo
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

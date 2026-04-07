@@ -218,7 +218,7 @@ export function TabAsistencia({
                   <button
                     onClick={() => handleRegisterAttendance(hearing.id)}
                     disabled={saving === `register-${hearing.id}`}
-                    className="inline-flex items-center gap-1.5 bg-[#B8860B] text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-[#a07509] transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 bg-[#1B4F9B] text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-[#a07509] transition-colors disabled:opacity-50"
                   >
                     {saving === `register-${hearing.id}` ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -341,7 +341,7 @@ export function TabAsistencia({
                                 )
                               }
                               disabled={isSaving}
-                              className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 w-full max-w-[200px] focus:outline-none focus:ring-1 focus:ring-[#B8860B] disabled:opacity-50"
+                              className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 w-full max-w-[200px] focus:outline-none focus:ring-1 focus:ring-[#1B4F9B] disabled:opacity-50"
                             >
                               <option value="">Sin representación</option>
                               {partyAttorneys.map((ca: any) => (
@@ -436,7 +436,7 @@ function NotasInline({
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          className="text-xs border border-gray-200 rounded px-2 py-1 w-36 focus:outline-none focus:ring-1 focus:ring-[#B8860B]"
+          className="text-xs border border-gray-200 rounded px-2 py-1 w-36 focus:outline-none focus:ring-1 focus:ring-[#1B4F9B]"
           placeholder="Nota..."
           autoFocus
           onKeyDown={(e) => {
@@ -456,7 +456,7 @@ function NotasInline({
             setEditing(false);
           }}
           disabled={isSaving}
-          className="text-xs text-[#B8860B] hover:underline"
+          className="text-xs text-[#1B4F9B] hover:underline"
         >
           {isSaving ? "..." : "OK"}
         </button>

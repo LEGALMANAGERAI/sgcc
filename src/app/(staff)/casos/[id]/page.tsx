@@ -75,7 +75,7 @@ export default async function CasoDetailPage({ params }: Props) {
         {nextAction && (
           <Link
             href={nextAction.href}
-            className="bg-[#B8860B] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#a07509] transition-colors"
+            className="bg-[#1B4F9B] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#a07509] transition-colors"
           >
             {nextAction.label} →
           </Link>
@@ -137,7 +137,7 @@ export default async function CasoDetailPage({ params }: Props) {
             <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-900">Audiencias</h3>
-                <Link href={`/casos/${id}/audiencia`} className="text-xs text-[#B8860B] hover:underline">
+                <Link href={`/casos/${id}/audiencia`} className="text-xs text-[#1B4F9B] hover:underline">
                   + Programar
                 </Link>
               </div>
@@ -176,7 +176,7 @@ export default async function CasoDetailPage({ params }: Props) {
                     <div className="flex items-center gap-3">
                       <StatusChip value={a.estado_firma} type="firma" />
                       {a.borrador_url && (
-                        <a href={a.borrador_url} target="_blank" className="text-[#B8860B] hover:underline text-xs flex items-center gap-1">
+                        <a href={a.borrador_url} target="_blank" className="text-[#1B4F9B] hover:underline text-xs flex items-center gap-1">
                           <Download className="w-3 h-3" /> Borrador
                         </a>
                       )}
@@ -190,7 +190,7 @@ export default async function CasoDetailPage({ params }: Props) {
                 ))}
               </div>
               <div className="mt-3">
-                <Link href={`/casos/${id}/acta`} className="text-xs text-[#B8860B] hover:underline">
+                <Link href={`/casos/${id}/acta`} className="text-xs text-[#1B4F9B] hover:underline">
                   + Nueva acta / constancia
                 </Link>
               </div>
@@ -201,7 +201,7 @@ export default async function CasoDetailPage({ params }: Props) {
           <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900">Documentos</h3>
-              <Link href={`/casos/${id}/documentos`} className="text-xs text-[#B8860B] hover:underline">
+              <Link href={`/casos/${id}/documentos`} className="text-xs text-[#1B4F9B] hover:underline">
                 + Subir
               </Link>
             </div>
@@ -218,7 +218,7 @@ export default async function CasoDetailPage({ params }: Props) {
                         <p className="text-xs text-gray-500 capitalize">{d.tipo} · {new Date(d.created_at).toLocaleDateString("es-CO")}</p>
                       </div>
                     </div>
-                    <a href={d.url} target="_blank" className="text-[#B8860B] hover:underline text-xs flex items-center gap-1">
+                    <a href={d.url} target="_blank" className="text-[#1B4F9B] hover:underline text-xs flex items-center gap-1">
                       <Download className="w-3 h-3" /> Descargar
                     </a>
                   </div>
@@ -297,7 +297,7 @@ export default async function CasoDetailPage({ params }: Props) {
               <p className="text-sm font-medium text-gray-900">{caso.sala.nombre}</p>
               <p className="text-xs text-gray-500 capitalize">{caso.sala.tipo}</p>
               {caso.sala.link_virtual && (
-                <a href={caso.sala.link_virtual} target="_blank" className="text-xs text-[#B8860B] hover:underline mt-1 block">
+                <a href={caso.sala.link_virtual} target="_blank" className="text-xs text-[#1B4F9B] hover:underline mt-1 block">
                   Enlace virtual →
                 </a>
               )}
@@ -324,7 +324,7 @@ export default async function CasoDetailPage({ params }: Props) {
                 </Link>
               )}
               {["audiencia", "citado"].includes(caso.estado) && (
-                <Link href={`/casos/${id}/acta`} className="block w-full text-center bg-[#B8860B] text-white text-sm py-2 px-3 rounded-lg hover:bg-[#a07509] transition-colors">
+                <Link href={`/casos/${id}/acta`} className="block w-full text-center bg-[#1B4F9B] text-white text-sm py-2 px-3 rounded-lg hover:bg-[#a07509] transition-colors">
                   Generar acta
                 </Link>
               )}

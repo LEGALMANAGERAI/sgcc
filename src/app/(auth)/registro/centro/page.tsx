@@ -84,7 +84,7 @@ export default function RegistroCentroPage() {
         {/* Header */}
         <div className="bg-[#0D2340] px-8 py-6 text-center">
           <div className="flex justify-center mb-2">
-            <div className="bg-[#B8860B] p-2.5 rounded-full">
+            <div className="bg-[#1B4F9B] p-2.5 rounded-full">
               <Building2 className="w-6 h-6 text-white" />
             </div>
           </div>
@@ -235,7 +235,7 @@ export default function RegistroCentroPage() {
               <div className="w-full border-t border-gray-200" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-white px-4 text-[10px] font-semibold text-[#B8860B] uppercase tracking-widest">
+              <span className="bg-white px-4 text-[10px] font-semibold text-[#1B4F9B] uppercase tracking-widest">
                 Datos del administrador
               </span>
             </div>
@@ -305,14 +305,14 @@ export default function RegistroCentroPage() {
           <p className="text-center text-xs text-gray-500">
             <Link
               href="/registro"
-              className="text-[#B8860B] hover:underline font-medium"
+              className="text-[#1B4F9B] hover:underline font-medium"
             >
               Volver a opciones de registro
             </Link>
             {" | "}
             <Link
               href="/login"
-              className="text-[#B8860B] hover:underline font-medium"
+              className="text-[#1B4F9B] hover:underline font-medium"
             >
               Ya tengo cuenta
             </Link>

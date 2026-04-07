@@ -51,7 +51,7 @@ export function CasoTimeline({ estado, events }: Props) {
                   isCompleted
                     ? "bg-[#0D2340] text-white"
                     : isCurrent
-                    ? "bg-[#B8860B] text-white ring-4 ring-amber-100"
+                    ? "bg-[#1B4F9B] text-white ring-4 ring-amber-100"
                     : isActive
                     ? "bg-white border-2 border-[#0D2340] text-[#0D2340]"
                     : "bg-gray-100 text-gray-400 border-2 border-gray-200"
@@ -67,7 +67,7 @@ export function CasoTimeline({ estado, events }: Props) {
               <p
                 className={clsx(
                   "text-xs mt-2 font-medium text-center",
-                  isCompleted ? "text-[#0D2340]" : isCurrent ? "text-[#B8860B]" : "text-gray-400"
+                  isCompleted ? "text-[#0D2340]" : isCurrent ? "text-[#1B4F9B]" : "text-gray-400"
                 )}
               >
                 {step.label}

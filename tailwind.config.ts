@@ -7,6 +7,10 @@ const config: Config = {
       colors: {
         navy: "#0D2340",
         gold: "#B8860B",
+        "sgcc-blue": "#1B4F9B",
+        "sgcc-green": "#2A9D5C",
+        "sgcc-orange": "#E8732A",
+        "sgcc-red": "#D42B2B",
       },
     },
   },

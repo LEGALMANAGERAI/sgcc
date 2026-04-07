@@ -346,7 +346,7 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
           <button
             type="button"
             onClick={addConvocado}
-            className="flex items-center gap-2 text-sm text-[#B8860B] hover:underline"
+            className="flex items-center gap-2 text-sm text-[#1B4F9B] hover:underline"
           >
             <PlusCircle className="w-4 h-4" />
             Agregar convocado

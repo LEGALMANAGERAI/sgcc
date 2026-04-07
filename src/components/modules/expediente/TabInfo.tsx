@@ -200,7 +200,7 @@ export function TabInfo({ caso, parties, attorneys, timeline }: TabInfoProps) {
                     <td className="py-3 text-gray-600">
                       {attorney ? (
                         <span className="flex items-center gap-1">
-                          <FileText className="w-3 h-3 text-[#B8860B]" />
+                          <FileText className="w-3 h-3 text-[#1B4F9B]" />
                           {attorney.nombre}
                         </span>
                       ) : (

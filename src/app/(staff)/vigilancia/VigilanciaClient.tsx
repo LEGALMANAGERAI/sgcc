@@ -271,7 +271,7 @@ export function VigilanciaClient({ procesos, casos, estadoFiltro }: Props) {
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#B8860B] text-white rounded-lg text-sm font-medium hover:bg-[#9a7209] transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-[#1B4F9B] text-white rounded-lg text-sm font-medium hover:bg-[#9a7209] transition-colors"
         >
           <Plus className="w-4 h-4" />
           Agregar proceso
@@ -488,7 +488,7 @@ function ProcessRow({
           {p.caso ? (
             <Link
               href={`/expediente/${p.caso.id}`}
-              className="text-[#B8860B] hover:underline font-medium text-xs"
+              className="text-[#1B4F9B] hover:underline font-medium text-xs"
             >
               {p.caso.numero_radicado}
             </Link>
@@ -637,7 +637,7 @@ function ProcessRow({
                     <button
                       type="submit"
                       disabled={actuacionSubmitting}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#B8860B] text-white rounded-lg text-xs font-medium hover:bg-[#9a7209] disabled:opacity-50 transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1B4F9B] text-white rounded-lg text-xs font-medium hover:bg-[#9a7209] disabled:opacity-50 transition-colors"
                     >
                       {actuacionSubmitting ? (
                         <Loader2 className="w-3 h-3 animate-spin" />

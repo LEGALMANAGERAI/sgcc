@@ -157,7 +157,7 @@ export default async function CasoDetallePage({
       <div className="mb-6">
         <Link
           href="/mis-casos"
-          className="text-sm text-gray-500 hover:text-[#B8860B] transition-colors"
+          className="text-sm text-gray-500 hover:text-[#1B4F9B] transition-colors"
         >
           &larr; Volver a mis casos
         </Link>
@@ -307,7 +307,7 @@ export default async function CasoDetallePage({
                             href={h.sala.link_virtual}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="block text-xs text-[#B8860B] hover:underline mt-0.5"
+                            className="block text-xs text-[#1B4F9B] hover:underline mt-0.5"
                           >
                             Enlace virtual
                           </a>
@@ -381,7 +381,7 @@ export default async function CasoDetallePage({
                     href={doc.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-[#B8860B] hover:underline font-medium"
+                    className="text-sm text-[#1B4F9B] hover:underline font-medium"
                   >
                     Descargar
                   </a>

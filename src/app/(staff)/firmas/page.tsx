@@ -143,7 +143,7 @@ export default async function FirmasPage() {
                         {doc.caso ? (
                           <Link
                             href={`/expediente/${doc.caso.id}`}
-                            className="text-xs text-[#B8860B] hover:underline"
+                            className="text-xs text-[#1B4F9B] hover:underline"
                           >
                             {doc.caso.numero_radicado}
                           </Link>
@@ -161,7 +161,7 @@ export default async function FirmasPage() {
                       <td className="px-3 py-3">
                         <Link
                           href={`/firmas/${doc.id}`}
-                          className="inline-flex items-center gap-1 text-xs text-[#0D2340] hover:text-[#B8860B] transition-colors"
+                          className="inline-flex items-center gap-1 text-xs text-[#0D2340] hover:text-[#1B4F9B] transition-colors"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           Ver detalle

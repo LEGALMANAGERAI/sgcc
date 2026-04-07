@@ -76,7 +76,7 @@ export default async function VerificarPage({ params }: PageProps) {
       {/* Header */}
       <header className="bg-[#0D2340] py-6">
         <div className="max-w-[700px] mx-auto px-4 flex items-center justify-center gap-3">
-          <Scale className="w-7 h-7 text-[#B8860B]" />
+          <Scale className="w-7 h-7 text-[#1B4F9B]" />
           <div className="text-center">
             <p className="text-white font-bold text-lg">SGCC</p>
             <p className="text-white/50 text-xs">Verificaci&#243;n de Firma Electr&#243;nica</p>

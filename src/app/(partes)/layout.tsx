@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/lib/auth";
 import Link from "next/link";
+import { SgccLogo } from "@/components/ui/SgccLogo";
 
 export default async function PartesLayout({
   children,
@@ -26,10 +27,7 @@ export default async function PartesLayout({
             {/* Logo y navegación */}
             <div className="flex items-center gap-8">
               <Link href="/mis-casos" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-[#B8860B] rounded-lg flex items-center justify-center font-bold text-sm">
-                  SG
-                </div>
-                <span className="font-semibold text-lg">SGCC</span>
+                <SgccLogo size="sm" showText={false} darkBg />
               </Link>
               <nav className="hidden sm:flex items-center gap-6">
                 <Link

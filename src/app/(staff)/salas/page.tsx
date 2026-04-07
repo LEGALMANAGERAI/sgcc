@@ -68,7 +68,7 @@ export default async function SalasPage() {
                       href={sala.link_virtual}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#B8860B] hover:underline"
+                      className="text-[#1B4F9B] hover:underline"
                     >
                       {sala.link_virtual}
                     </a>

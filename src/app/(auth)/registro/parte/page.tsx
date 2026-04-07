@@ -54,7 +54,7 @@ export default function RegistroPage() {
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
         <div className="bg-[#0D2340] px-8 py-6 text-center">
           <div className="flex justify-center mb-2">
-            <div className="bg-[#B8860B] p-2.5 rounded-full">
+            <div className="bg-[#1B4F9B] p-2.5 rounded-full">
               <Scale className="w-6 h-6 text-white" />
             </div>
           </div>
@@ -198,7 +198,7 @@ export default function RegistroPage() {
 
           <p className="text-center text-xs text-gray-500">
             ¿Ya tienes cuenta?{" "}
-            <a href="/login" className="text-[#B8860B] hover:underline font-medium">
+            <a href="/login" className="text-[#1B4F9B] hover:underline font-medium">
               Ingresar
             </a>
           </p>

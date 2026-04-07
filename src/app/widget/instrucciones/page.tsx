@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 const navy = "#0D2340";
-const gold = "#B8860B";
+const gold = "#1B4F9B";
 
 const EMBED_URL = "https://sgcc-rouge.vercel.app/api/widget/embed";
 

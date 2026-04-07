@@ -146,7 +146,7 @@ export default async function FirmaDetailPage({ params }: PageProps) {
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2.5">
               <div
-                className="bg-[#B8860B] h-2.5 rounded-full transition-all duration-500"
+                className="bg-[#1B4F9B] h-2.5 rounded-full transition-all duration-500"
                 style={{ width: `${progreso}%` }}
               />
             </div>
@@ -190,7 +190,7 @@ export default async function FirmaDetailPage({ params }: PageProps) {
                   <dd>
                     <Link
                       href={`/expediente/${doc.caso.id}`}
-                      className="text-[#B8860B] hover:underline"
+                      className="text-[#1B4F9B] hover:underline"
                     >
                       {doc.caso.numero_radicado}
                     </Link>

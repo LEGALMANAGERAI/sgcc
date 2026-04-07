@@ -136,7 +136,7 @@ export function ConciliadoresClient({ staff, conciliadores }: Props) {
                 <div className="flex gap-2">
                   <button
                     onClick={() => startEdit(s)}
-                    className="text-[#B8860B] hover:underline text-xs font-medium"
+                    className="text-[#1B4F9B] hover:underline text-xs font-medium"
                     disabled={loading}
                   >
                     Editar

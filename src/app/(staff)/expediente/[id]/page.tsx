@@ -215,7 +215,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
                 href={`/expediente/${id}${tab.key === "info" ? "" : `?tab=${tab.key}`}`}
                 className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
                   isActive
-                    ? "border-[#B8860B] text-[#0D2340] font-bold"
+                    ? "border-[#1B4F9B] text-[#0D2340] font-bold"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >

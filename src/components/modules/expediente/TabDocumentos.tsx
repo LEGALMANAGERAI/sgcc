@@ -133,7 +133,7 @@ export function TabDocumentos({
           <select
             value={filtroTipo}
             onChange={(e) => setFiltroTipo(e.target.value)}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B]"
+            className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B]"
           >
             {TIPO_DOC_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -202,7 +202,7 @@ export function TabDocumentos({
               <select
                 value={tipoDoc}
                 onChange={(e) => setTipoDoc(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B]"
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B]"
               >
                 {TIPO_DOC_OPTIONS.filter((o) => o.value !== "todos").map(
                   (opt) => (
@@ -224,7 +224,7 @@ export function TabDocumentos({
                 value={nombreDoc}
                 onChange={(e) => setNombreDoc(e.target.value)}
                 placeholder="Opcional"
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B]"
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B]"
               />
             </div>
           </div>
@@ -233,7 +233,7 @@ export function TabDocumentos({
             <button
               type="submit"
               disabled={uploading || !file}
-              className="inline-flex items-center gap-2 bg-[#B8860B] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#a07509] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 bg-[#1B4F9B] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#a07509] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {uploading ? (
                 <>
@@ -341,7 +341,7 @@ export function TabDocumentos({
                               <a
                                 href={doc.url}
                                 download
-                                className="inline-flex items-center gap-1 text-xs text-[#B8860B] hover:text-[#a07509] transition-colors"
+                                className="inline-flex items-center gap-1 text-xs text-[#1B4F9B] hover:text-[#a07509] transition-colors"
                                 title="Descargar"
                               >
                                 <Download className="w-3.5 h-3.5" />
@@ -363,7 +363,7 @@ export function TabDocumentos({
       {correspondencia.length > 0 && (
         <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h3 className="font-semibold text-[#0D2340] mb-4 text-base flex items-center gap-2">
-            <Mail className="w-4.5 h-4.5 text-[#B8860B]" />
+            <Mail className="w-4.5 h-4.5 text-[#1B4F9B]" />
             Correspondencia vinculada
           </h3>
           <div className="space-y-3">

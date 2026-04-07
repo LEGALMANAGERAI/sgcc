@@ -11,7 +11,7 @@ interface Props {
 
 const colors = {
   navy: { bg: "bg-[#0D2340]", text: "text-white", icon: "text-white/80" },
-  gold: { bg: "bg-amber-50", text: "text-amber-900", icon: "text-amber-600" },
+  gold: { bg: "bg-orange-50", text: "text-orange-900", icon: "text-orange-600" },
   green: { bg: "bg-green-50", text: "text-green-900", icon: "text-green-600" },
   red: { bg: "bg-red-50", text: "text-red-900", icon: "text-red-600" },
   blue: { bg: "bg-blue-50", text: "text-blue-900", icon: "text-blue-600" },

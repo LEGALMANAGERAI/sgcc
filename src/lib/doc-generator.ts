@@ -104,7 +104,7 @@ export async function generateDocx(
           text: titulo.toUpperCase(),
           bold: true,
           size: 24,
-          color: "B8860B",
+          color: "1B4F9B",
         }),
       ],
       alignment: AlignmentType.CENTER,

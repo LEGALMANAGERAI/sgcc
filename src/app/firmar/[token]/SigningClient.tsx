@@ -289,7 +289,7 @@ export function SigningClient({ token, initialData }: Props) {
                     isCompleted
                       ? "bg-[#0D2340] text-white"
                       : isActive
-                      ? "bg-[#B8860B] text-white"
+                      ? "bg-[#1B4F9B] text-white"
                       : "bg-gray-200 text-gray-500"
                   }`}
                 >
@@ -301,7 +301,7 @@ export function SigningClient({ token, initialData }: Props) {
                 </div>
                 <span
                   className={`text-xs mt-1 hidden sm:block ${
-                    isActive ? "text-[#B8860B] font-medium" : "text-gray-400"
+                    isActive ? "text-[#1B4F9B] font-medium" : "text-gray-400"
                   }`}
                 >
                   {p.label}
@@ -386,7 +386,7 @@ export function SigningClient({ token, initialData }: Props) {
             <button
               onClick={solicitarOtp}
               disabled={loading}
-              className="bg-[#B8860B] text-white px-8 py-3 rounded-lg text-sm font-medium hover:bg-[#a07609] transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+              className="bg-[#1B4F9B] text-white px-8 py-3 rounded-lg text-sm font-medium hover:bg-[#a07609] transition-colors disabled:opacity-50 inline-flex items-center gap-2"
             >
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -411,7 +411,7 @@ export function SigningClient({ token, initialData }: Props) {
         {paso === 3 && (
           <div className="text-center py-8">
             <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <KeyRound className="w-8 h-8 text-[#B8860B]" />
+              <KeyRound className="w-8 h-8 text-[#1B4F9B]" />
             </div>
             <h2 className="text-lg font-bold text-[#0D2340] mb-2">Ingresa el c&#243;digo</h2>
             <p className="text-sm text-gray-600 mb-6">
@@ -430,7 +430,7 @@ export function SigningClient({ token, initialData }: Props) {
                   value={digit}
                   onChange={(e) => handleOtpChange(i, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                  className="w-12 h-14 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-[#B8860B] focus:ring-2 focus:ring-[#B8860B]/30 outline-none transition-colors"
+                  className="w-12 h-14 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-[#1B4F9B] focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none transition-colors"
                 />
               ))}
             </div>
@@ -458,7 +458,7 @@ export function SigningClient({ token, initialData }: Props) {
               <button
                 onClick={solicitarOtp}
                 disabled={loading}
-                className="text-sm text-[#B8860B] hover:underline inline-flex items-center gap-1"
+                className="text-sm text-[#1B4F9B] hover:underline inline-flex items-center gap-1"
               >
                 <RefreshCw className="w-3 h-3" />
                 Reenviar c&#243;digo
@@ -507,7 +507,7 @@ export function SigningClient({ token, initialData }: Props) {
                     </div>
                     <button
                       onClick={capturarFoto}
-                      className="bg-[#B8860B] text-white px-8 py-3 rounded-lg text-sm font-medium hover:bg-[#a07609] transition-colors inline-flex items-center gap-2"
+                      className="bg-[#1B4F9B] text-white px-8 py-3 rounded-lg text-sm font-medium hover:bg-[#a07609] transition-colors inline-flex items-center gap-2"
                     >
                       <Camera className="w-4 h-4" />
                       Capturar foto

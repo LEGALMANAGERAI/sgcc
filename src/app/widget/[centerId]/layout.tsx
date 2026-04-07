@@ -51,7 +51,7 @@ export default async function WidgetLayout({
             <div
               style={{
                 height: 2,
-                background: "linear-gradient(90deg, transparent, #B8860B, transparent)",
+                background: "linear-gradient(90deg, transparent, #1B4F9B, transparent)",
                 marginTop: 12,
               }}
             />

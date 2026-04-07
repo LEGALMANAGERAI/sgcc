@@ -134,7 +134,7 @@ export function SalasClient({ salas }: Props) {
                 <div className="flex gap-2">
                   <button
                     onClick={() => startEdit(sala)}
-                    className="text-[#B8860B] hover:underline text-xs font-medium"
+                    className="text-[#1B4F9B] hover:underline text-xs font-medium"
                     disabled={loading}
                   >
                     Editar

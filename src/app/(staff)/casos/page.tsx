@@ -181,7 +181,7 @@ export default async function CasosPage({ searchParams }: Props) {
                     <td className="px-5 py-3 text-right">
                       <Link
                         href={`/casos/${c.id}`}
-                        className="text-[#B8860B] hover:underline font-medium text-xs"
+                        className="text-[#1B4F9B] hover:underline font-medium text-xs"
                       >
                         Ver →
                       </Link>

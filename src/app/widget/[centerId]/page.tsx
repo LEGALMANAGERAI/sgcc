@@ -65,7 +65,7 @@ const TRAMITES: { value: TipoTramite; label: string; desc: string }[] = [
 
 /* ───────── Estilos reutilizables ───────── */
 const navy = "#0D2340";
-const gold = "#B8860B";
+const gold = "#1B4F9B";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",

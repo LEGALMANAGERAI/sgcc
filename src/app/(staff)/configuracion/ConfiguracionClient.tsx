@@ -228,7 +228,7 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
               activeTab === tab
-                ? "border-[#B8860B] text-[#0D2340]"
+                ? "border-[#1B4F9B] text-[#0D2340]"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
@@ -315,7 +315,7 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
           <div className="flex justify-end">
             <button
               onClick={() => setShowNewChecklist(!showNewChecklist)}
-              className="px-4 py-2 bg-[#B8860B] text-white rounded-lg text-sm font-medium hover:bg-[#B8860B]/90 transition-colors"
+              className="px-4 py-2 bg-[#1B4F9B] text-white rounded-lg text-sm font-medium hover:bg-[#1B4F9B]/90 transition-colors"
             >
               + Crear checklist
             </button>
@@ -323,7 +323,7 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
 
           {/* Form nueva checklist */}
           {showNewChecklist && (
-            <div className="bg-white rounded-xl border border-[#B8860B]/30 p-5">
+            <div className="bg-white rounded-xl border border-[#1B4F9B]/30 p-5">
               <h3 className="text-sm font-semibold text-[#0D2340] mb-3">Nueva Checklist</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -331,7 +331,7 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
                   <select
                     value={newChecklist.tipo_tramite}
                     onChange={(e) => setNewChecklist((p) => ({ ...p, tipo_tramite: e.target.value as TipoTramite }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B] outline-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none"
                   >
                     {Object.entries(TIPO_TRAMITE_LABELS).map(([val, label]) => (
                       <option key={val} value={val}>{label}</option>
@@ -343,7 +343,7 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
                   <select
                     value={newChecklist.tipo_checklist}
                     onChange={(e) => setNewChecklist((p) => ({ ...p, tipo_checklist: e.target.value as TipoChecklist }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B] outline-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none"
                   >
                     {Object.entries(TIPO_CHECKLIST_LABELS).map(([val, label]) => (
                       <option key={val} value={val}>{label}</option>
@@ -356,7 +356,7 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
                     value={newChecklist.nombre}
                     onChange={(e) => setNewChecklist((p) => ({ ...p, nombre: e.target.value }))}
                     placeholder="Ej: Requisitos admisión conciliación"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B] outline-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none"
                   />
                 </div>
               </div>
@@ -434,13 +434,13 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
                                   value={item.nombre}
                                   onChange={(e) => updateItem(cl.id, idx, "nombre", e.target.value)}
                                   placeholder="Nombre del item"
-                                  className="px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-[#B8860B]/30 focus:border-[#B8860B] outline-none"
+                                  className="px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none"
                                 />
                                 <input
                                   value={item.descripcion}
                                   onChange={(e) => updateItem(cl.id, idx, "descripcion", e.target.value)}
                                   placeholder="Descripción"
-                                  className="px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-[#B8860B]/30 focus:border-[#B8860B] outline-none"
+                                  className="px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none"
                                 />
                                 <div className="flex items-center gap-2">
                                   <label className="flex items-center gap-1.5 text-xs text-gray-600">
@@ -448,7 +448,7 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
                                       type="checkbox"
                                       checked={item.requerido}
                                       onChange={(e) => updateItem(cl.id, idx, "requerido", e.target.checked)}
-                                      className="rounded border-gray-300 text-[#B8860B] focus:ring-[#B8860B]"
+                                      className="rounded border-gray-300 text-[#1B4F9B] focus:ring-[#1B4F9B]"
                                     />
                                     Requerido
                                   </label>
@@ -469,7 +469,7 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
                           <div className="flex items-center justify-between pt-2">
                             <button
                               onClick={() => addItem(cl.id)}
-                              className="text-sm text-[#B8860B] hover:text-[#B8860B]/80 font-medium"
+                              className="text-sm text-[#1B4F9B] hover:text-[#1B4F9B]/80 font-medium"
                             >
                               + Agregar item
                             </button>
@@ -524,7 +524,7 @@ function InputField({
         className={`w-full px-3 py-2 border rounded-lg text-sm outline-none transition-colors ${
           disabled
             ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed"
-            : "border-gray-300 focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B]"
+            : "border-gray-300 focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B]"
         }`}
       />
     </div>

@@ -88,7 +88,7 @@ export default function PerfilPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="w-8 h-8 border-4 border-[#B8860B] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-[#1B4F9B] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -172,7 +172,7 @@ export default function PerfilPage() {
                 type="text"
                 value={nombres}
                 onChange={(e) => setNombres(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B] outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none transition-colors"
               />
             </div>
             <div>
@@ -187,7 +187,7 @@ export default function PerfilPage() {
                 type="text"
                 value={apellidos}
                 onChange={(e) => setApellidos(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B] outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none transition-colors"
               />
             </div>
             <div>
@@ -202,7 +202,7 @@ export default function PerfilPage() {
                 type="tel"
                 value={telefono}
                 onChange={(e) => setTelefono(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B] outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none transition-colors"
               />
             </div>
             <div>
@@ -217,7 +217,7 @@ export default function PerfilPage() {
                 type="text"
                 value={ciudad}
                 onChange={(e) => setCiudad(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B] outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none transition-colors"
               />
             </div>
             <div className="sm:col-span-2">
@@ -232,7 +232,7 @@ export default function PerfilPage() {
                 type="text"
                 value={direccion}
                 onChange={(e) => setDireccion(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B] outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none transition-colors"
               />
             </div>
           </div>

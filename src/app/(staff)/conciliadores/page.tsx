@@ -136,7 +136,7 @@ export default async function ConciliadoresPage({ searchParams }: Props) {
                   </td>
                   <td className="px-5 py-3 text-gray-500">{s.supervisor_nombre}</td>
                   <td className="px-5 py-3">
-                    <span className={`font-semibold ${s.casos_activos > 0 ? "text-[#B8860B]" : "text-gray-400"}`}>
+                    <span className={`font-semibold ${s.casos_activos > 0 ? "text-[#1B4F9B]" : "text-gray-400"}`}>
                       {s.casos_activos}
                     </span>
                   </td>

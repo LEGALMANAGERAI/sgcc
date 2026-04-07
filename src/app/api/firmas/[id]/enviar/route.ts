@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() { return new Resend(process.env.RESEND_API_KEY || "re_placeholder"); }
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 type Params = { params: Promise<{ id: string }> };
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const linkFirma = `${APP_URL}/firmar/${firmante.token}`;
 
     try {
-      await resend.emails.send({
+      await getResend().emails.send({
         from: "SGCC <notificaciones@sgcc.app>",
         to: firmante.email,
         subject: `Documento pendiente de firma: ${documento.nombre}`,

@@ -199,7 +199,7 @@ export default async function ApoderadosPage({ searchParams }: Props) {
                         )}
                         <Link
                           href={`/apoderados?filtro=casos&attorney=${a.id}`}
-                          className="text-[#B8860B] hover:underline font-medium text-xs"
+                          className="text-[#1B4F9B] hover:underline font-medium text-xs"
                         >
                           Ver casos
                         </Link>

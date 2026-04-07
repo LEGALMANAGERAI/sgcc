@@ -110,7 +110,7 @@ export function FirmaDetailActions({
             <button
               onClick={() => doAction("recordatorio")}
               disabled={!!loadingAction}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#B8860B] text-white rounded-lg text-sm font-medium hover:bg-[#a07609] transition-colors disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1B4F9B] text-white rounded-lg text-sm font-medium hover:bg-[#a07609] transition-colors disabled:opacity-50"
             >
               {loadingAction === "recordatorio" ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

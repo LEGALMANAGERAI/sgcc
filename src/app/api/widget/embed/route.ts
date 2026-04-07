@@ -11,7 +11,7 @@ export async function GET(req: Request) {
 
   // Estilos
   var navy = '#0D2340';
-  var gold = '#B8860B';
+  var gold = '#1B4F9B';
 
   // Botón flotante
   var btn = document.createElement('div');

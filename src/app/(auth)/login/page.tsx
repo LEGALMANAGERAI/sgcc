@@ -3,7 +3,8 @@
 import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Scale, Eye, EyeOff, Building2, Users, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Building2, Users, Sparkles } from "lucide-react";
+import { SgccLogo } from "@/components/ui/SgccLogo";
 
 type Tab = "staff" | "party";
 
@@ -85,16 +86,8 @@ function LoginContent() {
     <div className="min-h-screen bg-[#0D2340] flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="bg-[#0D2340] px-8 py-8 text-center">
-          <div className="flex justify-center mb-3">
-            <div className="bg-[#B8860B] p-3 rounded-full shadow-lg shadow-[#B8860B]/30">
-              <Scale className="w-8 h-8 text-white" />
-            </div>
-          </div>
-          <h1 className="text-white text-2xl font-bold tracking-wide">SGCC</h1>
-          <p className="text-white/60 text-sm mt-1">
-            Sistema de Gestion de Centros de Conciliacion
-          </p>
+        <div className="bg-[#0D2340] px-8 py-8 flex justify-center">
+          <SgccLogo size="lg" showText darkBg />
         </div>
 
         {/* Tabs */}
@@ -104,7 +97,7 @@ function LoginContent() {
             onClick={() => { setTab("staff"); setError(""); }}
             className={`flex-1 py-3.5 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
               tab === "staff"
-                ? "text-[#0D2340] border-b-2 border-[#B8860B]"
+                ? "text-[#0D2340] border-b-2 border-[#1B4F9B]"
                 : "text-gray-400 hover:text-gray-600"
             }`}
           >
@@ -116,7 +109,7 @@ function LoginContent() {
             onClick={() => { setTab("party"); setError(""); }}
             className={`flex-1 py-3.5 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
               tab === "party"
-                ? "text-[#0D2340] border-b-2 border-[#B8860B]"
+                ? "text-[#0D2340] border-b-2 border-[#1B4F9B]"
                 : "text-gray-400 hover:text-gray-600"
             }`}
           >
@@ -198,7 +191,7 @@ function LoginContent() {
             <p className="text-center text-xs text-gray-500">
               <a
                 href="/recuperar"
-                className="text-[#B8860B] hover:underline font-medium"
+                className="text-[#1B4F9B] hover:underline font-medium"
               >
                 Olvidaste tu contrasena?
               </a>
@@ -209,7 +202,7 @@ function LoginContent() {
                 No tienes cuenta?{" "}
                 <a
                   href="/registro"
-                  className="text-[#B8860B] hover:underline font-medium"
+                  className="text-[#1B4F9B] hover:underline font-medium"
                 >
                   Crear cuenta
                 </a>
@@ -221,7 +214,7 @@ function LoginContent() {
                 Quieres registrar tu centro?{" "}
                 <a
                   href="/registro/centro"
-                  className="text-[#B8860B] hover:underline font-medium"
+                  className="text-[#1B4F9B] hover:underline font-medium"
                 >
                   Registrar mi centro
                 </a>
@@ -248,7 +241,7 @@ function LoginContent() {
                 type="button"
                 disabled={loading}
                 onClick={() => handleDemo(demo.email, demo.password)}
-                className="flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg border border-gray-200 hover:border-[#B8860B] hover:bg-[#B8860B]/5 transition-all text-xs text-gray-600 hover:text-[#0D2340] disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg border border-gray-200 hover:border-[#1B4F9B] hover:bg-[#1B4F9B]/5 transition-all text-xs text-gray-600 hover:text-[#0D2340] disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <span className="text-base">{demo.icon}</span>
                 <span className="font-medium leading-tight text-center">

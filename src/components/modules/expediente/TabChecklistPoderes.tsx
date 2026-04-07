@@ -243,7 +243,7 @@ export function TabChecklistPoderes({
       <section className="bg-white rounded-xl shadow-sm border border-gray-100">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h3 className="font-semibold text-[#0D2340] text-base flex items-center gap-2">
-            <Shield className="w-4.5 h-4.5 text-[#B8860B]" />
+            <Shield className="w-4.5 h-4.5 text-[#1B4F9B]" />
             Apoderados por parte
           </h3>
           <button
@@ -380,7 +380,7 @@ export function TabChecklistPoderes({
                           onClick={() =>
                             setExpandedHistory(isExpanded ? null : cp.party_id)
                           }
-                          className="inline-flex items-center gap-1 text-xs text-[#B8860B] hover:underline"
+                          className="inline-flex items-center gap-1 text-xs text-[#1B4F9B] hover:underline"
                         >
                           <History className="w-3 h-3" />
                           Historial
@@ -478,7 +478,7 @@ export function TabChecklistPoderes({
                   onChange={(e) =>
                     setFormData({ ...formData, party_id: e.target.value })
                   }
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B]"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B]"
                 >
                   <option value="">Seleccionar parte...</option>
                   {parties.map((cp: any) => (
@@ -502,7 +502,7 @@ export function TabChecklistPoderes({
                   onChange={(e) =>
                     setFormData({ ...formData, nombre: e.target.value })
                   }
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B]"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B]"
                   placeholder="Nombre completo"
                 />
               </div>
@@ -518,7 +518,7 @@ export function TabChecklistPoderes({
                     onChange={(e) =>
                       setFormData({ ...formData, tipo_doc: e.target.value })
                     }
-                    className="w-full text-sm border border-gray-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B]"
+                    className="w-full text-sm border border-gray-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B]"
                   >
                     {TIPO_DOC_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>
@@ -538,7 +538,7 @@ export function TabChecklistPoderes({
                     onChange={(e) =>
                       setFormData({ ...formData, numero_doc: e.target.value })
                     }
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B]"
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B]"
                   />
                 </div>
               </div>
@@ -557,7 +557,7 @@ export function TabChecklistPoderes({
                       tarjeta_profesional: e.target.value,
                     })
                   }
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B]"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B]"
                 />
               </div>
 
@@ -572,7 +572,7 @@ export function TabChecklistPoderes({
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B]"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B]"
                 />
               </div>
 
@@ -587,7 +587,7 @@ export function TabChecklistPoderes({
                   onChange={(e) =>
                     setFormData({ ...formData, telefono: e.target.value })
                   }
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B]"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B]"
                 />
               </div>
 
@@ -601,7 +601,7 @@ export function TabChecklistPoderes({
                   onChange={(e) =>
                     setFormData({ ...formData, motivo_cambio: e.target.value })
                   }
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B]"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B]"
                 >
                   {MOTIVO_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
@@ -634,7 +634,7 @@ export function TabChecklistPoderes({
                   onChange={(e) =>
                     setFormData({ ...formData, vigencia_desde: e.target.value })
                   }
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B]"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B]"
                 />
               </div>
 
@@ -649,7 +649,7 @@ export function TabChecklistPoderes({
                   onChange={(e) =>
                     setFormData({ ...formData, vigencia_hasta: e.target.value })
                   }
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 focus:border-[#B8860B]"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B]"
                 />
               </div>
             </div>
@@ -665,7 +665,7 @@ export function TabChecklistPoderes({
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex items-center gap-2 bg-[#B8860B] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#a07509] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 bg-[#1B4F9B] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#a07509] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <>
@@ -784,7 +784,7 @@ export function TabChecklistPoderes({
                               type="text"
                               value={noteText}
                               onChange={(e) => setNoteText(e.target.value)}
-                              className="text-xs border border-gray-200 rounded px-2 py-1 w-40 focus:outline-none focus:ring-1 focus:ring-[#B8860B]"
+                              className="text-xs border border-gray-200 rounded px-2 py-1 w-40 focus:outline-none focus:ring-1 focus:ring-[#1B4F9B]"
                               placeholder="Agregar nota..."
                               autoFocus
                               onKeyDown={(e) => {
@@ -798,7 +798,7 @@ export function TabChecklistPoderes({
                             <button
                               onClick={() => handleSaveNotes(idx)}
                               disabled={isSaving}
-                              className="text-xs text-[#B8860B] hover:underline"
+                              className="text-xs text-[#1B4F9B] hover:underline"
                             >
                               {isSaving ? "..." : "OK"}
                             </button>
