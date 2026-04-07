@@ -1,0 +1,111 @@
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { supabaseAdmin } from "@/lib/supabase";
+import { resolveCenterId } from "@/lib/server-utils";
+import { randomUUID } from "crypto";
+
+/**
+ * GET /api/vigilancia
+ * Lista procesos vigilados del centro con conteo de actuaciones no leídas.
+ */
+export async function GET(req: NextRequest) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const centerId = resolveCenterId(session);
+  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
+
+  const { searchParams } = new URL(req.url);
+  const estado = searchParams.get("estado");
+
+  let query = supabaseAdmin
+    .from("sgcc_watched_processes")
+    .select(`
+      *,
+      caso:sgcc_cases!sgcc_watched_processes_case_id_fkey(id, numero_radicado),
+      updates:sgcc_process_updates(id, leida)
+    `)
+    .eq("center_id", centerId)
+    .order("created_at", { ascending: false });
+
+  if (estado) query = query.eq("estado", estado);
+
+  const { data, error } = await query;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Agregar conteo de actuaciones no leídas
+  const result = (data ?? []).map((p: any) => {
+    const unreadCount = (p.updates ?? []).filter((u: any) => !u.leida).length;
+    const totalUpdates = (p.updates ?? []).length;
+    const { updates, ...rest } = p;
+    return { ...rest, actuaciones_no_leidas: unreadCount, total_actuaciones: totalUpdates };
+  });
+
+  return NextResponse.json(result);
+}
+
+/**
+ * POST /api/vigilancia
+ * Agregar nuevo proceso a vigilancia.
+ */
+export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const centerId = resolveCenterId(session);
+  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
+
+  const body = await req.json();
+  const { numero_proceso, despacho, ciudad, case_id, partes_texto } = body;
+
+  if (!numero_proceso?.trim()) {
+    return NextResponse.json({ error: "El número de proceso es requerido" }, { status: 400 });
+  }
+
+  // Verificar que no exista ya este proceso en el centro
+  const { data: existing } = await supabaseAdmin
+    .from("sgcc_watched_processes")
+    .select("id")
+    .eq("center_id", centerId)
+    .eq("numero_proceso", numero_proceso.trim())
+    .single();
+
+  if (existing) {
+    return NextResponse.json({ error: "Este proceso ya está siendo vigilado" }, { status: 409 });
+  }
+
+  // Validar case_id si se proporcionó
+  if (case_id) {
+    const { data: caso } = await supabaseAdmin
+      .from("sgcc_cases")
+      .select("id")
+      .eq("id", case_id)
+      .eq("center_id", centerId)
+      .single();
+    if (!caso) {
+      return NextResponse.json({ error: "El caso vinculado no existe" }, { status: 400 });
+    }
+  }
+
+  const now = new Date().toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("sgcc_watched_processes")
+    .insert({
+      id: randomUUID(),
+      center_id: centerId,
+      case_id: case_id || null,
+      numero_proceso: numero_proceso.trim(),
+      despacho: despacho?.trim() || null,
+      ciudad: ciudad?.trim() || null,
+      partes_texto: partes_texto?.trim() || null,
+      estado: "activo",
+      solicitado_por_staff: (session.user as any).id,
+      created_at: now,
+    })
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json(data, { status: 201 });
+}

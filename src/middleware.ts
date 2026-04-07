@@ -22,7 +22,7 @@ export default auth((req) => {
   const userType = (session.user as any)?.userType;
 
   // Portal de partes — solo partes
-  if (pathname.startsWith("/mis-casos") || pathname.startsWith("/nueva-solicitud")) {
+  if (pathname.startsWith("/mis-casos") || pathname.startsWith("/perfil") || pathname.startsWith("/nueva-solicitud")) {
     if (userType !== "party") {
       return NextResponse.redirect(new URL("/login", req.url));
     }
