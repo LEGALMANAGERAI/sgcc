@@ -9,10 +9,10 @@ interface Props {
 }
 
 const SIZES = {
-  sm: { w: 120, h: 38, fs: 42, sw: 2.5, dash: "6,3", textSize: "text-[8px]", boldSize: "text-[9px]" },
-  md: { w: 160, h: 50, fs: 56, sw: 3, dash: "8,4", textSize: "text-[10px]", boldSize: "text-xs" },
-  lg: { w: 210, h: 66, fs: 74, sw: 3.5, dash: "10,5", textSize: "text-xs", boldSize: "text-sm" },
-  xl: { w: 290, h: 90, fs: 102, sw: 4.5, dash: "14,6", textSize: "text-sm", boldSize: "text-base" },
+  sm: { w: 130, h: 40, fs: 44, rings: [10, 8, 6, 4, 2] as number[], textSize: "text-[8px]", boldSize: "text-[9px]" },
+  md: { w: 170, h: 52, fs: 58, rings: [13, 10.5, 8, 5.5, 3] as number[], textSize: "text-[10px]", boldSize: "text-xs" },
+  lg: { w: 230, h: 70, fs: 78, rings: [16, 13, 10, 7, 4] as number[], textSize: "text-xs", boldSize: "text-sm" },
+  xl: { w: 310, h: 94, fs: 106, rings: [20, 16, 12, 8, 4] as number[], textSize: "text-sm", boldSize: "text-base" },
 };
 
 const LETTERS = [
@@ -23,10 +23,12 @@ const LETTERS = [
 ];
 
 export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props) {
+  const id = useId();
   const s = SIZES[size];
   const textColor = darkBg ? "text-white/80" : "text-gray-500";
   const boldColor = darkBg ? "text-white" : "text-gray-900";
-  const positions = [0, 28, 54, 78];
+  const bgColor = darkBg ? "#0D2340" : "#ffffff";
+  const positions = [0, 27, 53, 77];
 
   return (
     <div className="flex items-center gap-3">
@@ -39,22 +41,27 @@ export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props
         aria-label="SGCC"
         role="img"
       >
-        {LETTERS.map((l, i) => (
-          <text
-            key={i}
-            x={`${positions[i]}%`}
-            y="80%"
-            fill="none"
-            stroke={l.color}
-            strokeWidth={s.sw}
-            strokeDasharray={s.dash}
-            strokeLinecap="round"
-            fontFamily="'Arial Black', 'Impact', system-ui, sans-serif"
-            fontSize={s.fs}
-            fontWeight={900}
-          >
-            {l.char}
-          </text>
+        {LETTERS.map((l, li) => (
+          <g key={li}>
+            {/* Capas alternando: color → fondo → color → fondo → color */}
+            {s.rings.map((sw, ri) => (
+              <text
+                key={ri}
+                x={`${positions[li]}%`}
+                y="82%"
+                fill="none"
+                stroke={ri % 2 === 0 ? l.color : bgColor}
+                strokeWidth={sw}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                fontFamily="'Arial Black', 'Impact', system-ui, sans-serif"
+                fontSize={s.fs}
+                fontWeight={900}
+              >
+                {l.char}
+              </text>
+            ))}
+          </g>
         ))}
       </svg>
 
