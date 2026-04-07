@@ -1,29 +1,37 @@
+"use client";
+
+import { useId } from "react";
+
 interface Props {
   size?: "sm" | "md" | "lg" | "xl";
   showText?: boolean;
   darkBg?: boolean;
 }
 
+/* Proporciones: ~5-6 franjas visibles por letra, gaps anchos y claros */
 const SIZES = {
-  sm: { w: 120, h: 36, fs: 38, stripeH: 3, gapH: 2, textSize: "text-[8px]", boldSize: "text-[9px]" },
-  md: { w: 160, h: 48, fs: 52, stripeH: 4, gapH: 3, textSize: "text-[10px]", boldSize: "text-xs" },
-  lg: { w: 220, h: 66, fs: 72, stripeH: 5, gapH: 3, textSize: "text-xs", boldSize: "text-sm" },
-  xl: { w: 300, h: 90, fs: 98, stripeH: 7, gapH: 4, textSize: "text-sm", boldSize: "text-base" },
+  sm: { w: 110, h: 34, fs: 40, stripe: 4, gap: 3, textSize: "text-[8px]", boldSize: "text-[9px]" },
+  md: { w: 150, h: 46, fs: 54, stripe: 5, gap: 4, textSize: "text-[10px]", boldSize: "text-xs" },
+  lg: { w: 200, h: 62, fs: 72, stripe: 6, gap: 5, textSize: "text-xs", boldSize: "text-sm" },
+  xl: { w: 280, h: 86, fs: 100, stripe: 8, gap: 6, textSize: "text-sm", boldSize: "text-base" },
 };
 
-const LETTERS: { char: string; color: string; xPct: number }[] = [
-  { char: "S", color: "#1B4F9B", xPct: 5 },
-  { char: "G", color: "#2A9D5C", xPct: 30 },
-  { char: "C", color: "#E8732A", xPct: 57 },
-  { char: "C", color: "#D42B2B", xPct: 80 },
+const LETTERS = [
+  { char: "S", color: "#1B4F9B" },
+  { char: "G", color: "#2A9D5C" },
+  { char: "C", color: "#E8732A" },
+  { char: "C", color: "#D42B2B" },
 ];
 
 export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props) {
+  const id = useId();
   const s = SIZES[size];
   const textColor = darkBg ? "text-white/80" : "text-gray-500";
   const boldColor = darkBg ? "text-white" : "text-gray-900";
-  const patternH = s.stripeH + s.gapH;
-  const uid = `sgcc-${size}`;
+  const step = s.stripe + s.gap;
+
+  /* Posiciones X para cada letra (porcentajes del viewBox) */
+  const positions = [0, 28, 54, 78];
 
   return (
     <div className="flex items-center gap-3">
@@ -33,30 +41,36 @@ export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props
         viewBox={`0 0 ${s.w} ${s.h}`}
         xmlns="http://www.w3.org/2000/svg"
         className="flex-shrink-0"
+        aria-label="SGCC"
+        role="img"
       >
         <defs>
           {LETTERS.map((l, i) => (
             <pattern
               key={i}
-              id={`${uid}-p${i}`}
+              id={`${id}-${i}`}
               patternUnits="userSpaceOnUse"
+              x="0"
+              y="0"
               width={s.w}
-              height={patternH}
+              height={step}
             >
-              <rect width={s.w} height={s.stripeH} fill={l.color} />
+              {/* Solo la franja de color, el resto queda transparente */}
+              <rect x="0" y="0" width={s.w} height={s.stripe} fill={l.color} />
             </pattern>
           ))}
         </defs>
+
         {LETTERS.map((l, i) => (
           <text
             key={i}
-            x={`${l.xPct}%`}
-            y="82%"
-            fill={`url(#${uid}-p${i})`}
-            fontFamily="system-ui, -apple-system, 'Segoe UI', sans-serif"
+            x={`${positions[i]}%`}
+            y="80%"
+            fill={`url(#${id}-${i})`}
+            stroke="none"
+            fontFamily="'Arial Black', 'Impact', system-ui, sans-serif"
             fontSize={s.fs}
             fontWeight={900}
-            letterSpacing="-1"
           >
             {l.char}
           </text>
