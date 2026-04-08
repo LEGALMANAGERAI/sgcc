@@ -44,6 +44,7 @@ const tramiteLabel: Record<TipoTramite, string> = {
   conciliacion: "Conciliación",
   insolvencia: "Insolvencia",
   acuerdo_apoyo: "Acuerdo de apoyo",
+  arbitraje_ejecutivo: "Arbitraje Ejecutivo",
 };
 
 const materiaLabel: Record<CaseMateria, string> = {

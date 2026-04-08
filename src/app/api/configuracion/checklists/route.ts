@@ -32,7 +32,7 @@ export async function GET() {
 
 /* ─── POST: Crear nueva checklist ───────────────────────────────────────── */
 
-const TIPOS_TRAMITE_VALIDOS = ["conciliacion", "insolvencia", "acuerdo_apoyo"];
+const TIPOS_TRAMITE_VALIDOS = ["conciliacion", "insolvencia", "acuerdo_apoyo", "arbitraje_ejecutivo"];
 const TIPOS_CHECKLIST_VALIDOS = ["admision", "poderes"];
 
 export async function POST(request: Request) {

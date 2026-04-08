@@ -350,7 +350,7 @@ export async function GET(req: NextRequest) {
       ["cerrado", "archivado", "conciliado", "no_conciliado"].includes(c.estado)
     ).length;
 
-    const porTipo: Record<string, number> = { conciliacion: 0, insolvencia: 0, acuerdo_apoyo: 0 };
+    const porTipo: Record<string, number> = { conciliacion: 0, insolvencia: 0, acuerdo_apoyo: 0, arbitraje_ejecutivo: 0 };
     for (const c of allCasos) {
       const tipo = c.tipo_tramite as string;
       if (tipo && tipo in porTipo) {

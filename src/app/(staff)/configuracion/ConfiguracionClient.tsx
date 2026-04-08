@@ -25,6 +25,7 @@ const TIPO_TRAMITE_LABELS: Record<TipoTramite, string> = {
   conciliacion: "Conciliación",
   insolvencia: "Insolvencia",
   acuerdo_apoyo: "Acuerdo de Apoyo",
+  arbitraje_ejecutivo: "Arbitraje Ejecutivo",
 };
 
 const TIPO_CHECKLIST_LABELS: Record<TipoChecklist, string> = {
