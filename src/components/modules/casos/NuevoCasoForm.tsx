@@ -7,8 +7,10 @@ import { PlusCircle, Trash2 } from "lucide-react";
 interface Conciliador { id: string; nombre: string }
 interface Sala { id: string; nombre: string; tipo: string }
 
+type RolParte = "convocante" | "convocado" | "insolvente" | "acreedor";
+
 interface ParteForm {
-  rol: "convocante" | "convocado";
+  rol: RolParte;
   tipo_persona: "natural" | "juridica";
   nombres: string;
   apellidos: string;
@@ -19,7 +21,7 @@ interface ParteForm {
   telefono: string;
 }
 
-const emptyParte = (rol: "convocante" | "convocado"): ParteForm => ({
+const emptyParte = (rol: RolParte): ParteForm => ({
   rol,
   tipo_persona: "natural",
   nombres: "",
@@ -84,13 +86,15 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
       body: JSON.stringify({
         centerId,
         tipo_tramite: tipoTramite,
-        materia,
+        materia: tipoTramite === "insolvencia" ? "civil" : materia,
         descripcion,
         cuantia: cuantiaIndet ? null : cuantia ? Number(cuantia) : null,
         cuantia_indeterminada: cuantiaIndet,
         conciliador_id: conciliadorId || null,
         sala_id: salaId || null,
-        partes: [convocante, ...convocados],
+        partes: tipoTramite === "insolvencia"
+          ? [{ ...convocante, rol: "convocante" }, ...convocados.map((c) => ({ ...c, rol: "convocado" }))]
+          : [convocante, ...convocados],
       }),
     });
 
@@ -254,19 +258,21 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
         </div>
 
         <div className="grid grid-cols-2 gap-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Materia *</label>
-            <select
-              value={materia}
-              onChange={(e) => setMateria(e.target.value)}
-              required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
-            >
-              {MATERIAS.map((m) => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </div>
+          {tipoTramite !== "insolvencia" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Materia *</label>
+              <select
+                value={materia}
+                onChange={(e) => setMateria(e.target.value)}
+                required
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+              >
+                {MATERIAS.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Cuantía</label>
             <div className="flex items-center gap-3">
@@ -340,46 +346,102 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-5">
         <h3 className="font-semibold text-gray-900">2. Partes</h3>
 
-        <div>
-          <p className="text-xs font-semibold text-[#0D2340] uppercase tracking-wide mb-3">Convocante</p>
-          <ParteFields
-            parte={convocante}
-            onChange={(f, v) => setConvocante((p) => ({ ...p, [f]: v }))}
-            label="Convocante"
-          />
-        </div>
-
-        <div className="space-y-4">
-          <p className="text-xs font-semibold text-[#0D2340] uppercase tracking-wide">
-            Convocado{convocados.length > 1 ? "s" : ""}
-          </p>
-          {convocados.map((c, idx) => (
-            <div key={idx} className="relative">
+        {tipoTramite === "insolvencia" ? (
+          <>
+            {/* Insolvente */}
+            <div>
+              <p className="text-xs font-semibold text-[#0D2340] uppercase tracking-wide mb-1">
+                Insolvente
+              </p>
+              <p className="text-xs text-gray-500 mb-3">
+                Persona natural no comerciante o pequeño comerciante
+              </p>
               <ParteFields
-                parte={c}
-                onChange={(f, v) => updateConvocado(idx, f, v)}
-                label={`Convocado ${convocados.length > 1 ? idx + 1 : ""}`}
+                parte={convocante}
+                onChange={(f, v) => setConvocante((p) => ({ ...p, [f]: v }))}
+                label="Insolvente"
               />
-              {convocados.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeConvocado(idx)}
-                  className="absolute top-4 right-4 text-red-400 hover:text-red-600"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
             </div>
-          ))}
-          <button
-            type="button"
-            onClick={addConvocado}
-            className="flex items-center gap-2 text-sm text-[#1B4F9B] hover:underline"
-          >
-            <PlusCircle className="w-4 h-4" />
-            Agregar convocado
-          </button>
-        </div>
+
+            {/* Acreedores */}
+            <div className="space-y-4">
+              <p className="text-xs font-semibold text-[#0D2340] uppercase tracking-wide">
+                Acreedor{convocados.length > 1 ? "es" : ""}
+              </p>
+              {convocados.map((c, idx) => (
+                <div key={idx} className="relative">
+                  <ParteFields
+                    parte={c}
+                    onChange={(f, v) => updateConvocado(idx, f, v)}
+                    label={`Acreedor ${convocados.length > 1 ? idx + 1 : ""}`}
+                  />
+                  {convocados.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeConvocado(idx)}
+                      className="absolute top-4 right-4 text-red-400 hover:text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addConvocado}
+                className="flex items-center gap-2 text-sm text-[#1B4F9B] hover:underline"
+              >
+                <PlusCircle className="w-4 h-4" />
+                Agregar acreedor
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Convocante */}
+            <div>
+              <p className="text-xs font-semibold text-[#0D2340] uppercase tracking-wide mb-3">Convocante</p>
+              <ParteFields
+                parte={convocante}
+                onChange={(f, v) => setConvocante((p) => ({ ...p, [f]: v }))}
+                label="Convocante"
+              />
+            </div>
+
+            {/* Convocados */}
+            <div className="space-y-4">
+              <p className="text-xs font-semibold text-[#0D2340] uppercase tracking-wide">
+                Convocado{convocados.length > 1 ? "s" : ""}
+              </p>
+              {convocados.map((c, idx) => (
+                <div key={idx} className="relative">
+                  <ParteFields
+                    parte={c}
+                    onChange={(f, v) => updateConvocado(idx, f, v)}
+                    label={`Convocado ${convocados.length > 1 ? idx + 1 : ""}`}
+                  />
+                  {convocados.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeConvocado(idx)}
+                      className="absolute top-4 right-4 text-red-400 hover:text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addConvocado}
+                className="flex items-center gap-2 text-sm text-[#1B4F9B] hover:underline"
+              >
+                <PlusCircle className="w-4 h-4" />
+                Agregar convocado
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Acciones */}
