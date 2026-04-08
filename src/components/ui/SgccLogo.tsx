@@ -5,17 +5,17 @@ interface Props {
 }
 
 const SIZES = {
-  sm: { w: 160, h: 50, fs: 54, innerFs: 43, textSize: "text-[8px]", boldSize: "text-[9px]" },
-  md: { w: 210, h: 64, fs: 70, innerFs: 56, textSize: "text-[10px]", boldSize: "text-xs" },
-  lg: { w: 275, h: 84, fs: 92, innerFs: 74, textSize: "text-xs", boldSize: "text-sm" },
-  xl: { w: 365, h: 112, fs: 122, innerFs: 98, textSize: "text-sm", boldSize: "text-base" },
+  sm: { w: 145, h: 46, fs: 50, sw: 5, textSize: "text-[8px]", boldSize: "text-[9px]" },
+  md: { w: 190, h: 60, fs: 66, sw: 6, textSize: "text-[10px]", boldSize: "text-xs" },
+  lg: { w: 250, h: 78, fs: 86, sw: 7, textSize: "text-xs", boldSize: "text-sm" },
+  xl: { w: 330, h: 104, fs: 114, sw: 9, textSize: "text-sm", boldSize: "text-base" },
 };
 
 const LETTERS = [
-  { char: "S", color: "#1B4F9B", xPct: 12 },
-  { char: "G", color: "#2A9D5C", xPct: 34 },
-  { char: "C", color: "#E8732A", xPct: 59 },
-  { char: "C", color: "#D42B2B", xPct: 82 },
+  { char: "S", color: "#1B4F9B", x: 1 },
+  { char: "G", color: "#2A9D5C", x: 24 },
+  { char: "C", color: "#E8732A", x: 51 },
+  { char: "C", color: "#D42B2B", x: 76 },
 ];
 
 export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props) {
@@ -36,42 +36,24 @@ export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props
         aria-label="SGCC"
         role="img"
       >
-        {LETTERS.map((l, i) => {
-          const x = (l.xPct / 100) * s.w;
-          const y = s.h * 0.55;
-          return (
-            <g key={i}>
-              {/* Letra grande rellena con el color */}
-              <text
-                x={x}
-                y={y}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fill={l.color}
-                stroke="none"
-                fontFamily={font}
-                fontSize={s.fs}
-                fontWeight={900}
-              >
-                {l.char}
-              </text>
-              {/* Letra más pequeña rellena con fondo, centrada encima */}
-              <text
-                x={x}
-                y={y}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fill={bgColor}
-                stroke="none"
-                fontFamily={font}
-                fontSize={s.innerFs}
-                fontWeight={900}
-              >
-                {l.char}
-              </text>
-            </g>
-          );
-        })}
+        {LETTERS.map((l, i) => (
+          <text
+            key={i}
+            x={`${l.x}%`}
+            y="80%"
+            fill={bgColor}
+            stroke={l.color}
+            strokeWidth={s.sw}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            paintOrder="stroke fill"
+            fontFamily={font}
+            fontSize={s.fs}
+            fontWeight={900}
+          >
+            {l.char}
+          </text>
+        ))}
       </svg>
 
       {showText && (
