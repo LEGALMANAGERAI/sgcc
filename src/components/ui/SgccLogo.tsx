@@ -5,17 +5,18 @@ interface Props {
 }
 
 const SIZES = {
-  sm: { w: 135, h: 44, fs: 48, inner: 40, textSize: "text-[8px]", boldSize: "text-[9px]" },
-  md: { w: 178, h: 56, fs: 62, inner: 52, textSize: "text-[10px]", boldSize: "text-xs" },
-  lg: { w: 232, h: 74, fs: 82, inner: 69, textSize: "text-xs", boldSize: "text-sm" },
-  xl: { w: 310, h: 98, fs: 110, inner: 93, textSize: "text-sm", boldSize: "text-base" },
+  sm: { box: 44, fonts: [46, 36, 27, 19], sw: 2, textSize: "text-[8px]", boldSize: "text-[9px]" },
+  md: { box: 58, fonts: [60, 47, 35, 25], sw: 2.5, textSize: "text-[10px]", boldSize: "text-xs" },
+  lg: { box: 76, fonts: [80, 62, 46, 32], sw: 3, textSize: "text-xs", boldSize: "text-sm" },
+  xl: { box: 100, fonts: [106, 82, 61, 42], sw: 3.5, textSize: "text-sm", boldSize: "text-base" },
 };
 
+/* Letras anidadas: la más grande afuera, la más pequeña al centro */
 const LETTERS = [
-  { char: "S", color: "#1B4F9B", cx: 14 },
-  { char: "G", color: "#2A9D5C", cx: 36 },
-  { char: "C", color: "#E8732A", cx: 61 },
-  { char: "C", color: "#D42B2B", cx: 84 },
+  { char: "S", color: "#1B4F9B" },
+  { char: "G", color: "#2A9D5C" },
+  { char: "C", color: "#E8732A" },
+  { char: "C", color: "#D42B2B" },
 ];
 
 export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props) {
@@ -24,55 +25,40 @@ export function SgccLogo({ size = "md", showText = true, darkBg = false }: Props
   const boldColor = darkBg ? "text-white" : "text-gray-900";
   const bgColor = darkBg ? "#0D2340" : "#ffffff";
   const font = "'Arial Black', 'Impact', system-ui, sans-serif";
+  const cx = s.box / 2;
+  const cy = s.box / 2;
 
   return (
     <div className="flex items-center gap-3">
       <svg
-        width={s.w}
-        height={s.h}
-        viewBox={`0 0 ${s.w} ${s.h}`}
+        width={s.box}
+        height={s.box}
+        viewBox={`0 0 ${s.box} ${s.box}`}
         xmlns="http://www.w3.org/2000/svg"
         className="flex-shrink-0"
         aria-label="SGCC"
         role="img"
       >
-        {LETTERS.map((l, i) => {
-          const x = (l.cx / 100) * s.w;
-          const y = s.h * 0.52;
-
-          return (
-            <g key={i}>
-              {/* Letra grande con color (crea el borde) */}
-              <text
-                x={x}
-                y={y}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fill={l.color}
-                stroke="none"
-                fontFamily={font}
-                fontSize={s.fs}
-                fontWeight={900}
-              >
-                {l.char}
-              </text>
-              {/* Letra más pequeña con color de fondo (vacía el interior) */}
-              <text
-                x={x}
-                y={y}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fill={bgColor}
-                stroke="none"
-                fontFamily={font}
-                fontSize={s.inner}
-                fontWeight={900}
-              >
-                {l.char}
-              </text>
-            </g>
-          );
-        })}
+        {LETTERS.map((l, i) => (
+          <text
+            key={i}
+            x={cx}
+            y={cy}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill={bgColor}
+            stroke={l.color}
+            strokeWidth={s.sw}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            paintOrder="stroke fill"
+            fontFamily={font}
+            fontSize={s.fonts[i]}
+            fontWeight={900}
+          >
+            {l.char}
+          </text>
+        ))}
       </svg>
 
       {showText && (
