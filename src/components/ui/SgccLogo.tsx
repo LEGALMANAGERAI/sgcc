@@ -5,13 +5,12 @@ interface Props {
 }
 
 const SIZES = {
-  sm: { box: 44, fonts: [46, 36, 27, 19], sw: 2, textSize: "text-[8px]", boldSize: "text-[9px]" },
-  md: { box: 58, fonts: [60, 47, 35, 25], sw: 2.5, textSize: "text-[10px]", boldSize: "text-xs" },
-  lg: { box: 76, fonts: [80, 62, 46, 32], sw: 3, textSize: "text-xs", boldSize: "text-sm" },
-  xl: { box: 100, fonts: [106, 82, 61, 42], sw: 3.5, textSize: "text-sm", boldSize: "text-base" },
+  sm: { box: 48, fonts: [52, 40, 30, 21], sw: 5, textSize: "text-[8px]", boldSize: "text-[9px]" },
+  md: { box: 62, fonts: [66, 51, 38, 27], sw: 6, textSize: "text-[10px]", boldSize: "text-xs" },
+  lg: { box: 82, fonts: [88, 68, 50, 36], sw: 7, textSize: "text-xs", boldSize: "text-sm" },
+  xl: { box: 108, fonts: [116, 90, 66, 47], sw: 9, textSize: "text-sm", boldSize: "text-base" },
 };
 
-/* Letras anidadas: la más grande afuera, la más pequeña al centro */
 const LETTERS = [
   { char: "S", color: "#1B4F9B" },
   { char: "G", color: "#2A9D5C" },
