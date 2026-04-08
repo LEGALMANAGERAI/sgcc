@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 
 /* ───────── Tipos ───────── */
-type TipoTramite = "conciliacion" | "insolvencia" | "acuerdo_apoyo";
+type TipoTramite = "conciliacion" | "insolvencia" | "acuerdo_apoyo" | "arbitraje_ejecutivo";
 type TipoPersona = "natural" | "juridica";
 
 interface Persona {
@@ -60,6 +60,11 @@ const TRAMITES: { value: TipoTramite; label: string; desc: string }[] = [
     value: "acuerdo_apoyo",
     label: "Acuerdo de Apoyo",
     desc: "Mecanismo para que personas con discapacidad formalicen actos jurídicos con el apoyo de una persona de confianza.",
+  },
+  {
+    value: "arbitraje_ejecutivo",
+    label: "Arbitraje Ejecutivo",
+    desc: "Proceso arbitral para resolver controversias mediante un tribunal de arbitramento con carácter ejecutivo.",
   },
 ];
 
