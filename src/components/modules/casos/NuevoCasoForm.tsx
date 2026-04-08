@@ -234,8 +234,7 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
               { value: "conciliacion", label: "Conciliación", icon: "⚖️" },
               { value: "insolvencia", label: "Insolvencia", icon: "📉" },
               { value: "acuerdo_apoyo", label: "Acuerdo de Apoyo", icon: "🤝" },
-              { value: "arbitraje", label: "Arbitraje", icon: "🏛️" },
-              { value: "ejecutivo", label: "Ejecutivo", icon: "📜" },
+              { value: "arbitraje_ejecutivo", label: "Arbitraje Ejecutivo", icon: "🏛️" },
             ].map((t) => (
               <button
                 key={t.value}

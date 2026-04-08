@@ -112,7 +112,7 @@ export type CaseMateria =
   | "arrendamiento"
   | "otro";
 
-export type TipoTramite = "conciliacion" | "insolvencia" | "acuerdo_apoyo" | "arbitraje" | "ejecutivo";
+export type TipoTramite = "conciliacion" | "insolvencia" | "acuerdo_apoyo" | "arbitraje_ejecutivo";
 
 export interface SgccCase {
   id: string;
