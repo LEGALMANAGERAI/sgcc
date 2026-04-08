@@ -203,7 +203,51 @@ export async function POST(req: Request) {
       created_at: new Date().toISOString(),
     });
 
-    // 7. Intentar notificar al centro (staff admin)
+    // 7. Crear documento resumen en el expediente
+    const convNombre = body.convocante.tipo_persona === "natural"
+      ? `${body.convocante.nombres ?? ""} ${body.convocante.apellidos ?? ""}`.trim()
+      : body.convocante.razon_social ?? "";
+    const convocadosNombres = body.convocados.map((c) =>
+      c.tipo_persona === "natural"
+        ? `${c.nombres ?? ""} ${c.apellidos ?? ""}`.trim()
+        : c.razon_social ?? ""
+    );
+
+    const resumenTexto = [
+      `SOLICITUD DE ${body.tipo_tramite.toUpperCase().replace("_", " ")}`,
+      `Radicado: ${radicado}`,
+      `Fecha: ${new Date().toLocaleDateString("es-CO")}`,
+      ``,
+      `MATERIA: ${body.materia}`,
+      `CUANTÍA: ${body.cuantia_indeterminada ? "Indeterminada" : `$${(body.cuantia ?? 0).toLocaleString("es-CO")}`}`,
+      ``,
+      body.tipo_tramite === "insolvencia" ? `INSOLVENTE:` : `CONVOCANTE:`,
+      `  ${convNombre}`,
+      `  ${body.convocante.tipo_persona === "natural" ? `${body.convocante.tipo_doc ?? "CC"} ${body.convocante.numero_doc ?? ""}` : `NIT ${body.convocante.nit_empresa ?? ""}`}`,
+      `  Email: ${body.convocante.email}`,
+      body.convocante.telefono ? `  Tel: ${body.convocante.telefono}` : "",
+      ``,
+      body.tipo_tramite === "insolvencia" ? `ACREEDORES:` : `CONVOCADOS:`,
+      ...convocadosNombres.map((n, i) => {
+        const c = body.convocados[i];
+        return `  ${i + 1}. ${n} — ${c.email}`;
+      }),
+      ``,
+      `DESCRIPCIÓN:`,
+      body.descripcion,
+    ].filter(Boolean).join("\n");
+
+    await supabaseAdmin.from("sgcc_case_documents").insert({
+      id: randomUUID(),
+      case_id: caseId,
+      nombre: `Solicitud_${radicado}.txt`,
+      tipo: "solicitud",
+      contenido_texto: resumenTexto,
+      subido_por_party: convocanteId,
+      created_at: new Date().toISOString(),
+    });
+
+    // 8. Intentar notificar al centro (staff admin)
     try {
       const { data: admins } = await supabaseAdmin
         .from("sgcc_staff")
@@ -228,7 +272,7 @@ export async function POST(req: Request) {
       // No fallamos la solicitud por un error de notificación
     }
 
-    // 8. Retornar éxito
+    // 9. Retornar éxito
     return NextResponse.json({
       success: true,
       radicado,
