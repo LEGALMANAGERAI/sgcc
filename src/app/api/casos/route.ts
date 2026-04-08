@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const {
+    tipo_tramite,
     materia,
     descripcion,
     cuantia,
@@ -81,6 +82,7 @@ export async function POST(req: NextRequest) {
       id: caseId,
       center_id: centerId,
       numero_radicado,
+      tipo_tramite: tipo_tramite || "conciliacion",
       materia,
       descripcion,
       cuantia: cuantia ?? null,

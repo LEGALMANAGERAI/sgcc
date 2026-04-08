@@ -77,6 +77,8 @@ const TIPO_BADGE: Record<TipoTramite, { label: string; color: string }> = {
   conciliacion: { label: "Conc", color: "bg-blue-100 text-blue-800" },
   insolvencia: { label: "Ins", color: "bg-purple-100 text-purple-800" },
   acuerdo_apoyo: { label: "AA", color: "bg-amber-100 text-amber-800" },
+  arbitraje: { label: "Arb", color: "bg-teal-100 text-teal-800" },
+  ejecutivo: { label: "Ejec", color: "bg-orange-100 text-orange-800" },
 };
 
 /* ─── Page ──────────────────────────────────────────────────────────────── */

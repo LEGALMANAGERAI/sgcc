@@ -49,6 +49,7 @@ interface Props {
 
 export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
   const router = useRouter();
+  const [tipoTramite, setTipoTramite] = useState("conciliacion");
   const [materia, setMateria] = useState("civil");
   const [descripcion, setDescripcion] = useState("");
   const [cuantia, setCuantia] = useState("");
@@ -82,6 +83,7 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         centerId,
+        tipo_tramite: tipoTramite,
         materia,
         descripcion,
         cuantia: cuantiaIndet ? null : cuantia ? Number(cuantia) : null,
@@ -224,6 +226,33 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
       {/* Sección 1: Datos del asunto */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-5">
         <h3 className="font-semibold text-gray-900">1. Datos del asunto</h3>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de trámite *</label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {[
+              { value: "conciliacion", label: "Conciliación", icon: "⚖️" },
+              { value: "insolvencia", label: "Insolvencia", icon: "📉" },
+              { value: "acuerdo_apoyo", label: "Acuerdo de Apoyo", icon: "🤝" },
+              { value: "arbitraje", label: "Arbitraje", icon: "🏛️" },
+              { value: "ejecutivo", label: "Ejecutivo", icon: "📜" },
+            ].map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => setTipoTramite(t.value)}
+                className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                  tipoTramite === t.value
+                    ? "border-[#1B4F9B] bg-[#1B4F9B]/5 text-[#1B4F9B]"
+                    : "border-gray-200 text-gray-600 hover:border-gray-300"
+                }`}
+              >
+                <span className="text-xl">{t.icon}</span>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="grid grid-cols-2 gap-5">
           <div>

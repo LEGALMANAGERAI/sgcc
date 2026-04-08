@@ -33,8 +33,8 @@ export default async function NuevoCasoPage() {
         </Link>
       </div>
       <PageHeader
-        title="Nueva solicitud de conciliación"
-        subtitle="Radicar un nuevo asunto en el centro"
+        title="Nueva solicitud"
+        subtitle="Radicar un nuevo trámite en el centro"
       />
       <NuevoCasoForm
         centerId={centerId}
