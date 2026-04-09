@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { generateRadicado } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
+import { asignarConciliador } from "@/lib/asignacion-conciliador";
 
 interface PersonaPayload {
   tipo_persona: "natural" | "juridica";
@@ -26,6 +27,7 @@ interface SolicitudPayload {
   descripcion: string;
   convocante: PersonaPayload;
   convocados: PersonaPayload[];
+  conciliador_solicitado?: string;
 }
 
 /**
@@ -144,7 +146,10 @@ export async function POST(req: Request) {
     // 3. Generar radicado
     const radicado = await generateRadicado(body.center_id);
 
-    // 4. Crear caso
+    // 4. Asignar conciliador según método del centro
+    const conciliadorAsignado = await asignarConciliador(body.center_id, body.conciliador_solicitado);
+
+    // 5. Crear caso
     const caseId = randomUUID();
     const { error: caseError } = await supabaseAdmin.from("sgcc_cases").insert({
       id: caseId,
@@ -156,6 +161,7 @@ export async function POST(req: Request) {
       cuantia_indeterminada: body.cuantia_indeterminada,
       descripcion: body.descripcion,
       estado: "solicitud",
+      conciliador_id: conciliadorAsignado,
       created_by_party: convocanteId,
       created_at: new Date().toISOString(),
     });

@@ -25,6 +25,7 @@ export interface SgccCenter {
   dias_habiles_citacion: number;
   hora_inicio_audiencias: string;
   hora_fin_audiencias: string;
+  metodo_asignacion: "manual" | "aleatorio" | "orden_lista";
   activo: boolean;
   created_at: string;
   updated_at: string;
@@ -38,6 +39,8 @@ export interface SgccStaff {
   id: string;
   center_id: string;
   legados_user_id: string | null;
+  orden_lista: number | null;
+  ultima_asignacion: string | null;
   email: string;
   nombre: string;
   telefono: string | null;

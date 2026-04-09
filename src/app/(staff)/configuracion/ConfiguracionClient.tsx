@@ -18,7 +18,7 @@ interface Props {
 
 /* ─── Constantes ────────────────────────────────────────────────────────── */
 
-const TABS = ["Datos del Centro", "Horarios", "Checklists"] as const;
+const TABS = ["Datos del Centro", "Horarios", "Asignación", "Checklists"] as const;
 type Tab = (typeof TABS)[number];
 
 const TIPO_TRAMITE_LABELS: Record<TipoTramite, string> = {
@@ -52,6 +52,7 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
     dias_habiles_citacion: center.dias_habiles_citacion,
     hora_inicio_audiencias: center.hora_inicio_audiencias,
     hora_fin_audiencias: center.hora_fin_audiencias,
+    metodo_asignacion: center.metodo_asignacion ?? "manual",
   });
 
   // Estado de checklists
@@ -306,6 +307,83 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
               {saving ? "Guardando..." : "Guardar cambios"}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ─── Tab: Asignación de conciliador ─────────────────────────── */}
+      {activeTab === "Asignación" && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
+          <div>
+            <h3 className="font-semibold text-gray-900 mb-1">Método de asignación de conciliador</h3>
+            <p className="text-sm text-gray-500">
+              Define cómo se asigna el conciliador cuando se crea un nuevo caso.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {[
+              {
+                value: "manual",
+                label: "Manual",
+                desc: "El administrador selecciona manualmente el conciliador al crear o admitir el caso.",
+              },
+              {
+                value: "aleatorio",
+                label: "Sorteo aleatorio",
+                desc: "Se selecciona un conciliador al azar entre los conciliadores activos del centro.",
+              },
+              {
+                value: "orden_lista",
+                label: "Orden de lista (round-robin)",
+                desc: "Se asigna en orden rotativo. No se repite un conciliador hasta que todos hayan tenido oportunidad.",
+              },
+            ].map((opt) => (
+              <label
+                key={opt.value}
+                className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  form.metodo_asignacion === opt.value
+                    ? "border-[#1B4F9B] bg-[#1B4F9B]/5"
+                    : "border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="metodo_asignacion"
+                  value={opt.value}
+                  checked={form.metodo_asignacion === opt.value}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      metodo_asignacion: e.target.value as "manual" | "aleatorio" | "orden_lista",
+                    }))
+                  }
+                  className="mt-1 accent-[#1B4F9B]"
+                />
+                <div>
+                  <p className="font-medium text-gray-900 text-sm">{opt.label}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{opt.desc}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          <div className="pt-2">
+            <button
+              onClick={saveCenter}
+              disabled={saving}
+              className="bg-[#0D2340] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#0d2340dd] transition-colors disabled:opacity-50"
+            >
+              {saving ? "Guardando..." : "Guardar cambios"}
+            </button>
+          </div>
+
+          {form.metodo_asignacion !== "manual" && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-xs text-blue-700">
+                <strong>Nota:</strong> Si el solicitante pide un conciliador específico en su solicitud, ese conciliador se respetará independientemente del método configurado.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

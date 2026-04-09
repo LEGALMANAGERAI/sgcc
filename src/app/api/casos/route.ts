@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId, generateRadicado, addBusinessDays } from "@/lib/server-utils";
 import { notify } from "@/lib/notifications";
 import { randomUUID } from "crypto";
+import { asignarConciliador } from "@/lib/asignacion-conciliador";
 import bcrypt from "bcryptjs";
 
 export async function GET(req: NextRequest) {
@@ -75,6 +76,9 @@ export async function POST(req: NextRequest) {
   const numero_radicado = await generateRadicado(centerId);
   const caseId = randomUUID();
 
+  // Asignar conciliador según método del centro
+  const conciliadorAsignado = await asignarConciliador(centerId, conciliador_id);
+
   // Insertar caso
   const { data: caso, error: caseError } = await supabaseAdmin
     .from("sgcc_cases")
@@ -87,7 +91,7 @@ export async function POST(req: NextRequest) {
       descripcion,
       cuantia: cuantia ?? null,
       cuantia_indeterminada: cuantia_indeterminada ?? false,
-      conciliador_id: conciliador_id ?? null,
+      conciliador_id: conciliadorAsignado,
       sala_id: sala_id ?? null,
       estado: "solicitud",
       fecha_solicitud: new Date().toISOString().split("T")[0],
