@@ -361,6 +361,9 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
             actaExistente={
               (rawActas ?? []).length > 0 ? (rawActas ?? [])[0] : null
             }
+            actasPrevias={(rawActas ?? []).sort((a: any, b: any) =>
+              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            )}
           />
         </div>
       )}

@@ -29,6 +29,7 @@ interface CrearActaInsolvenciaProps {
   hearingId: string | null;
   fechaAudiencia: string | null;
   actaExistente: any | null;
+  actasPrevias: any[];
 }
 
 type TipoActaInsolvencia =
@@ -65,14 +66,31 @@ export function CrearActaInsolvencia({
   hearingId,
   fechaAudiencia,
   actaExistente,
+  actasPrevias,
 }: CrearActaInsolvenciaProps) {
-  /* Estado del formulario */
-  const [tipo, setTipo] = useState<TipoActaInsolvencia>("acuerdo_pago");
-  const [consideraciones, setConsideraciones] = useState("");
-  const [acuerdoTexto, setAcuerdoTexto] = useState("");
-  const [obligaciones, setObligaciones] = useState<Obligacion[]>([
-    { acreedor: "", obligacion: "", plazo: "", monto: "" },
-  ]);
+  /* Heredar datos de la última acta previa */
+  const ultimaActa = actasPrevias.length > 0 ? actasPrevias[0] : null;
+
+  /* Estado del formulario — pre-llenado con acta anterior */
+  const [tipo, setTipo] = useState<TipoActaInsolvencia>(
+    ultimaActa?.tipo === "acuerdo_total" ? "acuerdo_pago"
+    : ultimaActa?.tipo === "no_acuerdo" ? "no_acuerdo"
+    : ultimaActa?.tipo === "desistimiento" ? "desistimiento"
+    : "acuerdo_pago"
+  );
+  const [consideraciones, setConsideraciones] = useState(ultimaActa?.consideraciones ?? "");
+  const [acuerdoTexto, setAcuerdoTexto] = useState(ultimaActa?.acuerdo_texto ?? "");
+  const [obligaciones, setObligaciones] = useState<Obligacion[]>(() => {
+    if (ultimaActa?.obligaciones?.length) {
+      return (ultimaActa.obligaciones as any[]).map((ob: any) => ({
+        acreedor: ob.parte ?? "",
+        obligacion: ob.obligacion ?? "",
+        plazo: ob.plazo ?? "",
+        monto: ob.monto ? String(ob.monto) : "",
+      }));
+    }
+    return [{ acreedor: "", obligacion: "", plazo: "", monto: "" }];
+  });
 
   /* Estado de acciones */
   const [generando, setGenerando] = useState(false);
@@ -414,6 +432,20 @@ export function CrearActaInsolvencia({
           <h4 className="text-sm font-semibold text-[#0D2340] uppercase tracking-wide">
             Datos del Acta
           </h4>
+
+          {ultimaActa && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-start gap-2">
+              <FileText className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs font-medium text-blue-700">
+                  Datos heredados del acta anterior ({ultimaActa.numero_acta})
+                </p>
+                <p className="text-xs text-blue-600 mt-0.5">
+                  Las consideraciones, acuerdo y obligaciones se pre-llenaron con los datos de la audiencia anterior. Puedes editarlos.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Tipo de acta */}
           <div>
