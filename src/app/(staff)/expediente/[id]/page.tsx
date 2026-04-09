@@ -232,6 +232,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
             diasHabilesTranscurridos={diasTranscurridos}
             diasHabilesRestantes={diasRestantes}
             fechaLimite={fechaLimite}
+            prorrogado={caso.prorrogado ?? false}
           />
         </div>
       )}

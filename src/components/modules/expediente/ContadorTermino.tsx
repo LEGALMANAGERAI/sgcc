@@ -10,6 +10,7 @@ interface Props {
   diasHabilesTranscurridos: number;
   diasHabilesRestantes: number;
   fechaLimite: string | null;
+  prorrogado: boolean;
 }
 
 export function ContadorTermino({
@@ -19,9 +20,33 @@ export function ContadorTermino({
   diasHabilesTranscurridos,
   diasHabilesRestantes,
   fechaLimite,
+  prorrogado,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  async function handleProrrogar() {
+    if (!confirm("¿Confirma prorrogar el término por 30 días hábiles adicionales? Los 30 días se contarán desde el día siguiente al vencimiento del término inicial.")) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/expediente/${caseId}/termino`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "prorrogar" }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error ?? "Error al prorrogar");
+        return;
+      }
+      window.location.reload();
+    } catch {
+      setError("Error de conexión");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleIniciar() {
     setLoading(true);
@@ -106,6 +131,7 @@ export function ContadorTermino({
           <div>
             <p className="text-sm font-semibold text-gray-900">
               Término del procedimiento
+              {prorrogado && <span className="text-amber-600 ml-2">— Prorrogado (+30 días)</span>}
               {esVencido && <span className="text-red-600 ml-2">— VENCIDO</span>}
             </p>
             <p className="text-xs text-gray-500">
@@ -114,11 +140,23 @@ export function ContadorTermino({
             </p>
           </div>
         </div>
-        <div className="text-right">
-          <p className={`text-2xl font-bold ${esVencido ? "text-red-600" : esUrgente ? "text-amber-600" : "text-[#1B4F9B]"}`}>
-            {diasHabilesRestantes}
-          </p>
-          <p className="text-[10px] text-gray-500 uppercase tracking-wide">días hábiles restantes</p>
+        <div className="flex items-center gap-4">
+          {/* Botón prorrogar: solo si no ha sido prorrogado y quedan ≤10 días o vencido */}
+          {!prorrogado && (esUrgente || esVencido) && (
+            <button
+              onClick={handleProrrogar}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-amber-600 transition-colors disabled:opacity-50"
+            >
+              {loading ? "..." : "+ 30 días"}
+            </button>
+          )}
+          <div className="text-right">
+            <p className={`text-2xl font-bold ${esVencido ? "text-red-600" : esUrgente ? "text-amber-600" : "text-[#1B4F9B]"}`}>
+              {diasHabilesRestantes}
+            </p>
+            <p className="text-[10px] text-gray-500 uppercase tracking-wide">días hábiles restantes</p>
+          </div>
         </div>
       </div>
 
@@ -133,6 +171,7 @@ export function ContadorTermino({
         <span>{diasHabilesTranscurridos} días transcurridos</span>
         <span>{diasTermino} días totales</span>
       </div>
+      {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
     </div>
   );
 }

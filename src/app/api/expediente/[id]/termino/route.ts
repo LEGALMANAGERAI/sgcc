@@ -17,7 +17,7 @@ export async function POST(
 
   const { data: caso } = await supabaseAdmin
     .from("sgcc_cases")
-    .select("id, fecha_inicio_termino")
+    .select("id, fecha_inicio_termino, dias_termino, prorrogado")
     .eq("id", caseId)
     .eq("center_id", centerId)
     .single();
@@ -57,6 +57,43 @@ export async function POST(
     });
 
     return NextResponse.json({ success: true, fecha_inicio: hoy });
+  }
+
+  if (body.accion === "prorrogar") {
+    if (!caso.fecha_inicio_termino) {
+      return NextResponse.json({ error: "El término no ha sido iniciado" }, { status: 400 });
+    }
+    if (caso.prorrogado) {
+      return NextResponse.json({ error: "El término ya fue prorrogado" }, { status: 400 });
+    }
+
+    // Prorrogar: sumar 30 días al término actual (60 → 90)
+    const nuevoTermino = (caso.dias_termino ?? 60) + 30;
+
+    const { error: updateError } = await supabaseAdmin
+      .from("sgcc_cases")
+      .update({
+        dias_termino: nuevoTermino,
+        prorrogado: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", caseId);
+
+    if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
+
+    await supabaseAdmin.from("sgcc_case_timeline").insert({
+      id: randomUUID(),
+      case_id: caseId,
+      center_id: centerId,
+      tipo: "termino_prorrogado",
+      titulo: "Término prorrogado por 30 días hábiles",
+      descripcion: `El operador prorrogó el término del procedimiento por 30 días hábiles adicionales. Nuevo término total: ${nuevoTermino} días hábiles.`,
+      staff_id: (session.user as any).id,
+      es_automatico: false,
+      created_at: new Date().toISOString(),
+    });
+
+    return NextResponse.json({ success: true, dias_termino: nuevoTermino });
   }
 
   return NextResponse.json({ error: "Acción no válida" }, { status: 400 });
