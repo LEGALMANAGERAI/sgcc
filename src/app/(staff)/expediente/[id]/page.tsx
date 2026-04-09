@@ -10,9 +10,11 @@ import { TabDocumentos } from "@/components/modules/expediente/TabDocumentos";
 import { TabChecklistAdmision } from "@/components/modules/expediente/TabChecklistAdmision";
 import { TabChecklistPoderes } from "@/components/modules/expediente/TabChecklistPoderes";
 import { TabAsistencia } from "@/components/modules/expediente/TabAsistencia";
+import { ContadorTermino } from "@/components/modules/expediente/ContadorTermino";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import type { TipoTramite } from "@/types";
+import { sumarDiasHabiles, diasHabilesEntre } from "@/lib/dias-habiles-colombia";
 
 /* ─── Constantes ────────────────────────────────────────────────────────── */
 
@@ -177,6 +179,21 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
 
   const tipoBadge = TIPO_BADGE[caso.tipo_tramite as TipoTramite];
 
+  /* ─── Cálculo de término ───────────────────────────────────────────── */
+
+  let diasTranscurridos = 0;
+  let diasRestantes = caso.dias_termino ?? 60;
+  let fechaLimite: string | null = null;
+
+  if (caso.fecha_inicio_termino) {
+    const inicio = new Date(caso.fecha_inicio_termino + "T12:00:00");
+    const hoy = new Date();
+    diasTranscurridos = diasHabilesEntre(inicio, hoy);
+    diasRestantes = Math.max((caso.dias_termino ?? 60) - diasTranscurridos, 0);
+    const limite = sumarDiasHabiles(inicio, caso.dias_termino ?? 60);
+    fechaLimite = limite.toISOString().split("T")[0];
+  }
+
   /* ─── Render ───────────────────────────────────────────────────────── */
 
   return (
@@ -204,6 +221,20 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
         </span>
         <StatusChip value={caso.estado} type="case" size="md" />
       </PageHeader>
+
+      {/* Contador de término */}
+      {caso.estado !== "cerrado" && caso.estado !== "rechazado" && (
+        <div className="mb-6">
+          <ContadorTermino
+            caseId={id}
+            fechaInicioTermino={caso.fecha_inicio_termino}
+            diasTermino={caso.dias_termino ?? 60}
+            diasHabilesTranscurridos={diasTranscurridos}
+            diasHabilesRestantes={diasRestantes}
+            fechaLimite={fechaLimite}
+          />
+        </div>
+      )}
 
       {/* Tabs bar */}
       <div className="border-b border-gray-200 mb-6">

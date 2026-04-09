@@ -137,6 +137,8 @@ export interface SgccCase {
   tarifa_adicional: number;
   tarifa_pagada: boolean;
   motivo_rechazo: string | null;
+  fecha_inicio_termino: string | null;
+  dias_termino: number;
   created_by_staff: string | null;
   created_by_party: string | null;
   created_at: string;
