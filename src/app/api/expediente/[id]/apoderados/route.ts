@@ -72,7 +72,18 @@ export async function POST(
     return NextResponse.json({ error: "Caso no encontrado" }, { status: 404 });
   }
 
-  const body = await req.json();
+  const contentType = req.headers.get("content-type") ?? "";
+  let body: any;
+  let poderFile: File | null = null;
+
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await req.formData();
+    body = JSON.parse(formData.get("data") as string);
+    poderFile = formData.get("poderFile") as File | null;
+  } else {
+    body = await req.json();
+  }
+
   const { party_id, attorney, motivo_cambio, poder_vigente_desde, poder_vigente_hasta } = body;
 
   if (!party_id) {
@@ -185,6 +196,23 @@ export async function POST(
 
   if (insertError) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
+  }
+
+  // Upload poder si viene archivo
+  if (poderFile) {
+    const buffer = Buffer.from(await poderFile.arrayBuffer());
+    const filePath = `${caseId}/${caseAttorneyId}.pdf`;
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from("poderes")
+      .upload(filePath, buffer, { contentType: "application/pdf", upsert: true });
+
+    if (!uploadError) {
+      const { data: urlData } = supabaseAdmin.storage.from("poderes").getPublicUrl(filePath);
+      await supabaseAdmin
+        .from("sgcc_case_attorneys")
+        .update({ poder_url: urlData.publicUrl })
+        .eq("id", caseAttorneyId);
+    }
   }
 
   return NextResponse.json(created, { status: 201 });

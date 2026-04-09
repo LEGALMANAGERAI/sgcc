@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { partyDisplayName } from "@/types";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { sumarDiasHabiles, siguienteDiaHabil } from "@/lib/dias-habiles-colombia";
 import {
   Calendar,
   UserCheck,
@@ -408,9 +409,152 @@ export function TabAsistencia({
                   : "No se registró asistencia para esta audiencia."}
               </div>
             )}
+
+            {/* Sección finalizar */}
+            {(hearing.estado === "programada" || hearing.estado === "en_curso") && hasAttendanceRecords && (
+              <FinalizarAudiencia
+                caseId={caseId}
+                hearing={hearing}
+              />
+            )}
           </section>
         );
       })}
+    </div>
+  );
+}
+
+/* ─── Componente auxiliar: Finalizar audiencia ─────────────────────────── */
+
+function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any }) {
+  const [resultado, setResultado] = useState("");
+  const [fechaCont, setFechaCont] = useState("");
+  const [maxFecha, setMaxFecha] = useState("");
+  const [sugerida, setSugerida] = useState("");
+  const [savingFin, setSavingFin] = useState(false);
+  const [errorFin, setErrorFin] = useState("");
+
+  function handleResultadoChange(val: string) {
+    setResultado(val);
+    if (val === "suspendida") {
+      const audienciaDate = new Date(hearing.fecha_hora);
+      const diaSiguiente = new Date(audienciaDate);
+      diaSiguiente.setDate(diaSiguiente.getDate() + 1);
+
+      const sug = siguienteDiaHabil(diaSiguiente);
+      const max = sumarDiasHabiles(diaSiguiente, 10);
+
+      setSugerida(sug.toISOString().split("T")[0]);
+      setFechaCont(sug.toISOString().split("T")[0]);
+      setMaxFecha(max.toISOString().split("T")[0]);
+    } else {
+      setFechaCont("");
+      setMaxFecha("");
+      setSugerida("");
+    }
+  }
+
+  async function handleFinalizar() {
+    if (!resultado) return;
+
+    if (resultado === "suspendida" && fechaCont) {
+      const audienciaDate = new Date(hearing.fecha_hora);
+      const diaSiguiente = new Date(audienciaDate);
+      diaSiguiente.setDate(diaSiguiente.getDate() + 1);
+      const selected = new Date(fechaCont);
+      const max = sumarDiasHabiles(diaSiguiente, 10);
+
+      if (selected > max) {
+        setErrorFin("La fecha de continuación no puede superar los 10 días hábiles desde el día siguiente de la audiencia");
+        return;
+      }
+    }
+
+    setSavingFin(true);
+    setErrorFin("");
+
+    try {
+      const res = await fetch(`/api/casos/${caseId}/audiencias`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hearing_id: hearing.id,
+          estado: resultado === "suspendida" ? "suspendida" : "finalizada",
+          resultado,
+          fecha_continuacion: resultado === "suspendida" ? fechaCont : null,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        setErrorFin(err.error ?? "Error al finalizar");
+        return;
+      }
+
+      window.location.reload();
+    } catch {
+      setErrorFin("Error de conexión");
+    } finally {
+      setSavingFin(false);
+    }
+  }
+
+  return (
+    <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+      <h4 className="text-sm font-semibold text-gray-700 mb-3">Finalizar audiencia</h4>
+
+      {errorFin && (
+        <div className="bg-red-50 text-red-700 text-xs px-3 py-2 rounded-lg mb-3 border border-red-200">
+          {errorFin}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-4 max-w-xl">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Resultado</label>
+          <select
+            value={resultado}
+            onChange={(e) => handleResultadoChange(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]"
+          >
+            <option value="">Seleccionar...</option>
+            <option value="acuerdo_total">Acuerdo total</option>
+            <option value="acuerdo_parcial">Acuerdo parcial</option>
+            <option value="no_acuerdo">No acuerdo</option>
+            <option value="suspendida">Suspendida - continuar</option>
+          </select>
+        </div>
+
+        {resultado === "suspendida" && (
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Fecha de continuación
+              {sugerida && <span className="text-gray-400 font-normal"> (sugerida: {new Date(sugerida + "T12:00:00").toLocaleDateString("es-CO")})</span>}
+            </label>
+            <input
+              type="date"
+              value={fechaCont}
+              onChange={(e) => setFechaCont(e.target.value)}
+              min={sugerida}
+              max={maxFecha}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]"
+            />
+            {maxFecha && (
+              <p className="text-[10px] text-gray-400 mt-1">
+                Máximo: {new Date(maxFecha + "T12:00:00").toLocaleDateString("es-CO")} (10 días hábiles)
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      <button
+        onClick={handleFinalizar}
+        disabled={!resultado || savingFin}
+        className="mt-4 bg-[#0D2340] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#0d2340dd] transition-colors disabled:opacity-50"
+      >
+        {savingFin ? "Finalizando..." : "Finalizar audiencia"}
+      </button>
     </div>
   );
 }

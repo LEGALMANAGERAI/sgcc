@@ -133,3 +133,71 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json(hearing, { status: 201 });
 }
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: caseId } = await params;
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const body = await req.json();
+  const { hearing_id, estado, resultado, fecha_continuacion } = body;
+
+  if (!hearing_id || !estado) {
+    return NextResponse.json({ error: "hearing_id y estado son requeridos" }, { status: 400 });
+  }
+
+  // Actualizar audiencia
+  const { error: hearingError } = await supabaseAdmin
+    .from("sgcc_hearings")
+    .update({
+      estado,
+      resultado: resultado ?? null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", hearing_id)
+    .eq("case_id", caseId);
+
+  if (hearingError) {
+    return NextResponse.json({ error: hearingError.message }, { status: 500 });
+  }
+
+  // Si suspendida con fecha de continuación, crear entrada en timeline
+  if (estado === "suspendida" && fecha_continuacion) {
+    await supabaseAdmin.from("sgcc_case_timeline").insert({
+      id: randomUUID(),
+      case_id: caseId,
+      center_id: (session.user as any).centerId,
+      tipo: "audiencia_suspendida",
+      titulo: "Audiencia suspendida - continuación programada",
+      descripcion: `Audiencia suspendida. Fecha de continuación: ${fecha_continuacion}. Resultado: ${resultado}.`,
+      staff_id: (session.user as any).id,
+      es_automatico: false,
+      created_at: new Date().toISOString(),
+    });
+  }
+
+  // Si finalizada, agregar timeline
+  if (estado === "finalizada") {
+    const resultLabel: Record<string, string> = {
+      acuerdo_total: "Acuerdo total",
+      acuerdo_parcial: "Acuerdo parcial",
+      no_acuerdo: "No acuerdo",
+    };
+    await supabaseAdmin.from("sgcc_case_timeline").insert({
+      id: randomUUID(),
+      case_id: caseId,
+      center_id: (session.user as any).centerId,
+      tipo: "audiencia_finalizada",
+      titulo: `Audiencia finalizada: ${resultLabel[resultado] ?? resultado}`,
+      descripcion: `La audiencia finalizó con resultado: ${resultLabel[resultado] ?? resultado}.`,
+      staff_id: (session.user as any).id,
+      es_automatico: false,
+      created_at: new Date().toISOString(),
+    });
+  }
+
+  return NextResponse.json({ success: true });
+}
