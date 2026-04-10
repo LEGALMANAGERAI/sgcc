@@ -529,3 +529,72 @@ export interface SgccSession {
     sgccRol: StaffRol | null;
   };
 }
+
+// ─── Acreencias Insolvencia ─────────────────────────────────────────────
+
+export interface SgccAcreencia {
+  id: string;
+  case_id: string;
+  center_id: string;
+  party_id: string | null;
+  acreedor_nombre: string;
+  acreedor_documento: string | null;
+  sol_capital: number;
+  sol_intereses_corrientes: number;
+  sol_intereses_moratorios: number;
+  sol_seguros: number;
+  sol_otros: number;
+  acr_capital: number;
+  acr_intereses_corrientes: number;
+  acr_intereses_moratorios: number;
+  acr_seguros: number;
+  acr_otros: number;
+  con_capital: number;
+  con_intereses_corrientes: number;
+  con_intereses_moratorios: number;
+  con_seguros: number;
+  con_otros: number;
+  fecha_conciliacion: string | null;
+  porcentaje_voto: number;
+  es_pequeno_acreedor: boolean;
+  notas: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PropuestaEstado = "borrador" | "socializada" | "en_votacion" | "aprobada" | "rechazada";
+
+export interface SgccPropuestaPago {
+  id: string;
+  case_id: string;
+  center_id: string;
+  titulo: string;
+  descripcion: string;
+  plazo_meses: number | null;
+  tasa_interes: string | null;
+  periodo_gracia_meses: number;
+  notas: string | null;
+  estado: PropuestaEstado;
+  fecha_socializacion: string | null;
+  fecha_votacion: string | null;
+  resultado_aprobada: boolean | null;
+  votos_positivos: number;
+  votos_negativos: number;
+  porcentaje_aprobacion: number;
+  acreedores_positivos: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type VotoInsolvencia = "positivo" | "negativo" | "abstiene";
+
+export interface SgccVotacionInsolvencia {
+  id: string;
+  propuesta_id: string;
+  acreencia_id: string;
+  voto: VotoInsolvencia;
+  porcentaje_voto: number;
+  observaciones: string | null;
+  registrado_por: string | null;
+  created_at: string;
+}

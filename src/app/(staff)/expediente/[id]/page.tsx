@@ -14,6 +14,7 @@ import { ContadorTermino } from "@/components/modules/expediente/ContadorTermino
 import { CrearActaInsolvencia } from "@/components/modules/expediente/CrearActaInsolvencia";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { HerramientaAcreencias } from "@/components/modules/insolvencia/HerramientaAcreencias";
 import type { TipoTramite } from "@/types";
 import { partyDisplayName } from "@/types";
 import { sumarDiasHabiles, diasHabilesEntre } from "@/lib/dias-habiles-colombia";
@@ -27,15 +28,15 @@ const TIPO_BADGE: Record<TipoTramite, { label: string; color: string }> = {
   arbitraje_ejecutivo: { label: "AE", color: "bg-teal-100 text-teal-800" },
 };
 
-const TABS = [
+const BASE_TABS = [
   { key: "info", label: "Info General" },
   { key: "documentos", label: "Documentos" },
   { key: "admision", label: "Admisión" },
   { key: "poderes", label: "Poderes" },
   { key: "asistencia", label: "Asistencia" },
-] as const;
+];
 
-type TabKey = (typeof TABS)[number]["key"];
+type TabKey = "info" | "documentos" | "admision" | "poderes" | "asistencia" | "acreencias";
 
 /* ─── Page ──────────────────────────────────────────────────────────────── */
 
@@ -47,7 +48,7 @@ interface Props {
 export default async function ExpedientePage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const activeTab = (TABS.find((t) => t.key === sp.tab)?.key ?? "info") as TabKey;
+  const activeTab = (BASE_TABS.find((t) => t.key === sp.tab)?.key ?? sp.tab ?? "info") as TabKey;
 
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -176,6 +177,24 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
     : { data: [] as any[] };
 
   const attendance = rawAttendance ?? [];
+
+  // Acreencias (solo insolvencia)
+  let acreencias: any[] = [];
+  if (caso.tipo_tramite === "insolvencia") {
+    const { data: rawAcreencias } = await supabaseAdmin
+      .from("sgcc_acreencias")
+      .select("*")
+      .eq("case_id", id)
+      .eq("center_id", centerId)
+      .order("created_at", { ascending: true });
+    acreencias = rawAcreencias ?? [];
+  }
+
+  // Tabs dinámicos: agregar "Acreencias" solo para insolvencia
+  const TABS = [...BASE_TABS];
+  if (caso.tipo_tramite === "insolvencia") {
+    TABS.push({ key: "acreencias", label: "Acreencias" });
+  }
 
   /* ─── Badge tipo trámite ───────────────────────────────────────────── */
 
@@ -367,6 +386,20 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
             )}
           />
         </div>
+      )}
+
+      {activeTab === "acreencias" && caso.tipo_tramite === "insolvencia" && (
+        <HerramientaAcreencias
+          caseId={id}
+          acreedoresIniciales={acreencias}
+          partesConvocados={parties
+            .filter((p: any) => p.rol === "convocado" && p.party)
+            .map((p: any) => ({
+              id: p.party.id,
+              nombre: p.party.razon_social ?? [p.party.nombres, p.party.apellidos].filter(Boolean).join(" "),
+              documento: p.party.numero_doc ?? p.party.nit_empresa ?? "",
+            }))}
+        />
       )}
     </div>
   );
