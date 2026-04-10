@@ -557,10 +557,15 @@ export interface SgccAcreencia {
   fecha_conciliacion: string | null;
   porcentaje_voto: number;
   es_pequeno_acreedor: boolean;
+  clase_credito: ClaseCredito;
+  dias_mora: number;
+  mora_90_dias: boolean;
   notas: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export type ClaseCredito = "primera" | "segunda" | "tercera" | "cuarta" | "quinta";
 
 export type PropuestaEstado = "borrador" | "socializada" | "en_votacion" | "aprobada" | "rechazada";
 
@@ -596,5 +601,37 @@ export interface SgccVotacionInsolvencia {
   porcentaje_voto: number;
   observaciones: string | null;
   registrado_por: string | null;
+  created_at: string;
+}
+
+export interface SgccAcuerdoPago {
+  id: string;
+  case_id: string;
+  center_id: string;
+  propuesta_id: string | null;
+  capital_total: number;
+  tasa_interes_anual: number;
+  plazo_meses: number;
+  periodo_gracia_meses: number;
+  fecha_inicio_pago: string | null;
+  valor_cuota_global: number;
+  notas: string | null;
+  porcentaje_aprobacion: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SgccAcuerdoDetalle {
+  id: string;
+  acuerdo_id: string;
+  acreencia_id: string;
+  capital: number;
+  intereses_causados: number;
+  intereses_futuros: number;
+  descuentos_capital: number;
+  total_a_pagar: number;
+  valor_cuota: number;
+  derecho_voto: number;
+  sentido_voto: VotoInsolvencia | null;
   created_at: string;
 }

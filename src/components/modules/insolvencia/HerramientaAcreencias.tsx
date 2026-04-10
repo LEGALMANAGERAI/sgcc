@@ -16,7 +16,8 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import type { SgccAcreencia, VotoInsolvencia } from "@/types";
+import type { SgccAcreencia, VotoInsolvencia, ClaseCredito } from "@/types";
+import { Handshake } from "lucide-react";
 
 /* ─── Props ─────────────────────────────────────────────────────────── */
 
@@ -43,6 +44,23 @@ const conceptos = [
 
 type ConceptoKey = (typeof conceptos)[number]["key"];
 
+const CLASES: { value: ClaseCredito; label: string; color: string }[] = [
+  { value: "primera", label: "1ra Clase", color: "bg-red-100 text-red-700" },
+  { value: "segunda", label: "2da Clase", color: "bg-orange-100 text-orange-700" },
+  { value: "tercera", label: "3ra Clase", color: "bg-yellow-100 text-yellow-700" },
+  { value: "cuarta", label: "4ta Clase", color: "bg-blue-100 text-blue-700" },
+  { value: "quinta", label: "5ta Clase", color: "bg-gray-100 text-gray-700" },
+];
+
+/** Cálculo PMT (cuota mensual) */
+function calcularCuotaPMT(capital: number, tasaAnual: number, meses: number): number {
+  if (capital <= 0 || meses <= 0) return 0;
+  if (tasaAnual === 0) return capital / meses;
+  const r = tasaAnual / 12;
+  const factor = Math.pow(1 + r, meses);
+  return capital * (r * factor) / (factor - 1);
+}
+
 /* ─── Componente ─────────────────────────────────────────────────── */
 
 export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvocados }: Props) {
@@ -61,7 +79,17 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
   const [votacionResult, setVotacionResult] = useState<any>(null);
 
   // Secciones expandidas
-  const [seccion, setSeccion] = useState<"acreencias" | "definitiva" | "propuesta" | "votacion">("acreencias");
+  // Acuerdo de pagos
+  const [acuerdo, setAcuerdo] = useState<any>(null);
+  const [acuerdoForm, setAcuerdoForm] = useState({
+    tasa_interes_anual: "0",
+    plazo_meses: "12",
+    periodo_gracia_meses: "0",
+    fecha_inicio_pago: "",
+    notas: "",
+  });
+
+  const [seccion, setSeccion] = useState<"acreencias" | "definitiva" | "propuesta" | "votacion" | "acuerdo">("acreencias");
 
   const flash = useCallback((type: "ok" | "error", msg: string) => {
     if (type === "ok") { setSuccess(msg); setError(""); }
@@ -69,9 +97,10 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     setTimeout(() => { setSuccess(""); setError(""); }, 4000);
   }, []);
 
-  // Cargar propuestas
+  // Cargar propuestas y acuerdo
   useEffect(() => {
     fetchPropuestas();
+    fetchAcuerdo();
   }, []);
 
   async function fetchPropuestas() {
@@ -193,6 +222,39 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     } finally { setSaving(null); }
   }
 
+  /* ─── Acuerdo de pagos ───────────────────────────────────────────── */
+
+  async function fetchAcuerdo() {
+    const res = await fetch(`/api/expediente/${caseId}/acuerdo`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data) setAcuerdo(data);
+    }
+  }
+
+  async function generarAcuerdo() {
+    const propAprobada = propuestas.find((p) => p.estado === "aprobada");
+    setSaving("acuerdo");
+    try {
+      const res = await fetch(`/api/expediente/${caseId}/acuerdo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          propuesta_id: propAprobada?.id || null,
+          tasa_interes_anual: parseFloat(acuerdoForm.tasa_interes_anual) || 0,
+          plazo_meses: parseInt(acuerdoForm.plazo_meses) || 12,
+          periodo_gracia_meses: parseInt(acuerdoForm.periodo_gracia_meses) || 0,
+          fecha_inicio_pago: acuerdoForm.fecha_inicio_pago || null,
+          notas: acuerdoForm.notas || null,
+        }),
+      });
+      if (!res.ok) { flash("error", "Error al generar acuerdo"); return; }
+      const data = await res.json();
+      setAcuerdo(data);
+      flash("ok", "Acuerdo de pagos generado");
+    } finally { setSaving(null); }
+  }
+
   /* ─── Cálculos ───────────────────────────────────────────────────── */
 
   const totalSol = acreencias.reduce((s, a) => s + Number(a.sol_capital) + Number(a.sol_intereses_corrientes) + Number(a.sol_intereses_moratorios) + Number(a.sol_seguros) + Number(a.sol_otros), 0);
@@ -248,6 +310,8 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="px-3 py-2 text-left font-semibold text-gray-600 min-w-[180px]">Acreedor</th>
                   <th className="px-2 py-2 text-left font-semibold text-gray-600 min-w-[100px]">Documento</th>
+                  <th className="px-2 py-2 text-center font-semibold text-gray-600">Clase</th>
+                  <th className="px-2 py-2 text-center font-semibold text-gray-600">Días mora</th>
                   {conceptos.map((c) => (
                     <th key={c.key} colSpan={2} className="px-2 py-2 text-center font-semibold text-gray-600 border-l border-gray-200">
                       {c.label}
@@ -256,7 +320,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                   <th className="px-2 py-2 text-center font-semibold text-gray-600 border-l border-gray-200">Acciones</th>
                 </tr>
                 <tr className="bg-gray-50/50 border-b border-gray-100">
-                  <th colSpan={2}></th>
+                  <th colSpan={4}></th>
                   {conceptos.map((c) => (
                     <Fragment key={c.key}>
                       <th className="px-2 py-1 text-center text-[10px] text-blue-600 font-medium border-l border-gray-200">Solicitud</th>
@@ -287,6 +351,27 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                         onBlur={(e) => updateAcreencia(a.id, { acreedor_documento: e.target.value })}
                         className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-[#1B4F9B] outline-none"
                         placeholder="CC/NIT"
+                      />
+                    </td>
+                    <td className="px-1 py-2">
+                      <select
+                        defaultValue={a.clase_credito ?? "quinta"}
+                        onChange={(e) => updateAcreencia(a.id, { clase_credito: e.target.value })}
+                        className="border border-gray-200 rounded px-1.5 py-1 text-xs focus:ring-1 focus:ring-[#1B4F9B] outline-none w-20"
+                      >
+                        {CLASES.map((cl) => (
+                          <option key={cl.value} value={cl.value}>{cl.label}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-1 py-2">
+                      <input
+                        type="number"
+                        defaultValue={a.dias_mora ?? 0}
+                        onBlur={(e) => updateAcreencia(a.id, { dias_mora: parseInt(e.target.value) || 0 })}
+                        className={`w-16 border rounded px-1.5 py-1 text-xs text-right focus:ring-1 focus:ring-[#1B4F9B] outline-none ${
+                          (a.dias_mora ?? 0) > 90 ? "border-red-300 bg-red-50 text-red-700" : "border-gray-200"
+                        }`}
                       />
                     </td>
                     {conceptos.map((c) => (
@@ -633,6 +718,184 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                   )}
                 </div>
               )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ═══ SECCIÓN 5: Acuerdo de pagos ═══ */}
+      <SectionHeader
+        icon={<Handshake className="w-4 h-4" />}
+        title="Acuerdo de pagos"
+        subtitle="Estructura del acuerdo con cálculo de cuotas por acreedor"
+        active={seccion === "acuerdo"}
+        onClick={() => setSeccion(seccion === "acuerdo" ? "votacion" : "acuerdo")}
+      />
+
+      {seccion === "acuerdo" && (
+        <div className="space-y-4">
+          {!acuerdo ? (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h4 className="text-sm font-semibold text-[#0D2340] mb-4">Configurar acuerdo de pagos</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Tasa interés anual (%)</label>
+                  <input type="number" step="0.01" value={acuerdoForm.tasa_interes_anual}
+                    onChange={(e) => setAcuerdoForm({ ...acuerdoForm, tasa_interes_anual: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Plazo (meses)</label>
+                  <input type="number" value={acuerdoForm.plazo_meses}
+                    onChange={(e) => setAcuerdoForm({ ...acuerdoForm, plazo_meses: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Periodo gracia (meses)</label>
+                  <input type="number" value={acuerdoForm.periodo_gracia_meses}
+                    onChange={(e) => setAcuerdoForm({ ...acuerdoForm, periodo_gracia_meses: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Fecha inicio pago</label>
+                  <input type="date" value={acuerdoForm.fecha_inicio_pago}
+                    onChange={(e) => setAcuerdoForm({ ...acuerdoForm, fecha_inicio_pago: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
+                </div>
+              </div>
+
+              {/* Preview cuota */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Vista previa:</strong> Capital total {fmt(totalCapitalCon)} a {acuerdoForm.tasa_interes_anual}% anual
+                  en {parseInt(acuerdoForm.plazo_meses) - parseInt(acuerdoForm.periodo_gracia_meses || "0")} meses efectivos
+                  = cuota de <strong>{fmt(calcularCuotaPMT(
+                    totalCapitalCon,
+                    parseFloat(acuerdoForm.tasa_interes_anual) / 100,
+                    (parseInt(acuerdoForm.plazo_meses) || 12) - (parseInt(acuerdoForm.periodo_gracia_meses) || 0)
+                  ))}</strong>/mes
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Notas del acuerdo</label>
+                <textarea value={acuerdoForm.notas}
+                  onChange={(e) => setAcuerdoForm({ ...acuerdoForm, notas: e.target.value })}
+                  rows={3} placeholder="Ej: Se condonan los intereses causados hasta la fecha..."
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none resize-y" />
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button onClick={generarAcuerdo} disabled={!!saving || totalCapitalCon === 0}
+                  className="px-5 py-2.5 bg-[#0D2340] text-white rounded-lg text-sm font-medium hover:bg-[#0D2340]/90 disabled:opacity-50">
+                  {saving === "acuerdo" ? "Generando..." : "Generar acuerdo de pagos"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Resumen del acuerdo */}
+              <div className="bg-[#0D2340] rounded-xl p-5 text-white">
+                <h4 className="font-semibold text-lg mb-3">Acuerdo de pagos suscrito</h4>
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-400 text-xs">Capital total</p>
+                    <p className="font-bold">{fmt(acuerdo.capital_total)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-xs">Tasa anual</p>
+                    <p className="font-bold">{(acuerdo.tasa_interes_anual * 100).toFixed(2)}%</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-xs">Plazo</p>
+                    <p className="font-bold">{acuerdo.plazo_meses} meses</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-xs">Gracia</p>
+                    <p className="font-bold">{acuerdo.periodo_gracia_meses} meses</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-xs">Cuota mensual</p>
+                    <p className="font-bold text-green-400">{fmt(acuerdo.valor_cuota_global)}</p>
+                  </div>
+                </div>
+                {acuerdo.notas && (
+                  <div className="mt-3 pt-3 border-t border-white/20">
+                    <p className="text-xs text-gray-300">{acuerdo.notas}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Tabla detalle por acreedor */}
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Acreedor</th>
+                        <th className="px-2 py-2.5 text-center font-semibold text-gray-600">Clase</th>
+                        <th className="px-2 py-2.5 text-right font-semibold text-gray-600">Capital</th>
+                        <th className="px-2 py-2.5 text-right font-semibold text-gray-600">Int. causados</th>
+                        <th className="px-2 py-2.5 text-right font-semibold text-gray-600">Int. futuros</th>
+                        <th className="px-2 py-2.5 text-right font-semibold text-gray-600">Descuentos</th>
+                        <th className="px-2 py-2.5 text-right font-semibold text-gray-600">Total a pagar</th>
+                        <th className="px-2 py-2.5 text-right font-semibold text-gray-600">Cuota</th>
+                        <th className="px-2 py-2.5 text-center font-semibold text-gray-600">% Voto</th>
+                        <th className="px-2 py-2.5 text-center font-semibold text-gray-600">Voto</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {(acuerdo.detalles ?? []).map((d: any) => {
+                        const claseInfo = CLASES.find((c) => c.value === d.acreencia?.clase_credito);
+                        return (
+                          <tr key={d.id} className="hover:bg-gray-50/50">
+                            <td className="px-3 py-2 font-medium text-gray-900">{d.acreencia?.acreedor_nombre ?? "—"}</td>
+                            <td className="px-2 py-2 text-center">
+                              {claseInfo && (
+                                <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${claseInfo.color}`}>
+                                  {claseInfo.label}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-2 py-2 text-right">{fmt(d.capital)}</td>
+                            <td className="px-2 py-2 text-right text-gray-500">{fmt(d.intereses_causados)}</td>
+                            <td className="px-2 py-2 text-right">{fmt(d.intereses_futuros)}</td>
+                            <td className="px-2 py-2 text-right text-red-600">{d.descuentos_capital > 0 ? `-${fmt(d.descuentos_capital)}` : "—"}</td>
+                            <td className="px-2 py-2 text-right font-semibold text-[#0D2340]">{fmt(d.total_a_pagar)}</td>
+                            <td className="px-2 py-2 text-right font-semibold text-green-700">{fmt(d.valor_cuota)}</td>
+                            <td className="px-2 py-2 text-center font-bold text-[#1B4F9B]">{pct(d.derecho_voto)}</td>
+                            <td className="px-2 py-2 text-center">
+                              {d.sentido_voto === "positivo" && <span className="text-green-600 font-bold">A favor</span>}
+                              {d.sentido_voto === "negativo" && <span className="text-red-600 font-bold">En contra</span>}
+                              {d.sentido_voto === "abstiene" && <span className="text-gray-500">Abstiene</span>}
+                              {!d.sentido_voto && <span className="text-gray-300">—</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-gray-50 border-t-2 border-[#0D2340] font-bold text-xs">
+                        <td className="px-3 py-2" colSpan={2}>TOTALES</td>
+                        <td className="px-2 py-2 text-right">{fmt(acuerdo.capital_total)}</td>
+                        <td className="px-2 py-2 text-right text-gray-500">
+                          {fmt((acuerdo.detalles ?? []).reduce((s: number, d: any) => s + (Number(d.intereses_causados) || 0), 0))}
+                        </td>
+                        <td className="px-2 py-2 text-right">
+                          {fmt((acuerdo.detalles ?? []).reduce((s: number, d: any) => s + (Number(d.intereses_futuros) || 0), 0))}
+                        </td>
+                        <td className="px-2 py-2 text-right text-red-600">—</td>
+                        <td className="px-2 py-2 text-right text-[#0D2340]">
+                          {fmt((acuerdo.detalles ?? []).reduce((s: number, d: any) => s + (Number(d.total_a_pagar) || 0), 0))}
+                        </td>
+                        <td className="px-2 py-2 text-right text-green-700">{fmt(acuerdo.valor_cuota_global)}</td>
+                        <td className="px-2 py-2 text-center">100%</td>
+                        <td className="px-2 py-2 text-center text-green-700">{pct(acuerdo.porcentaje_aprobacion)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
             </>
           )}
         </div>

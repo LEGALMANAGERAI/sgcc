@@ -69,6 +69,9 @@ export async function POST(req: NextRequest, { params }: Params) {
       acr_intereses_moratorios: body.acr_intereses_moratorios ?? 0,
       acr_seguros: body.acr_seguros ?? 0,
       acr_otros: body.acr_otros ?? 0,
+      clase_credito: body.clase_credito ?? "quinta",
+      dias_mora: body.dias_mora ?? 0,
+      mora_90_dias: (body.dias_mora ?? 0) > 90,
       notas: body.notas || null,
       created_at: now,
       updated_at: now,
@@ -108,11 +111,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     "acr_capital", "acr_intereses_corrientes", "acr_intereses_moratorios", "acr_seguros", "acr_otros",
     "con_capital", "con_intereses_corrientes", "con_intereses_moratorios", "con_seguros", "con_otros",
     "fecha_conciliacion", "notas",
+    "clase_credito", "dias_mora",
   ];
 
   const updates: Record<string, any> = { updated_at: new Date().toISOString() };
   for (const key of allowed) {
     if (campos[key] !== undefined) updates[key] = campos[key];
+  }
+  // Auto-calcular mora_90_dias
+  if (updates.dias_mora !== undefined) {
+    updates.mora_90_dias = Number(updates.dias_mora) > 90;
   }
 
   const { error: updateError } = await supabaseAdmin
