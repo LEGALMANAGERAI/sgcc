@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const formData = await req.formData();
-    const file = formData.get("file") as File | null;
+    const file = (formData.get("archivo") ?? formData.get("file")) as File | null;
     const nombre = formData.get("nombre") as string | null;
     const descripcion = formData.get("descripcion") as string | null;
     const ordenSecuencial = formData.get("orden_secuencial") === "true";

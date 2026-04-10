@@ -10,9 +10,8 @@ export default async function FirmarPage({ params }: PageProps) {
   const { token } = await params;
 
   // Validar token del lado del servidor
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
   let firmaData = null;
   let error = null;

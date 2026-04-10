@@ -101,7 +101,7 @@ export function SigningClient({ token, initialData }: Props) {
         setError(data.error ?? "Error al enviar c\u00f3digo");
         return;
       }
-      setOtpDestino(data.destino_enmascarado ?? "tu correo");
+      setOtpDestino(data.destino ?? data.destino_enmascarado ?? "tu correo");
       setPaso(3);
     } catch {
       setError("Error de conexi\u00f3n");
@@ -177,10 +177,6 @@ export function SigningClient({ token, initialData }: Props) {
   };
 
   const confirmarFirma = async () => {
-    if (!fotoBase64) {
-      setError("Debes capturar una foto antes de firmar");
-      return;
-    }
 
     setLoading(true);
     setError("");
@@ -188,7 +184,7 @@ export function SigningClient({ token, initialData }: Props) {
       const res = await fetch(`/api/firmar/${token}/firmar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ foto: fotoBase64 }),
+        body: JSON.stringify({ foto_base64: fotoBase64 }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -196,10 +192,10 @@ export function SigningClient({ token, initialData }: Props) {
       } else {
         setResultado({
           exito: true,
-          fecha: data.fecha,
+          fecha: data.firmadoAt ?? data.fecha,
           ip: data.ip,
-          transaction_id: data.transaction_id,
-          pdf_url: data.pdf_url,
+          transaction_id: data.transactionId ?? data.transaction_id,
+          pdf_url: data.documentoFirmadoUrl ?? data.pdf_url,
         });
       }
       setPaso(5);
@@ -485,8 +481,34 @@ export function SigningClient({ token, initialData }: Props) {
             </p>
 
             {cameraError ? (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
-                {cameraError}
+              <div className="space-y-4">
+                <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-lg text-sm">
+                  {cameraError}
+                </div>
+                <p className="text-sm text-gray-500">
+                  Puedes continuar sin foto. La firma será válida pero no incluirá tu imagen.
+                </p>
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    onClick={iniciarCamara}
+                    className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors inline-flex items-center gap-2"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Reintentar cámara
+                  </button>
+                  <button
+                    onClick={confirmarFirma}
+                    disabled={loading}
+                    className="bg-[#0D2340] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#0d2340dd] transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+                  >
+                    {loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4" />
+                    )}
+                    Firmar sin foto
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col items-center">
