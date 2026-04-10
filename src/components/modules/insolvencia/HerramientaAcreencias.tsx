@@ -189,17 +189,21 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     } finally { setSaving(null); }
   }
 
-  async function cambiarEstadoPropuesta(propuestaId: string, estado: string) {
+  async function cambiarEstadoPropuesta(propuestaId: string, estado: string, modoVotacion?: string) {
     setSaving("prop-" + propuestaId);
     try {
+      const body: any = { propuesta_id: propuestaId, estado };
+      if (modoVotacion) body.modo_votacion = modoVotacion;
       const res = await fetch(`/api/expediente/${caseId}/propuesta`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ propuesta_id: propuestaId, estado }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         await fetchPropuestas();
-        flash("ok", `Propuesta ${estado === "en_votacion" ? "abierta a votación" : estado}`);
+        flash("ok", estado === "en_votacion"
+          ? `Votación abierta en modo ${modoVotacion === "link" ? "link (emails enviados)" : modoVotacion === "dual" ? "dual (emails + manual)" : "manual"}`
+          : `Propuesta ${estado}`);
       }
     } finally { setSaving(null); }
   }
@@ -370,7 +374,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                         defaultValue={a.dias_mora ?? 0}
                         onBlur={(e) => updateAcreencia(a.id, { dias_mora: parseInt(e.target.value) || 0 })}
                         className={`w-16 border rounded px-1.5 py-1 text-xs text-right focus:ring-1 focus:ring-[#1B4F9B] outline-none ${
-                          (a.dias_mora ?? 0) > 90 ? "border-red-300 bg-red-50 text-red-700" : "border-gray-200"
+                          (a.dias_mora ?? 0) > 90 ? "border-green-400 bg-green-50 text-green-700" : "border-gray-200"
                         }`}
                       />
                     </td>
@@ -540,13 +544,32 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                     </button>
                   )}
                   {p.estado === "socializada" && (
-                    <button
-                      onClick={() => cambiarEstadoPropuesta(p.id, "en_votacion")}
-                      disabled={!!saving || acreencias.length === 0}
-                      className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50"
-                    >
-                      Abrir votación
-                    </button>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => cambiarEstadoPropuesta(p.id, "en_votacion", "manual")}
+                        disabled={!!saving || acreencias.length === 0}
+                        className="text-xs px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                        title="El operador registra cada voto manualmente"
+                      >
+                        Voto manual
+                      </button>
+                      <button
+                        onClick={() => cambiarEstadoPropuesta(p.id, "en_votacion", "link")}
+                        disabled={!!saving || acreencias.length === 0}
+                        className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50"
+                        title="Cada acreedor recibe un link para votar con OTP"
+                      >
+                        Voto por link
+                      </button>
+                      <button
+                        onClick={() => cambiarEstadoPropuesta(p.id, "en_votacion", "dual")}
+                        disabled={!!saving || acreencias.length === 0}
+                        className="text-xs px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 disabled:opacity-50"
+                        title="Links + operador puede registrar votos manualmente"
+                      >
+                        Dual
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -628,7 +651,10 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
             <>
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                 <p className="text-sm font-medium text-blue-800">Votando: {propEnVotacion.titulo}</p>
-                <p className="text-xs text-blue-600 mt-1">Regla: &gt;50% de votos positivos Y al menos 2 acreedores a favor</p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Modo: <strong>{propEnVotacion.modo_votacion === "link" ? "Por link (OTP)" : propEnVotacion.modo_votacion === "dual" ? "Dual (link + manual)" : "Manual"}</strong>
+                  {" — "}Regla: &gt;50% votos positivos + mín. 2 acreedores a favor
+                </p>
               </div>
 
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -652,24 +678,30 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                           {a.es_pequeno_acreedor && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">Sí</span>}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center justify-center gap-1">
-                            {(["positivo", "negativo", "abstiene"] as VotoInsolvencia[]).map((v) => (
-                              <button
-                                key={v}
-                                onClick={() => registrarVoto(propEnVotacion.id, a.id, v)}
-                                disabled={saving === `voto-${a.id}`}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                                  votos[a.id] === v
-                                    ? v === "positivo" ? "bg-green-600 text-white" :
-                                      v === "negativo" ? "bg-red-600 text-white" :
-                                      "bg-gray-600 text-white"
-                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                }`}
-                              >
-                                {v === "positivo" ? "A favor" : v === "negativo" ? "En contra" : "Abstiene"}
-                              </button>
-                            ))}
-                          </div>
+                          {propEnVotacion.modo_votacion === "link" && !votos[a.id] ? (
+                            <span className="text-xs text-gray-400 italic">Pendiente por link</span>
+                          ) : votos[a.id] ? (
+                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                              votos[a.id] === "positivo" ? "bg-green-100 text-green-700" :
+                              votos[a.id] === "negativo" ? "bg-red-100 text-red-700" :
+                              "bg-gray-100 text-gray-600"
+                            }`}>
+                              {votos[a.id] === "positivo" ? "A favor" : votos[a.id] === "negativo" ? "En contra" : "Abstiene"}
+                            </span>
+                          ) : (
+                            <div className="flex items-center justify-center gap-1">
+                              {(["positivo", "negativo", "abstiene"] as VotoInsolvencia[]).map((v) => (
+                                <button
+                                  key={v}
+                                  onClick={() => registrarVoto(propEnVotacion.id, a.id, v)}
+                                  disabled={saving === `voto-${a.id}`}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                                >
+                                  {v === "positivo" ? "A favor" : v === "negativo" ? "En contra" : "Abstiene"}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}
