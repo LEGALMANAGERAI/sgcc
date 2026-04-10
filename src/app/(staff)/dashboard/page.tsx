@@ -247,6 +247,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     attendanceByHearing.set(a.hearing_id, (attendanceByHearing.get(a.hearing_id) ?? 0) + 1);
   }
 
+  // Detectar cambio reciente de apoderado por caso (últimos 30 días)
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const cambioApoderadoByCase = new Set<string>();
+  for (const ca of caseAttorneys) {
+    if (ca.created_at > thirtyDaysAgo && ca.motivo_cambio && ca.motivo_cambio !== "inicial") {
+      cambioApoderadoByCase.add(ca.case_id);
+    }
+  }
+
   /* ─── Stats ────────────────────────────────────────────────────────── */
 
   const activeCases = cases.filter((c) => !["cerrado", "rechazado"].includes(c.estado));
@@ -259,6 +268,54 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const closedThisMonth = cases.filter(
     (c) => c.estado === "cerrado" && c.fecha_cierre && c.fecha_cierre >= monthStart
   ).length;
+
+  /* ─── Checklists incompletas ──────────────────────────────────────── */
+
+  const { data: rawChecklists } = await supabaseAdmin
+    .from("sgcc_checklists")
+    .select("id, tipo_tramite, tipo_checklist, items")
+    .eq("center_id", centerId)
+    .eq("activo", true)
+    .eq("tipo_checklist", "admision");
+
+  const checklistIncompleteByCase = new Set<string>();
+  if (rawChecklists && rawChecklists.length > 0) {
+    const clIds = rawChecklists.map((cl: any) => cl.id);
+    const { data: rawResponses } = caseIds.length > 0
+      ? await supabaseAdmin
+          .from("sgcc_checklist_responses")
+          .select("case_id, checklist_id, item_index, completado")
+          .in("case_id", caseIds)
+          .in("checklist_id", clIds)
+      : { data: [] };
+
+    const responseMap = new Map<string, Set<number>>();
+    for (const r of rawResponses ?? []) {
+      if (r.completado) {
+        const key = `${r.case_id}:${r.checklist_id}`;
+        const s = responseMap.get(key) ?? new Set();
+        s.add(r.item_index);
+        responseMap.set(key, s);
+      }
+    }
+
+    for (const c of activeCases) {
+      if (c.estado === "solicitud") continue;
+      const cl = rawChecklists.find((ch: any) => ch.tipo_tramite === c.tipo_tramite);
+      if (!cl) continue;
+      const items = cl.items as any[];
+      const requeridos = items.filter((it: any) => it.requerido);
+      if (requeridos.length === 0) continue;
+      const completados = responseMap.get(`${c.id}:${cl.id}`) ?? new Set();
+      const reqCompletos = requeridos.filter((_: any, idx: number) => {
+        const originalIdx = items.indexOf(requeridos[idx]);
+        return completados.has(originalIdx);
+      });
+      if (reqCompletos.length < requeridos.length) {
+        checklistIncompleteByCase.add(c.id);
+      }
+    }
+  }
 
   /* ─── Alertas ──────────────────────────────────────────────────────── */
 
@@ -333,6 +390,32 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     });
   }
 
+  // Cambios recientes de apoderado
+  for (const caseId of cambioApoderadoByCase) {
+    const caso = cases.find((c) => c.id === caseId);
+    if (caso) {
+      alerts.push({
+        id: `cambio-${caseId}`,
+        icon: "yellow",
+        text: `Cambio de apoderado reciente en caso ${caso.numero_radicado}`,
+        link: `/expediente/${caseId}?tab=poderes`,
+      });
+    }
+  }
+
+  // Checklists de admisión incompletas
+  for (const caseId of checklistIncompleteByCase) {
+    const caso = cases.find((c) => c.id === caseId);
+    if (caso) {
+      alerts.push({
+        id: `checklist-${caseId}`,
+        icon: "yellow",
+        text: `Checklist de admisión incompleta en caso ${caso.numero_radicado}`,
+        link: `/expediente/${caseId}?tab=admision`,
+      });
+    }
+  }
+
   const totalAlerts = alerts.length;
 
   /* ─── Filtros de tabla ─────────────────────────────────────────────── */
@@ -356,6 +439,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       if (daysLeft <= 5 && daysLeft >= 0) caseIdsWithAlerts.add(c.case_id);
     }
   }
+  // Agregar cambios de apoderado y checklists incompletas al set de alertas
+  for (const caseId of cambioApoderadoByCase) caseIdsWithAlerts.add(caseId);
+  for (const caseId of checklistIncompleteByCase) caseIdsWithAlerts.add(caseId);
 
   let filteredCases = activeCases;
   if (filterTipo && filterTipo !== "todos") {
@@ -491,6 +577,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   <th className="px-3 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">
                     Apoderado
                   </th>
+                  <th className="px-3 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider text-center" title="Cambio de apoderado reciente / Checklist incompleta">
+                    Alertas
+                  </th>
                   <th className="px-3 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">
                     Estado
                   </th>
@@ -505,7 +594,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               <tbody className="divide-y divide-gray-50">
                 {filteredCases.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-5 py-8 text-center text-gray-400">
+                    <td colSpan={8} className="px-5 py-8 text-center text-gray-400">
                       No se encontraron casos con los filtros seleccionados
                     </td>
                   </tr>
@@ -518,6 +607,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     const nextHearing = nextHearingByCase.get(c.id);
                     const tipoBadge = TIPO_BADGE[c.tipo_tramite];
                     const hasAlert = caseIdsWithAlerts.has(c.id);
+                    const hasCambioApoderado = cambioApoderadoByCase.has(c.id);
+                    const hasChecklistIncompleta = checklistIncompleteByCase.has(c.id);
 
                     return (
                       <tr
@@ -575,6 +666,25 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                           ) : (
                             <span className="text-gray-300">—</span>
                           )}
+                        </td>
+
+                        {/* Alertas caso */}
+                        <td className="px-3 py-3 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            {hasCambioApoderado && (
+                              <Link href={`/expediente/${c.id}?tab=poderes`} title="Cambio de apoderado reciente">
+                                <Users className="w-3.5 h-3.5 text-orange-500" />
+                              </Link>
+                            )}
+                            {hasChecklistIncompleta && (
+                              <Link href={`/expediente/${c.id}?tab=admision`} title="Checklist de admisión incompleta">
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                              </Link>
+                            )}
+                            {!hasCambioApoderado && !hasChecklistIncompleta && (
+                              <span className="text-gray-200">—</span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Estado */}

@@ -56,24 +56,27 @@ export async function PATCH(
   const userId = (session.user as any).id;
   const now = new Date().toISOString();
 
-  // Upsert en sgcc_checklist_responses (unique: case_id + checklist_id + item_index)
+  // Upsert parcial en sgcc_checklist_responses
   const upsertData: Record<string, any> = {
     case_id: caseId,
     checklist_id,
     item_index,
-    completado: !!completado,
-    notas: notas ?? null,
-    documento_id: documento_id ?? null,
     updated_at: now,
   };
 
-  if (completado) {
-    upsertData.verificado_por_staff = userId;
-    upsertData.completed_at = now;
-  } else {
-    upsertData.verificado_por_staff = null;
-    upsertData.completed_at = null;
+  // Solo actualizar campos que vienen en el body
+  if (completado !== undefined) {
+    upsertData.completado = !!completado;
+    if (completado) {
+      upsertData.verificado_por_staff = userId;
+      upsertData.completed_at = now;
+    } else {
+      upsertData.verificado_por_staff = null;
+      upsertData.completed_at = null;
+    }
   }
+  if (notas !== undefined) upsertData.notas = notas;
+  if (documento_id !== undefined) upsertData.documento_id = documento_id;
 
   // Intentar buscar registro existente
   const { data: existing } = await supabaseAdmin

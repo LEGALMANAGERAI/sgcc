@@ -175,9 +175,15 @@ export function TabAsistencia({
         <p className="text-sm text-gray-500 font-medium">
           No hay audiencias registradas
         </p>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-gray-400 mt-1 mb-3">
           Las audiencias deben programarse primero desde la gestión del caso.
         </p>
+        <a
+          href={`/casos/${caseId}/audiencia`}
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1B4F9B] text-white rounded-lg text-sm font-medium hover:bg-[#1B4F9B]/90 transition-colors"
+        >
+          Programar audiencia
+        </a>
       </div>
     );
   }
@@ -215,6 +221,14 @@ export function TabAsistencia({
               </div>
               <div className="flex items-center gap-3">
                 <StatusChip value={hearing.estado} type="hearing" />
+                {hearing.estado === "finalizada" && (
+                  <a
+                    href={`/expediente/${caseId}?tab=documentos`}
+                    className="inline-flex items-center gap-1 text-xs text-[#1B4F9B] hover:underline font-medium"
+                  >
+                    Ver acta/documentos
+                  </a>
+                )}
                 {canRegister && !hasAttendanceRecords && (
                   <button
                     onClick={() => handleRegisterAttendance(hearing.id)}

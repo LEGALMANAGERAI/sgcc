@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { Users, ShieldCheck, AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import { VerificarButton } from "./VerificarButton";
+import { ApoderadosActions } from "./ApoderadosActions";
 
 interface Props {
   searchParams: Promise<{ filtro?: string }>;
@@ -193,17 +193,11 @@ export default async function ApoderadosPage({ searchParams }: Props) {
                       </span>
                     </td>
                     <td className="px-5 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        {!a.verificado && (
-                          <VerificarButton attorneyId={a.id} nombre={nombre} />
-                        )}
-                        <Link
-                          href={`/apoderados?filtro=casos&attorney=${a.id}`}
-                          className="text-[#1B4F9B] hover:underline font-medium text-xs"
-                        >
-                          Ver casos
-                        </Link>
-                      </div>
+                      <ApoderadosActions
+                        attorneyId={a.id}
+                        nombre={nombre}
+                        verificado={a.verificado}
+                      />
                     </td>
                   </tr>
                 );

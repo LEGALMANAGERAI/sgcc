@@ -117,17 +117,21 @@ export function TabChecklistPoderes({
     setSubmitting(true);
     try {
       const fd = new FormData();
-      fd.append("party_id", formData.party_id);
-      fd.append("nombre", formData.nombre);
-      fd.append("tipo_doc", formData.tipo_doc);
-      fd.append("numero_doc", formData.numero_doc);
-      fd.append("tarjeta_profesional", formData.tarjeta_profesional);
-      fd.append("email", formData.email);
-      fd.append("telefono", formData.telefono);
-      fd.append("motivo_cambio", formData.motivo_cambio);
-      fd.append("vigencia_desde", formData.vigencia_desde);
-      fd.append("vigencia_hasta", formData.vigencia_hasta);
-      if (poderFile) fd.append("poder", poderFile);
+      fd.append("data", JSON.stringify({
+        party_id: formData.party_id,
+        attorney: {
+          nombre: formData.nombre,
+          tipo_doc: formData.tipo_doc,
+          numero_doc: formData.numero_doc,
+          tarjeta_profesional: formData.tarjeta_profesional || null,
+          email: formData.email || null,
+          telefono: formData.telefono || null,
+        },
+        motivo_cambio: formData.motivo_cambio,
+        poder_vigente_desde: formData.vigencia_desde || null,
+        poder_vigente_hasta: formData.vigencia_hasta || null,
+      }));
+      if (poderFile) fd.append("poderFile", poderFile);
 
       const res = await fetch(`/api/expediente/${caseId}/apoderados`, {
         method: "POST",

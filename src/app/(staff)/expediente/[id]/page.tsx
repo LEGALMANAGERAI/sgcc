@@ -284,6 +284,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
           caseId={id}
           checklist={checklistAdmision}
           responses={admisionResponses}
+          documentos={documentos.map((d: any) => ({ id: d.id, nombre: d.nombre, tipo: d.tipo }))}
         />
       )}
 

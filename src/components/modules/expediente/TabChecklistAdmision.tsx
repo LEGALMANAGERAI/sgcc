@@ -12,10 +12,17 @@ import {
 
 /* ─── Props ─────────────────────────────────────────────────────────────── */
 
+interface DocOption {
+  id: string;
+  nombre: string;
+  tipo: string;
+}
+
 interface TabChecklistAdmisionProps {
   caseId: string;
   checklist: any | null;
   responses: any[];
+  documentos?: DocOption[];
 }
 
 /* ─── Component ─────────────────────────────────────────────────────────── */
@@ -24,6 +31,7 @@ export function TabChecklistAdmision({
   caseId,
   checklist,
   responses,
+  documentos = [],
 }: TabChecklistAdmisionProps) {
   const [localResponses, setLocalResponses] = useState<Record<number, any>>(
     () => {
@@ -152,6 +160,37 @@ export function TabChecklistAdmision({
     }
   }
 
+  // Vincular documento a item de checklist
+  async function handleLinkDoc(itemIndex: number, documentoId: string | null) {
+    setSaving(itemIndex);
+    try {
+      const res = await fetch(`/api/expediente/${caseId}/checklist`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          checklist_id: checklist.id,
+          item_index: itemIndex,
+          documento_id: documentoId,
+        }),
+      });
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+      setLocalResponses((prev) => ({
+        ...prev,
+        [itemIndex]: data.response ?? {
+          ...prev[itemIndex],
+          documento_id: documentoId,
+        },
+      }));
+    } catch {
+      // silenciar
+    } finally {
+      setSaving(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* ── Barra de progreso ────────────────────────────────────────── */}
@@ -215,6 +254,11 @@ export function TabChecklistAdmision({
                 <th className="px-3 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">
                   Fecha
                 </th>
+                {documentos.length > 0 && (
+                  <th className="px-3 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">
+                    Doc. vinculado
+                  </th>
+                )}
                 <th className="px-3 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">
                   Notas
                 </th>
@@ -291,6 +335,25 @@ export function TabChecklistAdmision({
                           )
                         : "—"}
                     </td>
+
+                    {/* Documento vinculado */}
+                    {documentos.length > 0 && (
+                      <td className="px-3 py-3">
+                        <select
+                          value={response?.documento_id ?? ""}
+                          onChange={(e) => handleLinkDoc(idx, e.target.value || null)}
+                          disabled={isSaving}
+                          className="text-xs border border-gray-200 rounded px-1.5 py-1 w-36 focus:outline-none focus:ring-1 focus:ring-[#1B4F9B] bg-white disabled:opacity-50"
+                        >
+                          <option value="">Sin vincular</option>
+                          {documentos.map((doc) => (
+                            <option key={doc.id} value={doc.id}>
+                              {doc.nombre} ({doc.tipo})
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    )}
 
                     {/* Notas */}
                     <td className="px-3 py-3">
