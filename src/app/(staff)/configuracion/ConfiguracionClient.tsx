@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import type {
   SgccCenter,
   SgccChecklist,
@@ -18,7 +18,7 @@ interface Props {
 
 /* ─── Constantes ────────────────────────────────────────────────────────── */
 
-const TABS = ["Datos del Centro", "Horarios", "Asignación", "Checklists"] as const;
+const TABS = ["Datos del Centro", "Horarios", "Asignación", "Personalización", "Checklists"] as const;
 type Tab = (typeof TABS)[number];
 
 const TIPO_TRAMITE_LABELS: Record<TipoTramite, string> = {
@@ -54,6 +54,13 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
     hora_fin_audiencias: center.hora_fin_audiencias,
     metodo_asignacion: center.metodo_asignacion ?? "manual",
   });
+
+  // Estado de personalización
+  const [logoUrl, setLogoUrl] = useState(center.logo_url ?? "");
+  const [colorPrimario, setColorPrimario] = useState(center.color_primario ?? "#0D2340");
+  const [colorSecundario, setColorSecundario] = useState(center.color_secundario ?? "#1B4F9B");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Estado de checklists
   const [checklists, setChecklists] = useState<SgccChecklist[]>(initialChecklists);
@@ -93,6 +100,61 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error al guardar");
       flash("ok", "Cambios guardados correctamente");
+    } catch (err: any) {
+      flash("error", err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /* ─── Logo upload ───────────────────────────────────────────────────── */
+
+  const uploadLogo = async (file: File) => {
+    setUploadingLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append("logo", file);
+      const res = await fetch("/api/configuracion/logo", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Error al subir logo");
+      setLogoUrl(data.logo_url);
+      flash("ok", "Logo actualizado correctamente");
+    } catch (err: any) {
+      flash("error", err.message);
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const deleteLogo = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/configuracion/logo", { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Error al eliminar logo");
+      setLogoUrl("");
+      flash("ok", "Logo eliminado");
+    } catch (err: any) {
+      flash("error", err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveColores = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/configuracion/centro", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ color_primario: colorPrimario, color_secundario: colorSecundario }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Error al guardar colores");
+      flash("ok", "Colores guardados correctamente");
     } catch (err: any) {
       flash("error", err.message);
     } finally {
@@ -384,6 +446,136 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ─── Tab: Personalización ────────────────────────────────────── */}
+      {activeTab === "Personalización" && (
+        <div className="space-y-6">
+          {/* Logo */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-[#0D2340] mb-4">Logo del Centro</h2>
+            <div className="flex items-start gap-6">
+              {/* Preview */}
+              <div className="w-32 h-32 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 overflow-hidden flex-shrink-0">
+                {logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt="Logo del centro"
+                    className="w-full h-full object-contain p-2"
+                  />
+                ) : (
+                  <span className="text-xs text-gray-400 text-center px-2">Sin logo</span>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-gray-600 mb-3">
+                  Suba el logo de su centro de conciliación. Formatos: JPG, PNG, WebP o SVG. Máximo 2MB.
+                </p>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.webp,.svg"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadLogo(f);
+                  }}
+                  className="hidden"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={uploadingLogo}
+                    className="px-4 py-2 bg-[#1B4F9B] text-white rounded-lg text-sm font-medium hover:bg-[#1B4F9B]/90 disabled:opacity-50 transition-colors"
+                  >
+                    {uploadingLogo ? "Subiendo..." : logoUrl ? "Cambiar logo" : "Subir logo"}
+                  </button>
+                  {logoUrl && (
+                    <button
+                      onClick={deleteLogo}
+                      disabled={saving}
+                      className="px-4 py-2 text-red-600 border border-red-200 rounded-lg text-sm hover:bg-red-50 transition-colors"
+                    >
+                      Eliminar logo
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Colores */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-[#0D2340] mb-4">Colores del Centro</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Personalice los colores que se usan en documentos generados y comunicaciones del centro.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-lg">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">Color primario</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={colorPrimario}
+                    onChange={(e) => setColorPrimario(e.target.value)}
+                    className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer p-0.5"
+                  />
+                  <input
+                    type="text"
+                    value={colorPrimario}
+                    onChange={(e) => setColorPrimario(e.target.value)}
+                    className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">Color secundario</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={colorSecundario}
+                    onChange={(e) => setColorSecundario(e.target.value)}
+                    className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer p-0.5"
+                  />
+                  <input
+                    type="text"
+                    value={colorSecundario}
+                    onChange={(e) => setColorSecundario(e.target.value)}
+                    className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Preview */}
+            <div className="mt-6 p-4 rounded-lg border border-gray-200">
+              <p className="text-xs font-medium text-gray-500 mb-2">Vista previa</p>
+              <div className="flex gap-3">
+                <div
+                  className="w-20 h-8 rounded-lg flex items-center justify-center text-white text-xs font-medium"
+                  style={{ backgroundColor: colorPrimario }}
+                >
+                  Primario
+                </div>
+                <div
+                  className="w-20 h-8 rounded-lg flex items-center justify-center text-white text-xs font-medium"
+                  style={{ backgroundColor: colorSecundario }}
+                >
+                  Secundario
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={saveColores}
+                disabled={saving}
+                className="px-6 py-2.5 bg-[#0D2340] text-white rounded-lg text-sm font-medium hover:bg-[#0D2340]/90 disabled:opacity-50 transition-colors"
+              >
+                {saving ? "Guardando..." : "Guardar colores"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

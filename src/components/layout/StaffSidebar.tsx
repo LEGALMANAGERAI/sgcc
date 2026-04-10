@@ -23,30 +23,37 @@ import { signOut } from "next-auth/react";
 import { SgccLogo } from "@/components/ui/SgccLogo";
 
 const navItems = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Casos", href: "/casos", icon: FolderOpen },
-  { label: "Agenda", href: "/agenda", icon: Calendar },
-  { label: "Apoderados", href: "/apoderados", icon: Briefcase },
-  { label: "Correspondencia", href: "/correspondencia", icon: Mail },
-  { label: "Vigilancia Judicial", href: "/vigilancia", icon: Eye },
-  { label: "Firmas", href: "/firmas", icon: PenTool },
-  { label: "Partes", href: "/partes", icon: Users },
-  { label: "Conciliadores", href: "/conciliadores", icon: UserCog },
-  { label: "Salas", href: "/salas", icon: DoorOpen },
-  { label: "Plantillas", href: "/plantillas", icon: FileText },
-  { label: "Reportes", href: "/reportes", icon: BarChart3 },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, badgeKey: null },
+  { label: "Casos", href: "/casos", icon: FolderOpen, badgeKey: null },
+  { label: "Agenda", href: "/agenda", icon: Calendar, badgeKey: null },
+  { label: "Apoderados", href: "/apoderados", icon: Briefcase, badgeKey: null },
+  { label: "Correspondencia", href: "/correspondencia", icon: Mail, badgeKey: null },
+  { label: "Vigilancia Judicial", href: "/vigilancia", icon: Eye, badgeKey: "vigilancia" as const },
+  { label: "Firmas", href: "/firmas", icon: PenTool, badgeKey: null },
+  { label: "Partes", href: "/partes", icon: Users, badgeKey: null },
+  { label: "Conciliadores", href: "/conciliadores", icon: UserCog, badgeKey: null },
+  { label: "Salas", href: "/salas", icon: DoorOpen, badgeKey: null },
+  { label: "Plantillas", href: "/plantillas", icon: FileText, badgeKey: null },
+  { label: "Reportes", href: "/reportes", icon: BarChart3, badgeKey: null },
 ];
 
 const bottomItems = [
   { label: "Configuración", href: "/configuracion", icon: Settings },
 ];
 
-interface Props {
-  centerName: string;
+interface Badges {
+  vigilancia?: number;
 }
 
-export function StaffSidebar({ centerName }: Props) {
+interface Props {
+  centerName: string;
+  vigilanciaNoLeidas?: number;
+}
+
+export function StaffSidebar({ centerName, vigilanciaNoLeidas = 0 }: Props) {
   const pathname = usePathname();
+
+  const badges: Badges = { vigilancia: vigilanciaNoLeidas };
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
@@ -62,22 +69,30 @@ export function StaffSidebar({ centerName }: Props) {
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
         <ul className="space-y-0.5">
-          {navItems.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                className={clsx(
-                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-                  isActive(item.href)
-                    ? "bg-[#1B4F9B] text-white font-medium"
-                    : "text-white/70 hover:bg-white/10 hover:text-white"
-                )}
-              >
-                <item.icon className="w-4 h-4 flex-shrink-0" />
-                {item.label}
-              </Link>
-            </li>
-          ))}
+          {navItems.map((item) => {
+            const badgeCount = item.badgeKey ? badges[item.badgeKey] ?? 0 : 0;
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className={clsx(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                    isActive(item.href)
+                      ? "bg-[#1B4F9B] text-white font-medium"
+                      : "text-white/70 hover:bg-white/10 hover:text-white"
+                  )}
+                >
+                  <item.icon className="w-4 h-4 flex-shrink-0" />
+                  <span className="flex-1">{item.label}</span>
+                  {badgeCount > 0 && (
+                    <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                      {badgeCount > 99 ? "99+" : badgeCount}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
 

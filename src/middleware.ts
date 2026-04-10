@@ -42,7 +42,8 @@ export default auth((req) => {
     pathname.startsWith("/expediente") ||
     pathname.startsWith("/apoderados") ||
     pathname.startsWith("/correspondencia") ||
-    pathname.startsWith("/vigilancia")
+    pathname.startsWith("/vigilancia") ||
+    pathname.startsWith("/firmas")
   ) {
     if (userType !== "staff") {
       return NextResponse.redirect(new URL("/login", req.url));

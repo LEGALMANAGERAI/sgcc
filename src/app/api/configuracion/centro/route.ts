@@ -41,6 +41,10 @@ const CAMPOS_PERMITIDOS = [
   "dias_habiles_citacion",
   "hora_inicio_audiencias",
   "hora_fin_audiencias",
+  "metodo_asignacion",
+  "logo_url",
+  "color_primario",
+  "color_secundario",
 ] as const;
 
 const CAMPOS_PROHIBIDOS = ["nit", "resolucion_habilitacion", "tipo", "id", "created_at", "activo"];

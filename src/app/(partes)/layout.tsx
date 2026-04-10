@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth, signOut } from "@/lib/auth";
 import Link from "next/link";
 import { SgccLogo } from "@/components/ui/SgccLogo";
+import { NotificacionesBell } from "@/components/modules/partes/NotificacionesBell";
 
 export default async function PartesLayout({
   children,
@@ -45,8 +46,9 @@ export default async function PartesLayout({
               </nav>
             </div>
 
-            {/* Usuario y logout */}
+            {/* Notificaciones, usuario y logout */}
             <div className="flex items-center gap-4">
+              <NotificacionesBell />
               <span className="text-sm text-gray-300 hidden sm:inline">
                 {userName}
               </span>

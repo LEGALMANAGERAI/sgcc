@@ -14,6 +14,7 @@ import type {
   DocTipo,
 } from "@/types";
 import { ConfirmarAsistenciaButton } from "./ConfirmarAsistenciaButton";
+import { SubirDocumentoForm } from "./SubirDocumentoForm";
 
 /* ─── Labels ────────────────────────────────────────────────────────────── */
 
@@ -135,20 +136,38 @@ export default async function CasoDetallePage({
     }
   }
 
-  // Documentos del caso (solo los que la parte puede ver)
-  const tiposPermitidos: DocTipo[] = [
+  // Documentos del caso: los oficiales + los que subió esta parte
+  const tiposOficiales: DocTipo[] = [
     "citacion",
     "acta_firmada",
     "constancia",
     "admision",
     "rechazo",
   ];
-  const { data: documentos } = await supabaseAdmin
-    .from("sgcc_documents")
-    .select("*")
-    .eq("case_id", caseId)
-    .in("tipo", tiposPermitidos)
-    .order("created_at", { ascending: false });
+  const [{ data: docsOficiales }, { data: docsPartes }] = await Promise.all([
+    supabaseAdmin
+      .from("sgcc_documents")
+      .select("*")
+      .eq("case_id", caseId)
+      .in("tipo", tiposOficiales)
+      .order("created_at", { ascending: false }),
+    supabaseAdmin
+      .from("sgcc_documents")
+      .select("*")
+      .eq("case_id", caseId)
+      .eq("subido_por_party_id", userId)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  // Combinar sin duplicados
+  const docIds = new Set<string>();
+  const documentos: any[] = [];
+  for (const doc of [...(docsOficiales ?? []), ...(docsPartes ?? [])]) {
+    if (!docIds.has(doc.id)) {
+      docIds.add(doc.id);
+      documentos.push(doc);
+    }
+  }
 
   const badge = estadoBadge[caso.estado as CaseEstado];
 
@@ -349,11 +368,16 @@ export default async function CasoDetallePage({
 
       {/* Documentos */}
       <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-[#0D2340] mb-4">
-          Documentos
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-[#0D2340]">
+            Documentos
+          </h2>
+          {caso.estado !== "cerrado" && caso.estado !== "rechazado" && (
+            <SubirDocumentoForm caseId={caseId} />
+          )}
+        </div>
 
-        {!documentos || documentos.length === 0 ? (
+        {documentos.length === 0 ? (
           <p className="text-gray-500 text-sm">
             No hay documentos disponibles para este caso.
           </p>

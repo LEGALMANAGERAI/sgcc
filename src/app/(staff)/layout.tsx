@@ -13,15 +13,22 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   if (userType !== "staff") redirect("/login");
 
   const centerId = (session.user as any)?.centerId;
-  const { data: center } = await supabaseAdmin
-    .from("sgcc_centers")
-    .select("nombre")
-    .eq("id", centerId)
-    .single();
+  const [{ data: center }, { count: vigilanciaNoLeidas }] = await Promise.all([
+    supabaseAdmin
+      .from("sgcc_centers")
+      .select("nombre")
+      .eq("id", centerId)
+      .single(),
+    supabaseAdmin
+      .from("sgcc_process_updates")
+      .select("id, watched:sgcc_watched_processes!inner(center_id)", { count: "exact", head: true })
+      .eq("leida", false)
+      .eq("watched.center_id", centerId),
+  ]);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <StaffSidebar centerName={center?.nombre ?? "Centro"} />
+      <StaffSidebar centerName={center?.nombre ?? "Centro"} vigilanciaNoLeidas={vigilanciaNoLeidas ?? 0} />
       <main className="flex-1 ml-60 p-8 max-w-7xl">
         {children}
       </main>

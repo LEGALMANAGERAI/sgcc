@@ -26,6 +26,8 @@ export interface SgccCenter {
   hora_inicio_audiencias: string;
   hora_fin_audiencias: string;
   metodo_asignacion: "manual" | "aleatorio" | "orden_lista";
+  color_primario: string | null;
+  color_secundario: string | null;
   activo: boolean;
   created_at: string;
   updated_at: string;
@@ -318,7 +320,10 @@ export type NotifTipo =
   | "recordatorio_audiencia"
   | "acta_lista"
   | "acta_firmada"
-  | "caso_cerrado";
+  | "caso_cerrado"
+  | "vigilancia"
+  | "correspondencia_vencida"
+  | "documento_subido";
 
 export interface SgccNotification {
   id: string;
