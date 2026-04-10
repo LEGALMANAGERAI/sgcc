@@ -177,6 +177,10 @@ export function SigningClient({ token, initialData }: Props) {
   };
 
   const confirmarFirma = async () => {
+    if (!fotoBase64) {
+      setError("Debes capturar una foto antes de firmar");
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -482,33 +486,20 @@ export function SigningClient({ token, initialData }: Props) {
 
             {cameraError ? (
               <div className="space-y-4">
-                <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-lg text-sm">
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                   {cameraError}
                 </div>
-                <p className="text-sm text-gray-500">
-                  Puedes continuar sin foto. La firma será válida pero no incluirá tu imagen.
+                <p className="text-sm text-gray-600">
+                  La captura de foto es <strong>obligatoria</strong> para completar la firma electrónica.
+                  Verifica los permisos de cámara en tu navegador e intenta de nuevo.
                 </p>
-                <div className="flex items-center justify-center gap-3">
-                  <button
-                    onClick={iniciarCamara}
-                    className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors inline-flex items-center gap-2"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Reintentar cámara
-                  </button>
-                  <button
-                    onClick={confirmarFirma}
-                    disabled={loading}
-                    className="bg-[#0D2340] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#0d2340dd] transition-colors disabled:opacity-50 inline-flex items-center gap-2"
-                  >
-                    {loading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="w-4 h-4" />
-                    )}
-                    Firmar sin foto
-                  </button>
-                </div>
+                <button
+                  onClick={iniciarCamara}
+                  className="bg-[#1B4F9B] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#a07609] transition-colors inline-flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Reintentar cámara
+                </button>
               </div>
             ) : (
               <div className="flex flex-col items-center">
