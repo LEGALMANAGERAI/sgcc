@@ -1,13 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { PlusCircle, Trash2 } from "lucide-react";
+import { PlusCircle, Trash2, ChevronDown, ChevronUp, Briefcase } from "lucide-react";
 
 interface Conciliador { id: string; nombre: string }
 interface Sala { id: string; nombre: string; tipo: string }
 
 type RolParte = "convocante" | "convocado" | "insolvente" | "acreedor";
+
+interface ApoderadoForm {
+  tiene_apoderado: boolean;
+  nombre: string;
+  tipo_doc: string;
+  numero_doc: string;
+  tarjeta_profesional: string;
+  email: string;
+  telefono: string;
+}
 
 interface ParteForm {
   rol: RolParte;
@@ -19,7 +29,19 @@ interface ParteForm {
   numero_doc: string;
   email: string;
   telefono: string;
+  apoderado: ApoderadoForm;
+  poderFile: File | null;
 }
+
+const emptyApoderado = (): ApoderadoForm => ({
+  tiene_apoderado: false,
+  nombre: "",
+  tipo_doc: "CC",
+  numero_doc: "",
+  tarjeta_profesional: "",
+  email: "",
+  telefono: "",
+});
 
 const emptyParte = (rol: RolParte): ParteForm => ({
   rol,
@@ -31,6 +53,8 @@ const emptyParte = (rol: RolParte): ParteForm => ({
   numero_doc: "",
   email: "",
   telefono: "",
+  apoderado: emptyApoderado(),
+  poderFile: null,
 });
 
 const MATERIAS = [
@@ -67,6 +91,14 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
     setConvocados((prev) => prev.map((c, i) => (i === idx ? { ...c, [field]: value } : c)));
   }
 
+  function updateConvocadoApoderado(idx: number, field: keyof ApoderadoForm, value: string | boolean) {
+    setConvocados((prev) => prev.map((c, i) => (i === idx ? { ...c, apoderado: { ...c.apoderado, [field]: value } } : c)));
+  }
+
+  function updateConvocadoPoder(idx: number, file: File | null) {
+    setConvocados((prev) => prev.map((c, i) => (i === idx ? { ...c, poderFile: file } : c)));
+  }
+
   function addConvocado() {
     setConvocados((prev) => [...prev, emptyParte("convocado")]);
   }
@@ -80,22 +112,55 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
     setError("");
     setLoading(true);
 
+    const allPartes = tipoTramite === "insolvencia"
+      ? [{ ...convocante, rol: "convocante" as const }, ...convocados.map((c) => ({ ...c, rol: "convocado" as const }))]
+      : [convocante, ...convocados];
+
+    // Preparar datos de partes sin archivos para JSON
+    const partesData = allPartes.map((p) => ({
+      rol: p.rol,
+      tipo_persona: p.tipo_persona,
+      nombres: p.nombres,
+      apellidos: p.apellidos,
+      razon_social: p.razon_social,
+      tipo_doc: p.tipo_doc,
+      numero_doc: p.numero_doc,
+      email: p.email,
+      telefono: p.telefono,
+      apoderado: p.apoderado.tiene_apoderado ? {
+        nombre: p.apoderado.nombre,
+        tipo_doc: p.apoderado.tipo_doc,
+        numero_doc: p.apoderado.numero_doc,
+        tarjeta_profesional: p.apoderado.tarjeta_profesional,
+        email: p.apoderado.email,
+        telefono: p.apoderado.telefono,
+      } : null,
+    }));
+
+    // Usar FormData para incluir archivos de poder
+    const fd = new FormData();
+    fd.append("data", JSON.stringify({
+      centerId,
+      tipo_tramite: tipoTramite,
+      materia: tipoTramite === "insolvencia" ? "civil" : materia,
+      descripcion,
+      cuantia: cuantiaIndet ? null : cuantia ? Number(cuantia) : null,
+      cuantia_indeterminada: cuantiaIndet,
+      conciliador_id: conciliadorId || null,
+      sala_id: salaId || null,
+      partes: partesData,
+    }));
+
+    // Adjuntar archivos de poder con índice
+    allPartes.forEach((p, idx) => {
+      if (p.poderFile) {
+        fd.append(`poder_${idx}`, p.poderFile);
+      }
+    });
+
     const res = await fetch("/api/casos", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        centerId,
-        tipo_tramite: tipoTramite,
-        materia: tipoTramite === "insolvencia" ? "civil" : materia,
-        descripcion,
-        cuantia: cuantiaIndet ? null : cuantia ? Number(cuantia) : null,
-        cuantia_indeterminada: cuantiaIndet,
-        conciliador_id: conciliadorId || null,
-        sala_id: salaId || null,
-        partes: tipoTramite === "insolvencia"
-          ? [{ ...convocante, rol: "convocante" }, ...convocados.map((c) => ({ ...c, rol: "convocado" }))]
-          : [convocante, ...convocados],
-      }),
+      body: fd,
     });
 
     const data = await res.json();
@@ -112,10 +177,14 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
   function ParteFields({
     parte,
     onChange,
+    onApoderadoChange,
+    onPoderFile,
     label,
   }: {
     parte: ParteForm;
     onChange: (field: keyof ParteForm, value: string) => void;
+    onApoderadoChange: (field: keyof ApoderadoForm, value: string | boolean) => void;
+    onPoderFile: (file: File | null) => void;
     label: string;
   }) {
     return (
@@ -214,6 +283,98 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
             />
           </div>
+        </div>
+
+        {/* Apoderado */}
+        <div className="border-t border-gray-100 pt-4 mt-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={parte.apoderado.tiene_apoderado}
+              onChange={(e) => onApoderadoChange("tiene_apoderado", e.target.checked)}
+              className="rounded border-gray-300 text-[#1B4F9B] focus:ring-[#1B4F9B]"
+            />
+            <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+              <Briefcase className="w-3.5 h-3.5" />
+              Tiene apoderado
+            </span>
+          </label>
+
+          {parte.apoderado.tiene_apoderado && (
+            <div className="mt-3 bg-gray-50 rounded-lg p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Nombre apoderado *</label>
+                  <input
+                    value={parte.apoderado.nombre}
+                    onChange={(e) => onApoderadoChange("nombre", e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Tarjeta profesional</label>
+                  <input
+                    value={parte.apoderado.tarjeta_profesional}
+                    onChange={(e) => onApoderadoChange("tarjeta_profesional", e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Tipo doc.</label>
+                  <select
+                    value={parte.apoderado.tipo_doc}
+                    onChange={(e) => onApoderadoChange("tipo_doc", e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+                  >
+                    <option value="CC">C.C.</option>
+                    <option value="CE">C.E.</option>
+                    <option value="Pasaporte">Pasaporte</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Número documento *</label>
+                  <input
+                    value={parte.apoderado.numero_doc}
+                    onChange={(e) => onApoderadoChange("numero_doc", e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Email apoderado</label>
+                  <input
+                    type="email"
+                    value={parte.apoderado.email}
+                    onChange={(e) => onApoderadoChange("email", e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Teléfono apoderado</label>
+                  <input
+                    value={parte.apoderado.telefono}
+                    onChange={(e) => onApoderadoChange("telefono", e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Poder (PDF)</label>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={(e) => onPoderFile(e.target.files?.[0] ?? null)}
+                  className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#0D2340] file:text-white hover:file:bg-[#0D2340]/90 file:cursor-pointer"
+                />
+                {parte.poderFile && (
+                  <p className="text-xs text-green-600 mt-1">Archivo: {parte.poderFile.name}</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -359,6 +520,8 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
               <ParteFields
                 parte={convocante}
                 onChange={(f, v) => setConvocante((p) => ({ ...p, [f]: v }))}
+                onApoderadoChange={(f, v) => setConvocante((p) => ({ ...p, apoderado: { ...p.apoderado, [f]: v } }))}
+                onPoderFile={(file) => setConvocante((p) => ({ ...p, poderFile: file }))}
                 label="Insolvente"
               />
             </div>
@@ -373,6 +536,8 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
                   <ParteFields
                     parte={c}
                     onChange={(f, v) => updateConvocado(idx, f, v)}
+                    onApoderadoChange={(f, v) => updateConvocadoApoderado(idx, f, v)}
+                    onPoderFile={(file) => updateConvocadoPoder(idx, file)}
                     label={`Acreedor ${convocados.length > 1 ? idx + 1 : ""}`}
                   />
                   {convocados.length > 1 && (
@@ -404,6 +569,8 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
               <ParteFields
                 parte={convocante}
                 onChange={(f, v) => setConvocante((p) => ({ ...p, [f]: v }))}
+                onApoderadoChange={(f, v) => setConvocante((p) => ({ ...p, apoderado: { ...p.apoderado, [f]: v } }))}
+                onPoderFile={(file) => setConvocante((p) => ({ ...p, poderFile: file }))}
                 label="Convocante"
               />
             </div>
@@ -418,6 +585,8 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
                   <ParteFields
                     parte={c}
                     onChange={(f, v) => updateConvocado(idx, f, v)}
+                    onApoderadoChange={(f, v) => updateConvocadoApoderado(idx, f, v)}
+                    onPoderFile={(file) => updateConvocadoPoder(idx, file)}
                     label={`Convocado ${convocados.length > 1 ? idx + 1 : ""}`}
                   />
                   {convocados.length > 1 && (

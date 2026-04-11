@@ -46,7 +46,18 @@ export async function POST(req: NextRequest) {
   const centerId = resolveCenterId(session);
   if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
 
-  const body = await req.json();
+  // Soportar JSON y FormData
+  const contentType = req.headers.get("content-type") ?? "";
+  let body: any;
+  let formData: FormData | null = null;
+
+  if (contentType.includes("multipart/form-data")) {
+    formData = await req.formData();
+    body = JSON.parse(formData.get("data") as string);
+  } else {
+    body = await req.json();
+  }
+
   const {
     tipo_tramite,
     materia,
@@ -154,6 +165,84 @@ export async function POST(req: NextRequest) {
   }
 
   await supabaseAdmin.from("sgcc_case_parties").insert(casePartyRecords);
+
+  // Crear apoderados si se proporcionaron
+  for (let idx = 0; idx < partes.length; idx++) {
+    const p = partes[idx];
+    if (!p.apoderado || !p.apoderado.nombre || !p.apoderado.numero_doc) continue;
+
+    const partyRecord = casePartyRecords[idx];
+    if (!partyRecord) continue;
+
+    const att = p.apoderado;
+    const now = new Date().toISOString();
+
+    // Buscar o crear el attorney
+    let attorneyId: string;
+    const { data: existingAtt } = await supabaseAdmin
+      .from("sgcc_attorneys")
+      .select("id")
+      .eq("numero_doc", att.numero_doc)
+      .single();
+
+    if (existingAtt) {
+      attorneyId = existingAtt.id;
+      await supabaseAdmin.from("sgcc_attorneys").update({
+        nombre: att.nombre,
+        tipo_doc: att.tipo_doc ?? "CC",
+        tarjeta_profesional: att.tarjeta_profesional || null,
+        email: att.email || null,
+        telefono: att.telefono || null,
+        updated_at: now,
+      }).eq("id", attorneyId);
+    } else {
+      attorneyId = randomUUID();
+      await supabaseAdmin.from("sgcc_attorneys").insert({
+        id: attorneyId,
+        nombre: att.nombre,
+        tipo_doc: att.tipo_doc ?? "CC",
+        numero_doc: att.numero_doc,
+        tarjeta_profesional: att.tarjeta_profesional || null,
+        email: att.email || null,
+        telefono: att.telefono || null,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+
+    // Crear case_attorney
+    const caseAttorneyId = randomUUID();
+    let poderUrl: string | null = null;
+
+    // Subir poder si hay archivo
+    if (formData) {
+      const poderFile = formData.get(`poder_${idx}`) as File | null;
+      if (poderFile) {
+        const buffer = Buffer.from(await poderFile.arrayBuffer());
+        const filePath = `${caseId}/${caseAttorneyId}.pdf`;
+        const { error: upErr } = await supabaseAdmin.storage
+          .from("poderes")
+          .upload(filePath, buffer, { contentType: "application/pdf", upsert: true });
+        if (!upErr) {
+          const { data: urlData } = supabaseAdmin.storage.from("poderes").getPublicUrl(filePath);
+          poderUrl = urlData.publicUrl;
+        }
+      }
+    }
+
+    await supabaseAdmin.from("sgcc_case_attorneys").insert({
+      id: caseAttorneyId,
+      case_id: caseId,
+      party_id: partyRecord.party_id,
+      attorney_id: attorneyId,
+      motivo_cambio: "inicial",
+      poder_url: poderUrl,
+      registrado_por: (session.user as any).id,
+      activo: true,
+      created_at: now,
+      updated_at: now,
+    });
+  }
 
   // Crear evento de timeline
   await supabaseAdmin.from("sgcc_case_timeline").insert({
