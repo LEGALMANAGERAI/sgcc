@@ -17,6 +17,8 @@ import {
   StickyNote,
   X,
   Upload,
+  FileText,
+  Download,
 } from "lucide-react";
 
 /* ─── Props ─────────────────────────────────────────────────────────────── */
@@ -379,22 +381,36 @@ export function TabChecklistPoderes({
                       )}
                     </td>
                     <td className="px-3 py-3 text-right">
-                      {historyItems.length > 0 && (
-                        <button
-                          onClick={() =>
-                            setExpandedHistory(isExpanded ? null : cp.party_id)
-                          }
-                          className="inline-flex items-center gap-1 text-xs text-[#1B4F9B] hover:underline"
-                        >
-                          <History className="w-3 h-3" />
-                          Historial
-                          {isExpanded ? (
-                            <ChevronUp className="w-3 h-3" />
-                          ) : (
-                            <ChevronDown className="w-3 h-3" />
-                          )}
-                        </button>
-                      )}
+                      <div className="inline-flex items-center gap-3">
+                        {activeCa?.poder_url && (
+                          <a
+                            href={activeCa.poder_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-green-700 hover:underline"
+                            title="Ver/descargar poder"
+                          >
+                            <FileText className="w-3 h-3" />
+                            Ver poder
+                          </a>
+                        )}
+                        {historyItems.length > 0 && (
+                          <button
+                            onClick={() =>
+                              setExpandedHistory(isExpanded ? null : cp.party_id)
+                            }
+                            className="inline-flex items-center gap-1 text-xs text-[#1B4F9B] hover:underline"
+                          >
+                            <History className="w-3 h-3" />
+                            Historial
+                            {isExpanded ? (
+                              <ChevronUp className="w-3 h-3" />
+                            ) : (
+                              <ChevronDown className="w-3 h-3" />
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -436,6 +452,17 @@ export function TabChecklistPoderes({
                       )}
                     </div>
                     <div className="flex items-center gap-2">
+                      {ca.poder_url && (
+                        <a
+                          href={ca.poder_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] text-green-700 hover:underline"
+                        >
+                          <FileText className="w-3 h-3" />
+                          Poder
+                        </a>
+                      )}
                       {ca.activo ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
                           Activo
