@@ -217,15 +217,18 @@ export async function POST(req: NextRequest) {
     // Subir poder si hay archivo
     if (formData) {
       const poderFile = formData.get(`poder_${idx}`) as File | null;
-      if (poderFile) {
+      if (poderFile && poderFile.size > 0) {
         const buffer = Buffer.from(await poderFile.arrayBuffer());
         const filePath = `${caseId}/${caseAttorneyId}.pdf`;
         const { error: upErr } = await supabaseAdmin.storage
           .from("poderes")
           .upload(filePath, buffer, { contentType: "application/pdf", upsert: true });
-        if (!upErr) {
+        if (upErr) {
+          console.error(`[CASOS] Error subiendo poder a storage: ${upErr.message}`);
+        } else {
           const { data: urlData } = supabaseAdmin.storage.from("poderes").getPublicUrl(filePath);
           poderUrl = urlData.publicUrl;
+          console.log(`[CASOS] Poder subido: ${poderUrl}`);
         }
       }
     }
