@@ -174,211 +174,6 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
     router.push(`/casos/${data.caso.id}`);
   }
 
-  function ParteFields({
-    parte,
-    onChange,
-    onApoderadoChange,
-    onPoderFile,
-    label,
-  }: {
-    parte: ParteForm;
-    onChange: (field: keyof ParteForm, value: string) => void;
-    onApoderadoChange: (field: keyof ApoderadoForm, value: string | boolean) => void;
-    onPoderFile: (file: File | null) => void;
-    label: string;
-  }) {
-    return (
-      <div className="border border-gray-200 rounded-xl p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h4 className="font-medium text-gray-900 text-sm">{label}</h4>
-          <select
-            value={parte.tipo_persona}
-            onChange={(e) => onChange("tipo_persona", e.target.value)}
-            className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0D2340]"
-          >
-            <option value="natural">Persona natural</option>
-            <option value="juridica">Persona jurídica</option>
-          </select>
-        </div>
-
-        {parte.tipo_persona === "natural" ? (
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Nombres *</label>
-              <input
-                required
-                value={parte.nombres}
-                onChange={(e) => onChange("nombres", e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Apellidos *</label>
-              <input
-                required
-                value={parte.apellidos}
-                onChange={(e) => onChange("apellidos", e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
-              />
-            </div>
-          </div>
-        ) : (
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Razón social *</label>
-            <input
-              required
-              value={parte.razon_social}
-              onChange={(e) => onChange("razon_social", e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
-            />
-          </div>
-        )}
-
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Tipo doc.</label>
-            <select
-              value={parte.tipo_doc}
-              onChange={(e) => onChange("tipo_doc", e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
-            >
-              {parte.tipo_persona === "natural" ? (
-                <>
-                  <option value="CC">C.C.</option>
-                  <option value="CE">C.E.</option>
-                  <option value="Pasaporte">Pasaporte</option>
-                  <option value="PPT">PPT</option>
-                </>
-              ) : (
-                <option value="NIT">NIT</option>
-              )}
-            </select>
-          </div>
-          <div className="col-span-2">
-            <label className="block text-xs font-medium text-gray-600 mb-1">Número documento</label>
-            <input
-              value={parte.numero_doc}
-              onChange={(e) => onChange("numero_doc", e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Correo *</label>
-            <input
-              type="email"
-              required
-              value={parte.email}
-              onChange={(e) => onChange("email", e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Teléfono</label>
-            <input
-              value={parte.telefono}
-              onChange={(e) => onChange("telefono", e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
-            />
-          </div>
-        </div>
-
-        {/* Apoderado */}
-        <div className="border-t border-gray-100 pt-4 mt-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={parte.apoderado.tiene_apoderado}
-              onChange={(e) => onApoderadoChange("tiene_apoderado", e.target.checked)}
-              className="rounded border-gray-300 text-[#1B4F9B] focus:ring-[#1B4F9B]"
-            />
-            <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
-              <Briefcase className="w-3.5 h-3.5" />
-              Tiene apoderado
-            </span>
-          </label>
-
-          {parte.apoderado.tiene_apoderado && (
-            <div className="mt-3 bg-gray-50 rounded-lg p-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Nombre apoderado *</label>
-                  <input
-                    value={parte.apoderado.nombre}
-                    onChange={(e) => onApoderadoChange("nombre", e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Tarjeta profesional</label>
-                  <input
-                    value={parte.apoderado.tarjeta_profesional}
-                    onChange={(e) => onApoderadoChange("tarjeta_profesional", e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Tipo doc.</label>
-                  <select
-                    value={parte.apoderado.tipo_doc}
-                    onChange={(e) => onApoderadoChange("tipo_doc", e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
-                  >
-                    <option value="CC">C.C.</option>
-                    <option value="CE">C.E.</option>
-                    <option value="Pasaporte">Pasaporte</option>
-                  </select>
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Número documento *</label>
-                  <input
-                    value={parte.apoderado.numero_doc}
-                    onChange={(e) => onApoderadoChange("numero_doc", e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Email apoderado</label>
-                  <input
-                    type="email"
-                    value={parte.apoderado.email}
-                    onChange={(e) => onApoderadoChange("email", e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Teléfono apoderado</label>
-                  <input
-                    value={parte.apoderado.telefono}
-                    onChange={(e) => onApoderadoChange("telefono", e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Poder (PDF)</label>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) => onPoderFile(e.target.files?.[0] ?? null)}
-                  className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#0D2340] file:text-white hover:file:bg-[#0D2340]/90 file:cursor-pointer"
-                />
-                {parte.poderFile && (
-                  <p className="text-xs text-green-600 mt-1">Archivo: {parte.poderFile.name}</p>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
@@ -627,5 +422,213 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
         </a>
       </div>
     </form>
+  );
+}
+
+/* ─── ParteFields (componente externo para no perder el foco) ─── */
+
+function ParteFields({
+  parte,
+  onChange,
+  onApoderadoChange,
+  onPoderFile,
+  label,
+}: {
+  parte: ParteForm;
+  onChange: (field: keyof ParteForm, value: string) => void;
+  onApoderadoChange: (field: keyof ApoderadoForm, value: string | boolean) => void;
+  onPoderFile: (file: File | null) => void;
+  label: string;
+}) {
+  return (
+    <div className="border border-gray-200 rounded-xl p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="font-medium text-gray-900 text-sm">{label}</h4>
+        <select
+          value={parte.tipo_persona}
+          onChange={(e) => onChange("tipo_persona", e.target.value)}
+          className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0D2340]"
+        >
+          <option value="natural">Persona natural</option>
+          <option value="juridica">Persona jurídica</option>
+        </select>
+      </div>
+
+      {parte.tipo_persona === "natural" ? (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Nombres *</label>
+            <input
+              required
+              value={parte.nombres}
+              onChange={(e) => onChange("nombres", e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Apellidos *</label>
+            <input
+              required
+              value={parte.apellidos}
+              onChange={(e) => onChange("apellidos", e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+            />
+          </div>
+        </div>
+      ) : (
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Razón social *</label>
+          <input
+            required
+            value={parte.razon_social}
+            onChange={(e) => onChange("razon_social", e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+          />
+        </div>
+      )}
+
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Tipo doc.</label>
+          <select
+            value={parte.tipo_doc}
+            onChange={(e) => onChange("tipo_doc", e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+          >
+            {parte.tipo_persona === "natural" ? (
+              <>
+                <option value="CC">C.C.</option>
+                <option value="CE">C.E.</option>
+                <option value="Pasaporte">Pasaporte</option>
+                <option value="PPT">PPT</option>
+              </>
+            ) : (
+              <option value="NIT">NIT</option>
+            )}
+          </select>
+        </div>
+        <div className="col-span-2">
+          <label className="block text-xs font-medium text-gray-600 mb-1">Número documento</label>
+          <input
+            value={parte.numero_doc}
+            onChange={(e) => onChange("numero_doc", e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Correo *</label>
+          <input
+            type="email"
+            required
+            value={parte.email}
+            onChange={(e) => onChange("email", e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Teléfono</label>
+          <input
+            value={parte.telefono}
+            onChange={(e) => onChange("telefono", e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+          />
+        </div>
+      </div>
+
+      {/* Apoderado */}
+      <div className="border-t border-gray-100 pt-4 mt-4">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={parte.apoderado.tiene_apoderado}
+            onChange={(e) => onApoderadoChange("tiene_apoderado", e.target.checked)}
+            className="rounded border-gray-300 text-[#1B4F9B] focus:ring-[#1B4F9B]"
+          />
+          <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+            <Briefcase className="w-3.5 h-3.5" />
+            Tiene apoderado
+          </span>
+        </label>
+
+        {parte.apoderado.tiene_apoderado && (
+          <div className="mt-3 bg-gray-50 rounded-lg p-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Nombre apoderado *</label>
+                <input
+                  value={parte.apoderado.nombre}
+                  onChange={(e) => onApoderadoChange("nombre", e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Tarjeta profesional</label>
+                <input
+                  value={parte.apoderado.tarjeta_profesional}
+                  onChange={(e) => onApoderadoChange("tarjeta_profesional", e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Tipo doc.</label>
+                <select
+                  value={parte.apoderado.tipo_doc}
+                  onChange={(e) => onApoderadoChange("tipo_doc", e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+                >
+                  <option value="CC">C.C.</option>
+                  <option value="CE">C.E.</option>
+                  <option value="Pasaporte">Pasaporte</option>
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-600 mb-1">Número documento *</label>
+                <input
+                  value={parte.apoderado.numero_doc}
+                  onChange={(e) => onApoderadoChange("numero_doc", e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Email apoderado</label>
+                <input
+                  type="email"
+                  value={parte.apoderado.email}
+                  onChange={(e) => onApoderadoChange("email", e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Teléfono apoderado</label>
+                <input
+                  value={parte.apoderado.telefono}
+                  onChange={(e) => onApoderadoChange("telefono", e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Poder (PDF)</label>
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={(e) => onPoderFile(e.target.files?.[0] ?? null)}
+                className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#0D2340] file:text-white hover:file:bg-[#0D2340]/90 file:cursor-pointer"
+              />
+              {parte.poderFile && (
+                <p className="text-xs text-green-600 mt-1">Archivo: {parte.poderFile.name}</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
