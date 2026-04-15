@@ -54,7 +54,7 @@ export default async function CasoDetailPage({ params }: Props) {
     solicitud: { label: "Procesar admisión", href: `/casos/${id}/admision` },
     admitido: { label: "Generar citación", href: `/casos/${id}/citacion` },
     citado: { label: "Programar audiencia", href: `/casos/${id}/audiencia` },
-    audiencia: { label: "Generar acta", href: `/casos/${id}/acta` },
+    audiencia: { label: "Agendar continuación", href: `/casos/${id}/audiencia` },
     cerrado: null,
     rechazado: null,
   }[caso.estado as string] ?? null;
@@ -83,7 +83,7 @@ export default async function CasoDetailPage({ params }: Props) {
       </PageHeader>
 
       {/* Timeline */}
-      <CasoTimeline estado={caso.estado} events={caso.timeline ?? []} />
+      <CasoTimeline caseId={id} estado={caso.estado} events={caso.timeline ?? []} />
 
       {/* Rechazo */}
       {caso.estado === "rechazado" && caso.motivo_rechazo && (
