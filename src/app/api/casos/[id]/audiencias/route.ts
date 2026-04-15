@@ -85,11 +85,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Actualizar fecha_audiencia en el caso y estado si estaba en citado
-  const caseUpdate: any = {
-    fecha_audiencia: fecha_hora,
-    updated_at: now,
-  };
+  // Actualizar fecha_audiencia en el caso solo si es la audiencia inicial,
+  // para no pisar la fecha original al agregar continuaciones/complementarias.
+  const caseUpdate: any = { updated_at: now };
+  if ((tipo ?? "inicial") === "inicial") {
+    caseUpdate.fecha_audiencia = fecha_hora;
+  }
   if (caso.estado === "citado") {
     caseUpdate.estado = "audiencia";
   }

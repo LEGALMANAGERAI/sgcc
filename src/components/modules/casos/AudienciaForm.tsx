@@ -13,9 +13,10 @@ interface Props {
   defaultConciliadorId: string | null;
   defaultSalaId: string | null;
   defaultFechaHora: string | null;
+  defaultTipo?: string;
 }
 
-export function AudienciaForm({ caseId, conciliadores, salas, defaultConciliadorId, defaultSalaId, defaultFechaHora }: Props) {
+export function AudienciaForm({ caseId, conciliadores, salas, defaultConciliadorId, defaultSalaId, defaultFechaHora, defaultTipo = "inicial" }: Props) {
   const router = useRouter();
   const [conciliadorId, setConciliadorId] = useState(defaultConciliadorId ?? "");
   const [salaId, setSalaId] = useState(defaultSalaId ?? "");
@@ -23,7 +24,7 @@ export function AudienciaForm({ caseId, conciliadores, salas, defaultConciliador
     defaultFechaHora ? new Date(defaultFechaHora).toISOString().slice(0, 16) : ""
   );
   const [duracion, setDuracion] = useState("60");
-  const [tipo, setTipo] = useState("inicial");
+  const [tipo, setTipo] = useState(defaultTipo);
   const [notas, setNotas] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
