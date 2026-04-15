@@ -110,11 +110,26 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    setLoading(true);
 
     const allPartes = tipoTramite === "insolvencia"
       ? [{ ...convocante, rol: "convocante" as const }, ...convocados.map((c) => ({ ...c, rol: "convocado" as const }))]
       : [convocante, ...convocados];
+
+    // Validación: si se marcó "Tiene apoderado", exigir nombre y documento
+    for (const [idx, p] of allPartes.entries()) {
+      if (p.apoderado.tiene_apoderado) {
+        const faltaNombre = !p.apoderado.nombre?.trim();
+        const faltaDoc = !p.apoderado.numero_doc?.trim();
+        if (faltaNombre || faltaDoc) {
+          const quien = p.rol === "convocante" ? "del convocante" : `del convocado ${idx}`;
+          const campos = [faltaNombre && "nombre", faltaDoc && "número de documento"].filter(Boolean).join(" y ");
+          setError(`Falta ${campos} del apoderado ${quien}. Completa los datos o desmarca "Tiene apoderado".`);
+          return;
+        }
+      }
+    }
+
+    setLoading(true);
 
     // Preparar datos de partes sin archivos para JSON
     const partesData = allPartes.map((p) => ({
