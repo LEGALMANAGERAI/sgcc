@@ -190,7 +190,8 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
       con_seguros: 0,
       notas: nuevaNota,
     });
-    flash("ok", "Seguros capitalizados al capital");
+    setSeccion("definitiva");
+    flash("ok", "Seguros capitalizados al capital — mira la Relación definitiva");
   }
 
   async function deleteAcreencia(acreenciaId: string) {
