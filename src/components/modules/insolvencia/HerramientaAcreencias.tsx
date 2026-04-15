@@ -379,6 +379,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                   <th className="px-3 py-2 text-left font-semibold text-gray-600 min-w-[180px]">Acreedor</th>
                   <th className="px-2 py-2 text-left font-semibold text-gray-600 min-w-[90px]">Tipo</th>
                   <th className="px-2 py-2 text-left font-semibold text-gray-600 min-w-[100px]">Documento</th>
+                  <th className="px-2 py-2 text-left font-semibold text-gray-600 min-w-[140px]">Identificación crédito</th>
                   <th className="px-2 py-2 text-center font-semibold text-gray-600">Clase</th>
                   <th className="px-2 py-2 text-center font-semibold text-gray-600">Días mora</th>
                   {conceptos.map((c) => (
@@ -390,7 +391,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                   <th className="px-2 py-2 text-center font-semibold text-gray-600 border-l border-gray-200">Acciones</th>
                 </tr>
                 <tr className="bg-gray-50/50 border-b border-gray-100">
-                  <th colSpan={5}></th>
+                  <th colSpan={6}></th>
                   {conceptos.map((c) => (
                     <Fragment key={c.key}>
                       <th className="px-2 py-1 text-center text-[10px] text-blue-600 font-medium border-l border-gray-200">Solicitud</th>
@@ -433,6 +434,17 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                         onBlur={(e) => updateAcreencia(a.id, { acreedor_documento: e.target.value })}
                         className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-[#1B4F9B] outline-none"
                         placeholder={a.acreedor_tipo === "juridica" ? "NIT" : "CC/CE"}
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <input
+                        type="text"
+                        defaultValue={a.identificacion_credito ?? ""}
+                        onBlur={(e) => {
+                          if (e.target.value !== (a.identificacion_credito ?? "")) updateAcreencia(a.id, { identificacion_credito: e.target.value });
+                        }}
+                        className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-[#1B4F9B] outline-none"
+                        placeholder="Ej: Tarjeta Visa 1234"
                       />
                     </td>
                     <td className="px-1 py-2">
@@ -599,8 +611,8 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                   return (
                     <tr key={a.id} className={`hover:bg-gray-50/50 ${a.es_pequeno_acreedor ? "bg-amber-50/30" : ""}`}>
                       <td className="px-3 py-2 font-medium text-gray-900">
-                        {a.acreedor_nombre}
-                        {a.acreedor_documento && <span className="text-gray-400 ml-1">({a.acreedor_documento})</span>}
+                        <div>{a.acreedor_nombre}{a.acreedor_documento && <span className="text-gray-400 ml-1">({a.acreedor_documento})</span>}</div>
+                        {a.identificacion_credito && <div className="text-[10px] text-gray-500 mt-0.5">{a.identificacion_credito}</div>}
                       </td>
                       {conceptos.map((c) => (
                         <td key={c.key} className="px-1 py-2 text-right">

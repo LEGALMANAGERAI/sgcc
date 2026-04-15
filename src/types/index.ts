@@ -540,6 +540,7 @@ export interface SgccAcreencia {
   acreedor_tipo: "natural" | "juridica";
   acreedor_nombre: string;
   acreedor_documento: string | null;
+  identificacion_credito: string | null;
   sol_capital: number;
   sol_intereses_corrientes: number;
   sol_intereses_moratorios: number;
