@@ -131,7 +131,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
       const res = await fetch(`/api/expediente/${caseId}/acreencias`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ acreedor_nombre: "Nuevo acreedor" }),
+        body: JSON.stringify({ acreedor_nombre: "" }),
       });
       if (!res.ok) { flash("error", "Error al crear"); return; }
       const data = await res.json();
@@ -357,9 +357,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                       <input
                         type="text"
                         defaultValue={a.acreedor_nombre}
-                        onFocus={(e) => {
-                          if (e.target.value === "Nuevo acreedor") e.target.select();
-                        }}
+                        placeholder="Nombre del acreedor"
                         onBlur={(e) => {
                           if (e.target.value !== a.acreedor_nombre)
                             updateAcreencia(a.id, { acreedor_nombre: e.target.value });
