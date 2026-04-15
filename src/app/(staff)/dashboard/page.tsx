@@ -126,6 +126,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     { data: rawParties },
     { data: rawAttorneys },
     { data: rawHearingsToday },
+    { data: rawHearingsUpcoming },
     { data: rawTeam },
     { data: rawCorrespondence },
     { data: rawProcessUpdates },
@@ -147,16 +148,33 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           .eq("activo", true)
       : Promise.resolve({ data: [] }),
 
-    // Audiencias de hoy
-    supabaseAdmin
-      .from("sgcc_hearings")
-      .select(
-        "*, caso:sgcc_cases(id, numero_radicado), sala:sgcc_rooms(nombre), conciliador:sgcc_staff(nombre)"
-      )
-      .eq("estado", "programada")
-      .gte("fecha_hora", todayStart)
-      .lt("fecha_hora", todayEnd)
-      .order("fecha_hora", { ascending: true }),
+    // Audiencias de hoy (solo de este centro)
+    caseIds.length > 0
+      ? supabaseAdmin
+          .from("sgcc_hearings")
+          .select(
+            "*, caso:sgcc_cases(id, numero_radicado), sala:sgcc_rooms(nombre), conciliador:sgcc_staff(nombre)"
+          )
+          .in("case_id", caseIds)
+          .eq("estado", "programada")
+          .gte("fecha_hora", todayStart)
+          .lt("fecha_hora", todayEnd)
+          .order("fecha_hora", { ascending: true })
+      : Promise.resolve({ data: [] }),
+
+    // Próximas audiencias (desde mañana en adelante, 5 más cercanas)
+    caseIds.length > 0
+      ? supabaseAdmin
+          .from("sgcc_hearings")
+          .select(
+            "*, caso:sgcc_cases(id, numero_radicado), sala:sgcc_rooms(nombre), conciliador:sgcc_staff(nombre)"
+          )
+          .in("case_id", caseIds)
+          .eq("estado", "programada")
+          .gte("fecha_hora", todayEnd)
+          .order("fecha_hora", { ascending: true })
+          .limit(5)
+      : Promise.resolve({ data: [] }),
 
     // Equipo (secretarios/asistentes)
     supabaseAdmin
@@ -186,6 +204,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const caseParties = (rawParties ?? []) as CasePartyWithJoins[];
   const caseAttorneys = (rawAttorneys ?? []) as CaseAttorneyWithJoins[];
   const hearingsToday = (rawHearingsToday ?? []) as HearingWithJoins[];
+  const hearingsUpcoming = (rawHearingsUpcoming ?? []) as HearingWithJoins[];
   const team = (rawTeam ?? []) as SgccStaff[];
   const correspondence = (rawCorrespondence ?? []) as SgccCorrespondence[];
   const processUpdates = (rawProcessUpdates ?? []) as (SgccProcessUpdate & {
@@ -775,6 +794,75 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                             <UserCheck className="w-3 h-3" />
                             {confirmed} confirmado{confirmed !== 1 ? "s" : ""}
                           </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Próximas audiencias */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-indigo-600" />
+                Próximas audiencias
+              </h2>
+              <Link
+                href="/agenda"
+                className="text-xs text-[#1B4F9B] hover:underline flex items-center gap-1"
+              >
+                Agenda <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {hearingsUpcoming.length === 0 ? (
+                <p className="px-5 py-6 text-sm text-gray-400 text-center">
+                  Sin audiencias próximas
+                </p>
+              ) : (
+                hearingsUpcoming.map((h) => {
+                  const d = new Date(h.fecha_hora);
+                  const fechaStr = d.toLocaleDateString("es-CO", {
+                    day: "2-digit",
+                    month: "short",
+                    timeZone: "America/Bogota",
+                  });
+                  const horaStr = d.toLocaleTimeString("es-CO", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    timeZone: "America/Bogota",
+                  });
+                  return (
+                    <div key={h.id} className="px-5 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
+                            <span className="text-sm font-semibold text-gray-900">
+                              {fechaStr} · {horaStr}
+                            </span>
+                          </div>
+                          <Link
+                            href={`/casos/${h.caso?.id ?? h.case_id}`}
+                            className="text-xs text-[#0D2340] hover:underline mt-0.5 block truncate"
+                          >
+                            {h.caso?.numero_radicado ?? "—"}
+                          </Link>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          {h.conciliador?.nombre && (
+                            <p className="text-xs text-gray-500 truncate max-w-[120px]">
+                              {h.conciliador.nombre}
+                            </p>
+                          )}
+                          {h.sala?.nombre && (
+                            <p className="text-xs text-gray-400 truncate max-w-[120px]">
+                              {h.sala.nombre}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>

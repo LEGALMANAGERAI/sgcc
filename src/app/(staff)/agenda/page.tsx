@@ -3,11 +3,11 @@ export const dynamic = "force-dynamic";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { StatusChip } from "@/components/ui/StatusChip";
 import Link from "next/link";
 
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 8); // 8am - 6pm
 const DAY_LABELS = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"];
+const TZ = "America/Bogota";
 
 function getWeekStart(dateStr?: string): Date {
   const d = dateStr ? new Date(dateStr + "T00:00:00") : new Date();
@@ -28,6 +28,28 @@ function addDays(d: Date, n: number): Date {
   return r;
 }
 
+function getBogotaParts(iso: string) {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const parts = fmt.formatToParts(new Date(iso));
+  const map: Record<string, string> = {};
+  for (const p of parts) map[p.type] = p.value;
+  // "24" aparece a medianoche en es-CO; normalizamos a "00"
+  const hourStr = map.hour === "24" ? "00" : map.hour;
+  return {
+    date: `${map.year}-${map.month}-${map.day}`,
+    hour: parseInt(hourStr, 10),
+    timeStr: `${hourStr}:${map.minute}`,
+  };
+}
+
 interface Props {
   searchParams: Promise<{ week?: string }>;
 }
@@ -46,20 +68,19 @@ export default async function AgendaPage({ searchParams }: Props) {
   const nextWeek = formatDate(addDays(weekStart, 7));
   const today = formatDate(getWeekStart());
 
-  // Obtener audiencias de la semana
+  // Audiencias de la semana — filtramos por centro via join a sgcc_cases
   let query = supabaseAdmin
     .from("sgcc_hearings")
     .select(`
-      id, fecha, hora_inicio, hora_fin, estado, motivo,
-      caso:sgcc_cases!sgcc_hearings_case_id_fkey(id, numero_radicado),
-      sala:sgcc_rooms!sgcc_hearings_sala_id_fkey(nombre),
-      conciliador:sgcc_staff!sgcc_hearings_conciliador_id_fkey(id, nombre)
+      id, fecha_hora, duracion_min, estado, tipo, notas_previas,
+      caso:sgcc_cases!inner(id, numero_radicado, center_id),
+      sala:sgcc_rooms(nombre),
+      conciliador:sgcc_staff(id, nombre)
     `)
-    .eq("center_id", centerId)
-    .gte("fecha", formatDate(weekStart))
-    .lt("fecha", formatDate(weekEnd))
-    .order("fecha", { ascending: true })
-    .order("hora_inicio", { ascending: true });
+    .eq("caso.center_id", centerId)
+    .gte("fecha_hora", weekStart.toISOString())
+    .lt("fecha_hora", weekEnd.toISOString())
+    .order("fecha_hora", { ascending: true });
 
   // Si es conciliador, solo sus audiencias
   if (sgccRol === "conciliador") {
@@ -69,7 +90,7 @@ export default async function AgendaPage({ searchParams }: Props) {
   const { data: audiencias } = await query;
   const hearings = audiencias ?? [];
 
-  // Organizar audiencias por dia y hora
+  // Organizar audiencias por dia y hora (en zona horaria Bogotá)
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(weekStart, i);
     return {
@@ -80,13 +101,19 @@ export default async function AgendaPage({ searchParams }: Props) {
     };
   });
 
-  // Mapa: "YYYY-MM-DD_HH" -> audiencias[]
-  const hearingMap: Record<string, typeof hearings> = {};
+  type HearingRow = (typeof hearings)[number] & {
+    _dateKey: string;
+    _hour: number;
+    _timeStr: string;
+  };
+
+  const hearingMap: Record<string, HearingRow[]> = {};
   for (const h of hearings) {
-    const hour = parseInt((h.hora_inicio ?? "08:00").split(":")[0]);
-    const key = `${h.fecha}_${hour}`;
+    const { date, hour, timeStr } = getBogotaParts(h.fecha_hora as string);
+    const key = `${date}_${hour}`;
+    const row: HearingRow = { ...(h as any), _dateKey: date, _hour: hour, _timeStr: timeStr };
     if (!hearingMap[key]) hearingMap[key] = [];
-    hearingMap[key].push(h);
+    hearingMap[key].push(row);
   }
 
   // Colores por estado
@@ -176,22 +203,22 @@ export default async function AgendaPage({ searchParams }: Props) {
 
               return (
                 <div key={key} className="border-l border-gray-50 p-1 min-h-[60px]">
-                  {cellHearings.map((h: any) => (
+                  {cellHearings.map((h) => (
                     <Link
                       key={h.id}
-                      href={`/casos/${h.caso?.id}`}
+                      href={`/casos/${(h as any).caso?.id}`}
                       className={`block rounded-md border p-1.5 mb-1 text-xs cursor-pointer hover:shadow-sm transition-shadow ${
                         stateColors[h.estado] ?? "bg-gray-100 border-gray-200 text-gray-800"
                       }`}
                     >
                       <div className="font-semibold truncate">
-                        {h.hora_inicio?.slice(0, 5)} — {h.caso?.numero_radicado ?? "Sin radicado"}
+                        {h._timeStr} — {(h as any).caso?.numero_radicado ?? "Sin radicado"}
                       </div>
                       <div className="truncate opacity-75">
-                        {h.conciliador?.nombre ?? "Sin conciliador"}
+                        {(h as any).conciliador?.nombre ?? "Sin conciliador"}
                       </div>
-                      {h.sala?.nombre && (
-                        <div className="truncate opacity-60">{h.sala.nombre}</div>
+                      {(h as any).sala?.nombre && (
+                        <div className="truncate opacity-60">{(h as any).sala.nombre}</div>
                       )}
                     </Link>
                   ))}
