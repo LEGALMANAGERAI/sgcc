@@ -429,22 +429,57 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                         }`}
                       />
                     </td>
-                    {conceptos.map((c) => (
-                      <Fragment key={c.key}>
-                        <td className="px-1 py-2 border-l border-gray-100">
-                          <MoneyInput
-                            value={Number((a as any)[`sol_${c.key}`]) || 0}
-                            onSave={(v) => updateAcreencia(a.id, { [`sol_${c.key}`]: v })}
-                          />
-                        </td>
-                        <td className="px-1 py-2">
-                          <MoneyInput
-                            value={Number((a as any)[`acr_${c.key}`]) || 0}
-                            onSave={(v) => updateAcreencia(a.id, { [`acr_${c.key}`]: v })}
-                          />
-                        </td>
-                      </Fragment>
-                    ))}
+                    {conceptos.map((c) => {
+                      const solValue = Number((a as any)[`sol_${c.key}`]) || 0;
+                      const acrValue = Number((a as any)[`acr_${c.key}`]) || 0;
+                      const conValue = Number((a as any)[`con_${c.key}`]) || 0;
+                      const solConciliado = conValue > 0 && conValue === solValue;
+                      const acrConciliado = conValue > 0 && conValue === acrValue && !solConciliado;
+                      return (
+                        <Fragment key={c.key}>
+                          <td className={`px-1 py-2 border-l border-gray-100 ${solConciliado ? "bg-green-50" : ""}`}>
+                            <div className="space-y-1">
+                              <MoneyInput
+                                value={solValue}
+                                onSave={(v) => updateAcreencia(a.id, { [`sol_${c.key}`]: v })}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => updateAcreencia(a.id, { [`con_${c.key}`]: solValue })}
+                                className={`w-full text-[9px] font-medium rounded px-1 py-0.5 border transition-colors ${
+                                  solConciliado
+                                    ? "bg-green-600 text-white border-green-600"
+                                    : "bg-white text-gray-500 border-gray-200 hover:border-green-500 hover:text-green-600"
+                                }`}
+                                title="Marcar este valor como conciliado"
+                              >
+                                {solConciliado ? "✓ Conciliado" : "Conciliar"}
+                              </button>
+                            </div>
+                          </td>
+                          <td className={`px-1 py-2 ${acrConciliado ? "bg-green-50" : ""}`}>
+                            <div className="space-y-1">
+                              <MoneyInput
+                                value={acrValue}
+                                onSave={(v) => updateAcreencia(a.id, { [`acr_${c.key}`]: v })}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => updateAcreencia(a.id, { [`con_${c.key}`]: acrValue })}
+                                className={`w-full text-[9px] font-medium rounded px-1 py-0.5 border transition-colors ${
+                                  acrConciliado
+                                    ? "bg-green-600 text-white border-green-600"
+                                    : "bg-white text-gray-500 border-gray-200 hover:border-green-500 hover:text-green-600"
+                                }`}
+                                title="Marcar este valor como conciliado"
+                              >
+                                {acrConciliado ? "✓ Conciliado" : "Conciliar"}
+                              </button>
+                            </div>
+                          </td>
+                        </Fragment>
+                      );
+                    })}
                     <td className="px-2 py-2 text-center border-l border-gray-100">
                       <button
                         onClick={() => deleteAcreencia(a.id)}
