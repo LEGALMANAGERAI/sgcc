@@ -361,6 +361,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                       {c.label}
                     </th>
                   ))}
+                  <th className="px-2 py-2 text-left font-semibold text-gray-600 border-l border-gray-200 min-w-[180px]">Observaciones</th>
                   <th className="px-2 py-2 text-center font-semibold text-gray-600 border-l border-gray-200">Acciones</th>
                 </tr>
                 <tr className="bg-gray-50/50 border-b border-gray-100">
@@ -371,6 +372,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                       <th className="px-2 py-1 text-center text-[10px] text-purple-600 font-medium">Acreedor</th>
                     </Fragment>
                   ))}
+                  <th className="border-l border-gray-200"></th>
                   <th></th>
                 </tr>
               </thead>
@@ -480,6 +482,17 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                         </Fragment>
                       );
                     })}
+                    <td className="px-2 py-2 border-l border-gray-100 align-top">
+                      <textarea
+                        defaultValue={a.notas ?? ""}
+                        onBlur={(e) => {
+                          if (e.target.value !== (a.notas ?? "")) updateAcreencia(a.id, { notas: e.target.value });
+                        }}
+                        rows={2}
+                        placeholder="Observaciones..."
+                        className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-[#1B4F9B] outline-none resize-none"
+                      />
+                    </td>
                     <td className="px-2 py-2 text-center border-l border-gray-100">
                       <button
                         onClick={() => deleteAcreencia(a.id)}
