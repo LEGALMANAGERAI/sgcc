@@ -766,6 +766,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   const time = new Date(h.fecha_hora).toLocaleTimeString("es-CO", {
                     hour: "2-digit",
                     minute: "2-digit",
+                    timeZone: "America/Bogota",
                   });
                   const confirmed = attendanceByHearing.get(h.id) ?? 0;
 

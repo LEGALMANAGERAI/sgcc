@@ -102,7 +102,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       id: randomUUID(),
       case_id: caseId,
       etapa: "audiencia",
-      descripcion: `Audiencia programada para ${new Date(fecha_hora).toLocaleString("es-CO")}`,
+      descripcion: `Audiencia programada para ${new Date(fecha_hora).toLocaleString("es-CO", { timeZone: "America/Bogota" })}`,
       completado: false,
       fecha: fecha_hora,
       created_at: now,
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .filter((r) => r.email);
 
   if (recipients.length) {
-    const fechaStr = new Date(fecha_hora).toLocaleString("es-CO", { dateStyle: "full", timeStyle: "short" });
+    const fechaStr = new Date(fecha_hora).toLocaleString("es-CO", { dateStyle: "full", timeStyle: "short", timeZone: "America/Bogota" });
     await notify({
       centerId,
       caseId,

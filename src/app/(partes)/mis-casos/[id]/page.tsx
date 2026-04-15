@@ -315,6 +315,7 @@ export default async function CasoDetallePage({
                           year: "numeric",
                           hour: "2-digit",
                           minute: "2-digit",
+                          timeZone: "America/Bogota",
                         })}
                       </td>
                       <td className="px-3 py-3 text-gray-600">

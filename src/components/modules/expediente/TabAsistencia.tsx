@@ -216,6 +216,7 @@ export function TabAsistencia({
                   {new Date(hearing.fecha_hora).toLocaleString("es-CO", {
                     dateStyle: "medium",
                     timeStyle: "short",
+                    timeZone: "America/Bogota",
                   })}
                 </span>
               </div>

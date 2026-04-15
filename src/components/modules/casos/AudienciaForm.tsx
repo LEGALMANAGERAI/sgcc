@@ -16,12 +16,19 @@ interface Props {
   defaultTipo?: string;
 }
 
+function toLocalInputValue(iso: string): string {
+  // datetime-local requiere "YYYY-MM-DDTHH:mm" en hora local del navegador
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function AudienciaForm({ caseId, conciliadores, salas, defaultConciliadorId, defaultSalaId, defaultFechaHora, defaultTipo = "inicial" }: Props) {
   const router = useRouter();
   const [conciliadorId, setConciliadorId] = useState(defaultConciliadorId ?? "");
   const [salaId, setSalaId] = useState(defaultSalaId ?? "");
   const [fechaHora, setFechaHora] = useState(
-    defaultFechaHora ? new Date(defaultFechaHora).toISOString().slice(0, 16) : ""
+    defaultFechaHora ? toLocalInputValue(defaultFechaHora) : ""
   );
   const [duracion, setDuracion] = useState("60");
   const [tipo, setTipo] = useState(defaultTipo);
@@ -34,13 +41,18 @@ export function AudienciaForm({ caseId, conciliadores, salas, defaultConciliador
     setError("");
     setLoading(true);
 
+    // El input datetime-local devuelve "YYYY-MM-DDTHH:mm" sin TZ. new Date()
+    // lo interpreta en la TZ del navegador (Bogotá) y toISOString() lo
+    // convierte a UTC antes de guardar. Sin esto Postgres asumiría UTC.
+    const fechaHoraUTC = new Date(fechaHora).toISOString();
+
     const res = await fetch(`/api/casos/${caseId}/audiencias`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         conciliador_id: conciliadorId || undefined,
         sala_id: salaId || undefined,
-        fecha_hora: fechaHora,
+        fecha_hora: fechaHoraUTC,
         duracion_min: Number(duracion),
         tipo,
         notas_previas: notas || undefined,
