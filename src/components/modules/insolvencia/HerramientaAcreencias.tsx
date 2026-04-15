@@ -133,7 +133,11 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ acreedor_nombre: "" }),
       });
-      if (!res.ok) { flash("error", "Error al crear"); return; }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        flash("error", body?.error || `Error al crear (${res.status})`);
+        return;
+      }
       const data = await res.json();
       setAcreencias((prev) => [...prev, data]);
     } finally { setSaving(null); }
