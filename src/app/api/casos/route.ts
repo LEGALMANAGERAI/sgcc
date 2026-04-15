@@ -166,6 +166,31 @@ export async function POST(req: NextRequest) {
 
   await supabaseAdmin.from("sgcc_case_parties").insert(casePartyRecords);
 
+  // Para insolvencia: crear una acreencia inicial por cada convocado (acreedor)
+  if (tipo_tramite === "insolvencia") {
+    const now = new Date().toISOString();
+    const acreenciaRows = partes
+      .map((p: any, idx: number) => ({ p, cp: casePartyRecords[idx] }))
+      .filter(({ p }: any) => p.rol === "convocado")
+      .map(({ p, cp }: any) => ({
+        id: randomUUID(),
+        case_id: caseId,
+        center_id: centerId,
+        party_id: cp?.party_id ?? null,
+        acreedor_tipo: p.tipo_persona === "juridica" ? "juridica" : "natural",
+        acreedor_nombre:
+          p.tipo_persona === "juridica"
+            ? p.razon_social || ""
+            : [p.nombres, p.apellidos].filter(Boolean).join(" ") || "",
+        acreedor_documento: p.numero_doc || null,
+        created_at: now,
+        updated_at: now,
+      }));
+    if (acreenciaRows.length > 0) {
+      await supabaseAdmin.from("sgcc_acreencias").insert(acreenciaRows);
+    }
+  }
+
   // Crear apoderados si se proporcionaron
   for (let idx = 0; idx < partes.length; idx++) {
     const p = partes[idx];
