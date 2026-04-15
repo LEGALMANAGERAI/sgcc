@@ -177,6 +177,22 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     } finally { setSaving(null); }
   }
 
+  async function capitalizarSeguros(acreenciaId: string) {
+    const a = acreencias.find((x) => x.id === acreenciaId);
+    if (!a) return;
+    const seguros = Number(a.con_seguros) || 0;
+    if (seguros <= 0) { flash("error", "No hay seguros conciliados para capitalizar"); return; }
+    if (!confirm(`¿Capitalizar $${seguros.toLocaleString("es-CO")} de seguros al capital? Esta acción suma ese valor al capital y deja seguros en 0.`)) return;
+    const nuevoCapital = (Number(a.con_capital) || 0) + seguros;
+    const nuevaNota = [a.notas, `Seguros capitalizados al capital: $${seguros.toLocaleString("es-CO")}`].filter(Boolean).join(" · ");
+    await updateAcreencia(acreenciaId, {
+      con_capital: nuevoCapital,
+      con_seguros: 0,
+      notas: nuevaNota,
+    });
+    flash("ok", "Seguros capitalizados al capital");
+  }
+
   async function deleteAcreencia(acreenciaId: string) {
     if (!confirm("¿Eliminar este acreedor?")) return;
     setSaving(acreenciaId);
@@ -493,14 +509,27 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                         className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-[#1B4F9B] outline-none resize-none"
                       />
                     </td>
-                    <td className="px-2 py-2 text-center border-l border-gray-100">
-                      <button
-                        onClick={() => deleteAcreencia(a.id)}
-                        disabled={saving === a.id}
-                        className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600"
-                      >
-                        {saving === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                      </button>
+                    <td className="px-2 py-2 border-l border-gray-100">
+                      <div className="flex flex-col items-center gap-1">
+                        {Number(a.con_seguros) > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => capitalizarSeguros(a.id)}
+                            disabled={saving === a.id}
+                            className="text-[9px] font-medium bg-amber-50 text-amber-700 border border-amber-300 rounded px-1.5 py-0.5 hover:bg-amber-100 disabled:opacity-50 leading-tight"
+                            title="Capitalizar seguros al capital"
+                          >
+                            Capitalizar<br />seguros
+                          </button>
+                        )}
+                        <button
+                          onClick={() => deleteAcreencia(a.id)}
+                          disabled={saving === a.id}
+                          className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600"
+                        >
+                          {saving === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
