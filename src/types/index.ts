@@ -537,6 +537,7 @@ export interface SgccAcreencia {
   case_id: string;
   center_id: string;
   party_id: string | null;
+  acreedor_tipo: "natural" | "juridica";
   acreedor_nombre: string;
   acreedor_documento: string | null;
   sol_capital: number;
