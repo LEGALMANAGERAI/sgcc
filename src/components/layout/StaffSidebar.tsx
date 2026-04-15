@@ -24,7 +24,7 @@ import { SgccLogo } from "@/components/ui/SgccLogo";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, badgeKey: null },
-  { label: "Casos", href: "/casos", icon: FolderOpen, badgeKey: null },
+  { label: "Expedientes", href: "/casos", icon: FolderOpen, badgeKey: null },
   { label: "Agenda", href: "/agenda", icon: Calendar, badgeKey: null },
   { label: "Apoderados", href: "/apoderados", icon: Briefcase, badgeKey: null },
   { label: "Correspondencia", href: "/correspondencia", icon: Mail, badgeKey: null },
