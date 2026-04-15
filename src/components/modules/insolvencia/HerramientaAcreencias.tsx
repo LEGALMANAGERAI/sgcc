@@ -139,6 +139,30 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     } finally { setSaving(null); }
   }
 
+  async function importarConvocados() {
+    const existingPartyIds = new Set(acreencias.map((a) => a.party_id).filter(Boolean));
+    const pendientes = partesConvocados.filter((p) => !existingPartyIds.has(p.id));
+    if (pendientes.length === 0) { flash("ok", "No hay convocados pendientes por importar"); return; }
+    setSaving("import");
+    try {
+      const nuevas: SgccAcreencia[] = [];
+      for (const p of pendientes) {
+        const res = await fetch(`/api/expediente/${caseId}/acreencias`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            acreedor_nombre: p.nombre || "",
+            acreedor_documento: p.documento || null,
+            party_id: p.id,
+          }),
+        });
+        if (res.ok) nuevas.push(await res.json());
+      }
+      setAcreencias((prev) => [...prev, ...nuevas]);
+      flash("ok", `${nuevas.length} acreedor(es) importado(s)`);
+    } finally { setSaving(null); }
+  }
+
   async function updateAcreencia(acreenciaId: string, campos: Record<string, any>) {
     setSaving(acreenciaId);
     try {
@@ -435,7 +459,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
               </tbody>
             </table>
           </div>
-          <div className="px-4 py-3 border-t border-gray-100">
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-4">
             <button
               onClick={addAcreencia}
               disabled={saving === "add"}
@@ -444,6 +468,16 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
               {saving === "add" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
               Agregar acreedor
             </button>
+            {partesConvocados.length > 0 && (
+              <button
+                onClick={importarConvocados}
+                disabled={saving === "import"}
+                className="flex items-center gap-1.5 text-sm text-gray-600 font-medium hover:text-[#0D2340] hover:underline disabled:opacity-50"
+              >
+                {saving === "import" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
+                Importar convocados del expediente ({partesConvocados.length})
+              </button>
+            )}
           </div>
         </div>
       )}
