@@ -27,7 +27,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     case "solicitud": {
       const caseUpdate: Record<string, any> = { updated_at: now };
       for (const f of ["numero_radicado", "materia", "cuantia", "cuantia_indeterminada", "descripcion", "fecha_solicitud"]) {
-        if (data[f] !== undefined) caseUpdate[f] = data[f];
+        if (data[f] !== undefined) {
+          let v = data[f];
+          if (f === "cuantia") v = v === "" || v === null ? null : Number(v);
+          else if (f === "cuantia_indeterminada") v = !!v;
+          else if (typeof v === "string" && v.trim() === "" && f !== "descripcion" && f !== "numero_radicado") v = null;
+          caseUpdate[f] = v;
+        }
       }
       if (Object.keys(caseUpdate).length > 1) {
         const { error } = await supabaseAdmin.from("sgcc_cases").update(caseUpdate).eq("id", caseId).eq("center_id", centerId);
@@ -38,17 +44,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           if (!p.party_id) continue;
           const partyUpdate: Record<string, any> = { updated_at: now };
           for (const f of ["tipo_persona", "nombres", "apellidos", "tipo_doc", "numero_doc", "razon_social", "nit_empresa", "email", "telefono", "direccion", "ciudad"]) {
-            if (p[f] !== undefined) partyUpdate[f] = p[f];
+            if (p[f] !== undefined) {
+              let v = p[f];
+              // email es NOT NULL: no permitir vaciar
+              if (f === "email" && (!v || String(v).trim() === "")) continue;
+              if (typeof v === "string" && v.trim() === "") v = null;
+              partyUpdate[f] = v;
+            }
           }
           if (Object.keys(partyUpdate).length > 1) {
-            await supabaseAdmin.from("sgcc_parties").update(partyUpdate).eq("id", p.party_id);
+            const { error: pErr } = await supabaseAdmin.from("sgcc_parties").update(partyUpdate).eq("id", p.party_id);
+            if (pErr) return NextResponse.json({ error: `Parte: ${pErr.message}` }, { status: 500 });
           }
           if (p.case_party_id) {
             const cpUpdate: Record<string, any> = {};
-            if (p.apoderado_nombre !== undefined) cpUpdate.apoderado_nombre = p.apoderado_nombre;
-            if (p.apoderado_doc !== undefined) cpUpdate.apoderado_doc = p.apoderado_doc;
+            if (p.apoderado_nombre !== undefined) cpUpdate.apoderado_nombre = p.apoderado_nombre || null;
+            if (p.apoderado_doc !== undefined) cpUpdate.apoderado_doc = p.apoderado_doc || null;
             if (Object.keys(cpUpdate).length) {
-              await supabaseAdmin.from("sgcc_case_parties").update(cpUpdate).eq("id", p.case_party_id);
+              const { error: cpErr } = await supabaseAdmin.from("sgcc_case_parties").update(cpUpdate).eq("id", p.case_party_id);
+              if (cpErr) return NextResponse.json({ error: `Apoderado: ${cpErr.message}` }, { status: 500 });
             }
           }
         }
@@ -107,11 +121,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       for (const a of data.actas) {
         if (!a.id) continue;
         const upd: Record<string, any> = { updated_at: now };
-        for (const f of ["numero_acta", "tipo", "consideraciones", "acuerdo_texto", "fecha_acta"]) {
+        // Campos NOT NULL: solo actualizar si tienen valor
+        for (const f of ["numero_acta", "tipo", "fecha_acta"]) {
+          if (a[f] !== undefined && a[f] !== null && String(a[f]).trim() !== "") upd[f] = a[f];
+        }
+        // Campos nullable
+        for (const f of ["consideraciones", "acuerdo_texto"]) {
           if (a[f] !== undefined) upd[f] = a[f] || null;
         }
         if (Object.keys(upd).length > 1) {
-          await supabaseAdmin.from("sgcc_actas").update(upd).eq("id", a.id).eq("case_id", caseId);
+          const { error: aErr } = await supabaseAdmin.from("sgcc_actas").update(upd).eq("id", a.id).eq("case_id", caseId);
+          if (aErr) return NextResponse.json({ error: `Acta: ${aErr.message}` }, { status: 500 });
         }
       }
       return NextResponse.json({ ok: true });

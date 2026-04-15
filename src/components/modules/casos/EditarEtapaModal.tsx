@@ -106,6 +106,7 @@ export function EditarEtapaModal({ etapa, caso, partes, audiencias, actas, conci
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
   const [form, setForm] = useState<any>(() => {
     switch (etapa) {
@@ -212,11 +213,12 @@ export function EditarEtapaModal({ etapa, caso, partes, audiencias, actas, conci
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
-        setError(e.error ?? "Error al guardar");
+        setError(e.error ?? `Error al guardar (HTTP ${res.status})`);
         return;
       }
+      setSuccess(true);
       router.refresh();
-      onClose();
+      setTimeout(() => onClose(), 1000);
     } finally {
       setSaving(false);
     }
@@ -233,6 +235,11 @@ export function EditarEtapaModal({ etapa, caso, partes, audiencias, actas, conci
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4 text-sm">
+          {success && (
+            <div className="bg-green-50 text-green-700 px-3 py-2 rounded border border-green-200 text-sm font-medium flex items-center gap-2">
+              ✓ Cambios guardados
+            </div>
+          )}
           {error && <div className="bg-red-50 text-red-700 px-3 py-2 rounded border border-red-200 text-xs">{error}</div>}
 
           {etapa === "solicitud" && (
@@ -436,8 +443,8 @@ export function EditarEtapaModal({ etapa, caso, partes, audiencias, actas, conci
 
         <div className="flex justify-end gap-3 p-4 border-t border-gray-100 bg-gray-50">
           <button onClick={onClose} className="text-sm text-gray-600 hover:underline">Cancelar</button>
-          <button onClick={handleSubmit} disabled={saving} className="bg-[#0D2340] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#0d2340dd] disabled:opacity-50">
-            {saving ? "Guardando..." : "Guardar cambios"}
+          <button onClick={handleSubmit} disabled={saving || success} className="bg-[#0D2340] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#0d2340dd] disabled:opacity-50">
+            {success ? "Guardado ✓" : saving ? "Guardando..." : "Guardar cambios"}
           </button>
         </div>
       </div>
