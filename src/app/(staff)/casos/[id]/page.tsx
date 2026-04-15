@@ -28,12 +28,12 @@ export default async function CasoDetailPage({ params }: Props) {
       sala:sgcc_rooms(id, nombre, tipo, link_virtual),
       partes:sgcc_case_parties(
         id, rol, asistio, firmo_acta, citacion_enviada_at, citacion_confirmada_at,
-        apoderado_nombre,
-        party:sgcc_parties(id, tipo_persona, nombres, apellidos, razon_social, numero_doc, nit_empresa, email, telefono, tipo_doc)
+        apoderado_nombre, apoderado_doc,
+        party:sgcc_parties(id, tipo_persona, nombres, apellidos, razon_social, numero_doc, nit_empresa, email, telefono, tipo_doc, direccion, ciudad)
       ),
-      actas:sgcc_actas(id, numero_acta, tipo, estado_firma, borrador_url, acta_firmada_url, fecha_acta, es_constancia),
+      actas:sgcc_actas(id, numero_acta, tipo, estado_firma, borrador_url, acta_firmada_url, fecha_acta, es_constancia, consideraciones, acuerdo_texto),
       audiencias:sgcc_hearings(
-        id, fecha_hora, duracion_min, estado, tipo, notas_previas,
+        id, fecha_hora, duracion_min, estado, tipo, notas_previas, conciliador_id, sala_id,
         conciliador:sgcc_staff(nombre),
         sala:sgcc_rooms(nombre)
       ),
@@ -45,6 +45,45 @@ export default async function CasoDetailPage({ params }: Props) {
     .single();
 
   if (!caso) notFound();
+
+  const [{ data: staffAll }, { data: salasAll }] = await Promise.all([
+    supabaseAdmin
+      .from("sgcc_staff")
+      .select("id, nombre, rol")
+      .eq("center_id", centerId)
+      .eq("activo", true)
+      .order("nombre"),
+    supabaseAdmin
+      .from("sgcc_rooms")
+      .select("id, nombre, tipo")
+      .eq("center_id", centerId)
+      .eq("activa", true)
+      .order("nombre"),
+  ]);
+  const conciliadores = (staffAll ?? []).filter((s: any) => s.rol === "conciliador");
+  const secretarios = (staffAll ?? []).filter((s: any) => s.rol === "secretario");
+  const salas = salasAll ?? [];
+
+  const partesFlat = (caso.partes ?? []).map((cp: any) => ({
+    case_party_id: cp.id,
+    party_id: cp.party?.id,
+    rol: cp.rol,
+    tipo_persona: cp.party?.tipo_persona ?? "natural",
+    nombres: cp.party?.nombres ?? null,
+    apellidos: cp.party?.apellidos ?? null,
+    tipo_doc: cp.party?.tipo_doc ?? null,
+    numero_doc: cp.party?.numero_doc ?? null,
+    razon_social: cp.party?.razon_social ?? null,
+    nit_empresa: cp.party?.nit_empresa ?? null,
+    email: cp.party?.email ?? null,
+    telefono: cp.party?.telefono ?? null,
+    direccion: cp.party?.direccion ?? null,
+    ciudad: cp.party?.ciudad ?? null,
+    apoderado_nombre: cp.apoderado_nombre ?? null,
+    apoderado_doc: cp.apoderado_doc ?? null,
+    citacion_enviada_at: cp.citacion_enviada_at ?? null,
+    citacion_confirmada_at: cp.citacion_confirmada_at ?? null,
+  }));
 
   const convocante = caso.partes?.find((p: any) => p.rol === "convocante");
   const convocados = caso.partes?.filter((p: any) => p.rol === "convocado") ?? [];
@@ -83,7 +122,34 @@ export default async function CasoDetailPage({ params }: Props) {
       </PageHeader>
 
       {/* Timeline */}
-      <CasoTimeline caseId={id} estado={caso.estado} events={caso.timeline ?? []} />
+      <CasoTimeline
+        caseId={id}
+        estado={caso.estado}
+        events={caso.timeline ?? []}
+        caso={{
+          id: caso.id,
+          numero_radicado: caso.numero_radicado,
+          materia: caso.materia,
+          cuantia: caso.cuantia,
+          cuantia_indeterminada: caso.cuantia_indeterminada,
+          descripcion: caso.descripcion,
+          estado: caso.estado,
+          sub_estado: caso.sub_estado,
+          conciliador_id: caso.conciliador_id,
+          secretario_id: caso.secretario_id,
+          motivo_rechazo: caso.motivo_rechazo,
+          fecha_solicitud: caso.fecha_solicitud,
+          fecha_admision: caso.fecha_admision,
+          fecha_limite_citacion: caso.fecha_limite_citacion,
+          fecha_cierre: caso.fecha_cierre,
+        }}
+        partes={partesFlat}
+        audiencias={caso.audiencias ?? []}
+        actas={caso.actas ?? []}
+        conciliadores={conciliadores}
+        secretarios={secretarios}
+        salas={salas}
+      />
 
       {/* Rechazo */}
       {caso.estado === "rechazado" && caso.motivo_rechazo && (
