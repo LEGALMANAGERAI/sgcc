@@ -133,7 +133,11 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ acreedor_nombre: "" }),
       });
-      if (!res.ok) { flash("error", "Error al crear"); return; }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        flash("error", body?.error || `Error al crear (${res.status})`);
+        return;
+      }
       const data = await res.json();
       setAcreencias((prev) => [...prev, data]);
     } finally { setSaving(null); }
@@ -555,6 +559,25 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                   </tr>
                 ))}
               </tbody>
+              {acreencias.length > 0 && (
+                <tfoot>
+                  <tr className="bg-gray-50 border-t-2 border-[#0D2340] font-bold text-xs">
+                    <td colSpan={6} className="px-3 py-2 text-right text-gray-900">TOTALES</td>
+                    {conceptos.map((c) => {
+                      const totalSol = acreencias.reduce((s, a) => s + (Number((a as any)[`sol_${c.key}`]) || 0), 0);
+                      const totalAcr = acreencias.reduce((s, a) => s + (Number((a as any)[`acr_${c.key}`]) || 0), 0);
+                      return (
+                        <Fragment key={c.key}>
+                          <td className="px-1 py-2 text-right text-blue-700 border-l border-gray-200">{fmt(totalSol)}</td>
+                          <td className="px-1 py-2 text-right text-purple-700">{fmt(totalAcr)}</td>
+                        </Fragment>
+                      );
+                    })}
+                    <td className="border-l border-gray-200"></td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
           <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-4">

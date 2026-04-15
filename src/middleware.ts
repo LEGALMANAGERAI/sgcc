@@ -14,18 +14,20 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  // Sin sesión → login
-  if (!session) {
-    return NextResponse.redirect(new URL("/login", req.url));
-  }
+  const isApi = pathname.startsWith("/api/");
+  const unauthorized = () =>
+    isApi
+      ? NextResponse.json({ error: "Sesión expirada. Vuelve a iniciar sesión." }, { status: 401 })
+      : NextResponse.redirect(new URL("/login", req.url));
+
+  // Sin sesión → login (o 401 si es API)
+  if (!session) return unauthorized();
 
   const userType = (session.user as any)?.userType;
 
   // Portal de partes — solo partes
   if (pathname.startsWith("/mis-casos") || pathname.startsWith("/perfil") || pathname.startsWith("/nueva-solicitud")) {
-    if (userType !== "party") {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
+    if (userType !== "party") return unauthorized();
   }
 
   // Portal de staff — solo staff
@@ -45,9 +47,7 @@ export default auth((req) => {
     pathname.startsWith("/vigilancia") ||
     pathname.startsWith("/firmas")
   ) {
-    if (userType !== "staff") {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
+    if (userType !== "staff") return unauthorized();
   }
 
   return NextResponse.next();
