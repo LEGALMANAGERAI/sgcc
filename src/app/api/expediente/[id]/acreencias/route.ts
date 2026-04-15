@@ -57,6 +57,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       case_id: caseId,
       center_id: centerId,
       party_id: body.party_id || null,
+      acreedor_tipo: body.acreedor_tipo === "juridica" ? "juridica" : "natural",
       acreedor_nombre: body.acreedor_nombre.trim(),
       acreedor_documento: body.acreedor_documento?.trim() || null,
       sol_capital: body.sol_capital ?? 0,
@@ -106,7 +107,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   // Campos permitidos para actualizar
   const allowed = [
-    "acreedor_nombre", "acreedor_documento", "party_id",
+    "acreedor_tipo", "acreedor_nombre", "acreedor_documento", "party_id",
     "sol_capital", "sol_intereses_corrientes", "sol_intereses_moratorios", "sol_seguros", "sol_otros",
     "acr_capital", "acr_intereses_corrientes", "acr_intereses_moratorios", "acr_seguros", "acr_otros",
     "con_capital", "con_intereses_corrientes", "con_intereses_moratorios", "con_seguros", "con_otros",

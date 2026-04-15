@@ -313,6 +313,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="px-3 py-2 text-left font-semibold text-gray-600 min-w-[180px]">Acreedor</th>
+                  <th className="px-2 py-2 text-left font-semibold text-gray-600 min-w-[90px]">Tipo</th>
                   <th className="px-2 py-2 text-left font-semibold text-gray-600 min-w-[100px]">Documento</th>
                   <th className="px-2 py-2 text-center font-semibold text-gray-600">Clase</th>
                   <th className="px-2 py-2 text-center font-semibold text-gray-600">Días mora</th>
@@ -324,7 +325,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                   <th className="px-2 py-2 text-center font-semibold text-gray-600 border-l border-gray-200">Acciones</th>
                 </tr>
                 <tr className="bg-gray-50/50 border-b border-gray-100">
-                  <th colSpan={4}></th>
+                  <th colSpan={5}></th>
                   {conceptos.map((c) => (
                     <Fragment key={c.key}>
                       <th className="px-2 py-1 text-center text-[10px] text-blue-600 font-medium border-l border-gray-200">Solicitud</th>
@@ -349,12 +350,22 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                       />
                     </td>
                     <td className="px-2 py-2">
+                      <select
+                        defaultValue={a.acreedor_tipo ?? "natural"}
+                        onChange={(e) => updateAcreencia(a.id, { acreedor_tipo: e.target.value })}
+                        className="w-full border border-gray-200 rounded px-1.5 py-1 text-xs focus:ring-1 focus:ring-[#1B4F9B] outline-none"
+                      >
+                        <option value="natural">Persona natural</option>
+                        <option value="juridica">Persona jurídica</option>
+                      </select>
+                    </td>
+                    <td className="px-2 py-2">
                       <input
                         type="text"
                         defaultValue={a.acreedor_documento ?? ""}
                         onBlur={(e) => updateAcreencia(a.id, { acreedor_documento: e.target.value })}
                         className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-[#1B4F9B] outline-none"
-                        placeholder="CC/NIT"
+                        placeholder={a.acreedor_tipo === "juridica" ? "NIT" : "CC/CE"}
                       />
                     </td>
                     <td className="px-1 py-2">

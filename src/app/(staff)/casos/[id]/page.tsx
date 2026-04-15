@@ -201,7 +201,7 @@ export default async function CasoDetailPage({ params }: Props) {
           <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900">Documentos</h3>
-              <Link href={`/casos/${id}/documentos`} className="text-xs text-[#1B4F9B] hover:underline">
+              <Link href={`/expediente/${id}?tab=documentos`} className="text-xs text-[#1B4F9B] hover:underline">
                 + Subir
               </Link>
             </div>
@@ -324,11 +324,11 @@ export default async function CasoDetailPage({ params }: Props) {
                 </Link>
               )}
               {["audiencia", "citado"].includes(caso.estado) && (
-                <Link href={`/casos/${id}/acta`} className="block w-full text-center bg-[#1B4F9B] text-white text-sm py-2 px-3 rounded-lg hover:bg-[#a07509] transition-colors">
+                <Link href={`/expediente/${id}`} className="block w-full text-center bg-[#1B4F9B] text-white text-sm py-2 px-3 rounded-lg hover:bg-[#a07509] transition-colors">
                   Generar acta
                 </Link>
               )}
-              <Link href={`/casos/${id}/documentos`} className="block w-full text-center border border-gray-200 text-gray-600 text-sm py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors">
+              <Link href={`/expediente/${id}?tab=documentos`} className="block w-full text-center border border-gray-200 text-gray-600 text-sm py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors">
                 Subir documento
               </Link>
             </div>
