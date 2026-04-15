@@ -45,10 +45,6 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { id: caseId } = await params;
   const body = await req.json();
 
-  if (!body.acreedor_nombre?.trim()) {
-    return NextResponse.json({ error: "Nombre del acreedor es requerido" }, { status: 400 });
-  }
-
   const now = new Date().toISOString();
   const { data, error } = await supabaseAdmin
     .from("sgcc_acreencias")
@@ -58,7 +54,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       center_id: centerId,
       party_id: body.party_id || null,
       acreedor_tipo: body.acreedor_tipo === "juridica" ? "juridica" : "natural",
-      acreedor_nombre: body.acreedor_nombre.trim(),
+      acreedor_nombre: body.acreedor_nombre?.trim() || "",
       acreedor_documento: body.acreedor_documento?.trim() || null,
       sol_capital: body.sol_capital ?? 0,
       sol_intereses_corrientes: body.sol_intereses_corrientes ?? 0,
