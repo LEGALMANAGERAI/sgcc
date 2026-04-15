@@ -180,13 +180,21 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
   async function capitalizarSeguros(acreenciaId: string) {
     const a = acreencias.find((x) => x.id === acreenciaId);
     if (!a) return;
-    const seguros = Number(a.con_seguros) || 0;
-    if (seguros <= 0) { flash("error", "No hay seguros conciliados para capitalizar"); return; }
-    if (!confirm(`¿Capitalizar $${seguros.toLocaleString("es-CO")} de seguros al capital? Esta acción suma ese valor al capital y deja seguros en 0.`)) return;
-    const nuevoCapital = (Number(a.con_capital) || 0) + seguros;
+    // Tomar el valor mayor reportado de seguros para capitalizar
+    const segurosCon = Number(a.con_seguros) || 0;
+    const segurosAcr = Number(a.acr_seguros) || 0;
+    const segurosSol = Number(a.sol_seguros) || 0;
+    const seguros = Math.max(segurosCon, segurosAcr, segurosSol);
+    if (seguros <= 0) { flash("error", "No hay seguros reportados para capitalizar"); return; }
+    if (!confirm(`¿Capitalizar $${seguros.toLocaleString("es-CO")} de seguros al capital? Se sumará al capital en las tres columnas (Solicitud/Acreedor/Conciliado) y seguros quedará en 0.`)) return;
     const nuevaNota = [a.notas, `Seguros capitalizados al capital: $${seguros.toLocaleString("es-CO")}`].filter(Boolean).join(" · ");
+    // Capitalizar en las 3 columnas para que una conciliación posterior traiga el valor correcto
     await updateAcreencia(acreenciaId, {
-      con_capital: nuevoCapital,
+      sol_capital: (Number(a.sol_capital) || 0) + segurosSol,
+      sol_seguros: 0,
+      acr_capital: (Number(a.acr_capital) || 0) + segurosAcr,
+      acr_seguros: 0,
+      con_capital: (Number(a.con_capital) || 0) + segurosCon,
       con_seguros: 0,
       notas: nuevaNota,
     });
@@ -512,7 +520,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                     </td>
                     <td className="px-2 py-2 border-l border-gray-100">
                       <div className="flex flex-col items-center gap-1">
-                        {Number(a.con_seguros) > 0 && (
+                        {(Number(a.con_seguros) > 0 || Number(a.acr_seguros) > 0 || Number(a.sol_seguros) > 0) && (
                           <button
                             type="button"
                             onClick={() => capitalizarSeguros(a.id)}
