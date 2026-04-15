@@ -15,6 +15,7 @@ import { CrearActaInsolvencia } from "@/components/modules/expediente/CrearActaI
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { HerramientaAcreencias } from "@/components/modules/insolvencia/HerramientaAcreencias";
+import { CasoTimeline } from "@/components/modules/casos/CasoTimeline";
 import type { TipoTramite } from "@/types";
 import { partyDisplayName } from "@/types";
 import { sumarDiasHabiles, diasHabilesEntre } from "@/lib/dias-habiles-colombia";
@@ -196,6 +197,46 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
     TABS.push({ key: "acreencias", label: "Acreencias" });
   }
 
+  // Staff y salas para el modal de edición de etapas
+  const [{ data: staffAll }, { data: salasAll }] = await Promise.all([
+    supabaseAdmin.from("sgcc_staff").select("id, nombre, rol").eq("center_id", centerId).eq("activo", true).order("nombre"),
+    supabaseAdmin.from("sgcc_rooms").select("id, nombre, tipo").eq("center_id", centerId).eq("activa", true).order("nombre"),
+  ]);
+  const conciliadoresList = (staffAll ?? []).filter((s: any) => s.rol === "conciliador");
+  const secretariosList = (staffAll ?? []).filter((s: any) => s.rol === "secretario");
+  const salasList = salasAll ?? [];
+
+  const partesFlat = (parties ?? []).map((cp: any) => ({
+    case_party_id: cp.id,
+    party_id: cp.party?.id,
+    rol: cp.rol,
+    tipo_persona: cp.party?.tipo_persona ?? "natural",
+    nombres: cp.party?.nombres ?? null,
+    apellidos: cp.party?.apellidos ?? null,
+    tipo_doc: cp.party?.tipo_doc ?? null,
+    numero_doc: cp.party?.numero_doc ?? null,
+    razon_social: cp.party?.razon_social ?? null,
+    nit_empresa: cp.party?.nit_empresa ?? null,
+    email: cp.party?.email ?? null,
+    telefono: cp.party?.telefono ?? null,
+    direccion: cp.party?.direccion ?? null,
+    ciudad: cp.party?.ciudad ?? null,
+    apoderado_nombre: cp.apoderado_nombre ?? null,
+    apoderado_doc: cp.apoderado_doc ?? null,
+    citacion_enviada_at: cp.citacion_enviada_at ?? null,
+    citacion_confirmada_at: cp.citacion_confirmada_at ?? null,
+  }));
+
+  // Próxima acción según estado
+  const nextAction = {
+    solicitud: { label: "Procesar admisión", href: `/casos/${id}/admision` },
+    admitido: { label: "Generar citación", href: `/casos/${id}/citacion` },
+    citado: { label: "Programar audiencia", href: `/casos/${id}/audiencia` },
+    audiencia: { label: "Agendar continuación", href: `/casos/${id}/audiencia` },
+    cerrado: null,
+    rechazado: null,
+  }[caso.estado as string] ?? null;
+
   /* ─── Badge tipo trámite ───────────────────────────────────────────── */
 
   const tipoBadge = TIPO_BADGE[caso.tipo_tramite as TipoTramite];
@@ -222,11 +263,11 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
       {/* Volver */}
       <div className="mb-3">
         <Link
-          href="/dashboard"
+          href="/casos"
           className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Volver al Dashboard
+          Volver a Expedientes
         </Link>
       </div>
 
@@ -241,7 +282,45 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
           {tipoBadge.label}
         </span>
         <StatusChip value={caso.estado} type="case" size="md" />
+        {nextAction && (
+          <Link
+            href={nextAction.href}
+            className="bg-[#1B4F9B] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#a07509] transition-colors"
+          >
+            {nextAction.label} →
+          </Link>
+        )}
       </PageHeader>
+
+      {/* Flujo del caso (timeline editable) */}
+      <CasoTimeline
+        caseId={id}
+        estado={caso.estado}
+        events={timeline as any}
+        caso={{
+          id: caso.id,
+          numero_radicado: caso.numero_radicado,
+          materia: caso.materia,
+          cuantia: caso.cuantia,
+          cuantia_indeterminada: caso.cuantia_indeterminada,
+          descripcion: caso.descripcion,
+          estado: caso.estado,
+          sub_estado: caso.sub_estado,
+          conciliador_id: caso.conciliador_id,
+          secretario_id: caso.secretario_id,
+          motivo_rechazo: caso.motivo_rechazo,
+          fecha_solicitud: caso.fecha_solicitud,
+          fecha_admision: caso.fecha_admision,
+          fecha_limite_citacion: caso.fecha_limite_citacion,
+          fecha_cierre: caso.fecha_cierre,
+        }}
+        partes={partesFlat}
+        audiencias={hearings}
+        actas={(rawActas ?? []) as any[]}
+        conciliadores={conciliadoresList}
+        secretarios={secretariosList}
+        salas={salasList}
+      />
 
       {/* Contador de término */}
       {caso.estado !== "cerrado" && caso.estado !== "rechazado" && (

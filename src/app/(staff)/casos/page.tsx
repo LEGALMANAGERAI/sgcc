@@ -73,12 +73,12 @@ export default async function CasosPage({ searchParams }: Props) {
 
   return (
     <div>
-      <PageHeader title="Casos" subtitle={`${filtered.length} caso${filtered.length !== 1 ? "s" : ""}`}>
+      <PageHeader title="Expedientes" subtitle={`${filtered.length} expediente${filtered.length !== 1 ? "s" : ""}`}>
         <Link
           href="/casos/nuevo"
           className="bg-[#0D2340] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#0d2340dd] transition-colors"
         >
-          + Nueva solicitud
+          + Nuevo expediente
         </Link>
       </PageHeader>
 
@@ -143,7 +143,7 @@ export default async function CasosPage({ searchParams }: Props) {
             {!filtered.length ? (
               <tr>
                 <td colSpan={8} className="px-5 py-10 text-center text-gray-400">
-                  No hay casos con los filtros seleccionados
+                  No hay expedientes con los filtros seleccionados
                 </td>
               </tr>
             ) : (
@@ -180,7 +180,7 @@ export default async function CasosPage({ searchParams }: Props) {
                     </td>
                     <td className="px-5 py-3 text-right">
                       <Link
-                        href={`/casos/${c.id}`}
+                        href={`/expediente/${c.id}`}
                         className="text-[#1B4F9B] hover:underline font-medium text-xs"
                       >
                         Ver →
