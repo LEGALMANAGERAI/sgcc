@@ -15,6 +15,8 @@ import {
   Calculator,
   ChevronDown,
   ChevronUp,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import type { SgccAcreencia, VotoInsolvencia, ClaseCredito } from "@/types";
 import { Handshake } from "lucide-react";
@@ -90,6 +92,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
   });
 
   const [seccion, setSeccion] = useState<"acreencias" | "definitiva" | "propuesta" | "votacion" | "acuerdo">("acreencias");
+  const [fullscreen, setFullscreen] = useState(false);
 
   const flash = useCallback((type: "ok" | "error", msg: string) => {
     if (type === "ok") { setSuccess(msg); setError(""); }
@@ -272,7 +275,19 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
   /* ─── Render ─────────────────────────────────────────────────────── */
 
   return (
-    <div className="space-y-4">
+    <div className={fullscreen ? "fixed inset-0 z-50 bg-white overflow-auto p-6 space-y-4" : "space-y-4"}>
+      {/* Toggle pantalla completa */}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setFullscreen((v) => !v)}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#0D2340] border border-gray-200 rounded-lg px-3 py-1.5 bg-white"
+          title={fullscreen ? "Salir de pantalla completa" : "Pantalla completa (modo audiencia)"}
+        >
+          {fullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+          {fullscreen ? "Salir pantalla completa" : "Pantalla completa"}
+        </button>
+      </div>
       {/* Mensajes */}
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">{error}</div>}
       {success && <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-lg text-sm">{success}</div>}
