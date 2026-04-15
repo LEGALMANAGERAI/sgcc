@@ -100,6 +100,7 @@ export default async function AudienciaPage({ params }: Props) {
                     {new Date(a.fecha_hora).toLocaleString("es-CO", {
                       dateStyle: "medium",
                       timeStyle: "short",
+                      timeZone: "America/Bogota",
                     })}
                   </span>
                   <span className="text-gray-500 text-xs">· {a.duracion_min} min</span>
