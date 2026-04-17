@@ -1295,6 +1295,12 @@ function SectionHeader({ icon, title, subtitle, active, onClick }: {
   );
 }
 
+function parseMoneyCOP(str: string): number {
+  if (!str) return 0;
+  const cleaned = str.replace(/[^\d,]/g, "").replace(",", ".");
+  return parseFloat(cleaned) || 0;
+}
+
 function MoneyInput({ value, onSave }: { value: number; onSave: (v: number) => void }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(String(value || ""));
@@ -1302,11 +1308,12 @@ function MoneyInput({ value, onSave }: { value: number; onSave: (v: number) => v
   if (editing) {
     return (
       <input
-        type="number"
+        type="text"
+        inputMode="decimal"
         value={text}
         onChange={(e) => setText(e.target.value)}
         onBlur={() => {
-          const num = parseFloat(text) || 0;
+          const num = parseMoneyCOP(text);
           setEditing(false);
           if (num !== value) onSave(num);
         }}
@@ -1315,15 +1322,15 @@ function MoneyInput({ value, onSave }: { value: number; onSave: (v: number) => v
           if (e.key === "Escape") { setEditing(false); setText(String(value || "")); }
         }}
         autoFocus
-        className="w-20 border border-[#1B4F9B] rounded px-1.5 py-0.5 text-xs text-right focus:ring-1 focus:ring-[#1B4F9B] outline-none"
+        className="w-28 border border-[#1B4F9B] rounded px-1.5 py-0.5 text-xs text-right focus:ring-1 focus:ring-[#1B4F9B] outline-none"
       />
     );
   }
 
   return (
     <button
-      onClick={() => { setText(String(value || "")); setEditing(true); }}
-      className="w-20 text-right text-xs text-gray-700 hover:bg-blue-50 rounded px-1.5 py-0.5 transition-colors"
+      onClick={() => { setText(value ? String(value) : ""); setEditing(true); }}
+      className="w-28 text-right text-xs text-gray-700 hover:bg-blue-50 rounded px-1.5 py-0.5 transition-colors"
     >
       {value ? fmt(value) : "—"}
     </button>
