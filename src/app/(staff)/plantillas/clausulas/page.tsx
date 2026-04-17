@@ -6,9 +6,9 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PlantillasTabs } from "@/components/modules/plantillas/PlantillasTabs";
-import { PlantillasClient } from "./PlantillasClient";
+import { ClausulasClient } from "./ClausulasClient";
 
-export default async function PlantillasPage() {
+export default async function ClausulasPage() {
   const session = await auth();
   if (!session) redirect("/login");
 
@@ -17,26 +17,25 @@ export default async function PlantillasPage() {
 
   const isAdmin = (session.user as any).sgccRol === "admin";
 
-  // Plantillas del centro + globales
-  const { data: plantillas } = await supabaseAdmin
-    .from("sgcc_templates")
+  // Cláusulas del centro + globales, solo activas
+  const { data: clausulas } = await supabaseAdmin
+    .from("sgcc_clausulas")
     .select("*")
     .or(`center_id.eq.${centerId},center_id.is.null`)
     .eq("activo", true)
-    .order("tipo")
-    .order("nombre");
+    .order("categoria")
+    .order("titulo");
 
   return (
     <div>
       <PageHeader
-        title="Plantillas de Documentos"
-        subtitle="Gestione las plantillas para citaciones, actas, constancias y más"
+        title="Librería de Cláusulas"
+        subtitle="Cláusulas reutilizables para actas, acuerdos y constancias"
       />
       <PlantillasTabs />
-      <PlantillasClient
-        plantillas={plantillas ?? []}
+      <ClausulasClient
+        clausulas={clausulas ?? []}
         isAdmin={isAdmin}
-        centerId={centerId}
       />
     </div>
   );
