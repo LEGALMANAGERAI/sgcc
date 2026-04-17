@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { Mail, Clock, AlertTriangle, XCircle } from "lucide-react";
 import { CorrespondenciaClient } from "./CorrespondenciaClient";
+import { CollaborationBar } from "@/components/ui/CollaborationBar";
 import type { CorrespondenciaTipo, CorrespondenciaEstado } from "@/types";
 
 interface Props {
@@ -105,6 +106,13 @@ export default async function CorrespondenciaPage({ searchParams }: Props) {
 
   return (
     <div>
+      <CollaborationBar
+        resourceType="correspondencia"
+        resourceId={centerId}
+        userId={(session.user as any).id}
+        nombre={session.user?.name ?? "Usuario"}
+        rol={(session.user as any).sgccRol ?? "staff"}
+      />
       <PageHeader
         title="Correspondencia Juridica"
         subtitle="Gestion de tutelas, derechos de peticion, requerimientos y oficios"

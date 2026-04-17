@@ -16,6 +16,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { HerramientaAcreencias } from "@/components/modules/insolvencia/HerramientaAcreencias";
 import { CasoTimeline } from "@/components/modules/casos/CasoTimeline";
+import { CollaborationBar } from "@/components/ui/CollaborationBar";
 import type { TipoTramite } from "@/types";
 import { partyDisplayName } from "@/types";
 import { sumarDiasHabiles, diasHabilesEntre } from "@/lib/dias-habiles-colombia";
@@ -270,6 +271,15 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
           Volver a Expedientes
         </Link>
       </div>
+
+      {/* Colaboración en tiempo real */}
+      <CollaborationBar
+        resourceType="expediente"
+        resourceId={id}
+        userId={(session.user as any).id}
+        nombre={session.user?.name ?? "Usuario"}
+        rol={(session.user as any).sgccRol ?? "staff"}
+      />
 
       {/* Header */}
       <PageHeader

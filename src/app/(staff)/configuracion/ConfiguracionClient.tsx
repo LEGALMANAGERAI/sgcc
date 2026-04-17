@@ -303,7 +303,37 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
 
       {/* ─── Tab: Datos del Centro ─────────────────────────────────────── */}
       {activeTab === "Datos del Centro" && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="space-y-6">
+          {/* Código del centro para compartir */}
+          <div className="bg-gradient-to-r from-[#0D2340] to-[#1B4F9B] rounded-xl p-5 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-white/60 uppercase tracking-wider mb-1">
+                  Código del centro
+                </p>
+                <p className="text-2xl font-bold font-mono tracking-[0.3em]">
+                  {center.codigo_corto}
+                </p>
+                <p className="text-xs text-white/50 mt-1">
+                  Comparte este código para que conciliadores se registren en tu centro
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(center.codigo_corto);
+                  flash("ok", "Código copiado al portapapeles");
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Copiar
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-[#0D2340] mb-4">Información General</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <InputField label="Nombre del Centro" name="nombre" value={form.nombre} onChange={handleChange} />
@@ -327,6 +357,7 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
               {saving ? "Guardando..." : "Guardar cambios"}
             </button>
           </div>
+        </div>
         </div>
       )}
 
