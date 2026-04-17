@@ -9,6 +9,7 @@ export type CenterTipo =
 
 export interface SgccCenter {
   id: string;
+  codigo_corto: string;
   nombre: string;
   nit: string | null;
   tipo: CenterTipo;

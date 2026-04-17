@@ -196,6 +196,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         (session.user as any).userType = token.userType;
         (session.user as any).centerId = token.centerId;
         (session.user as any).sgccRol = token.sgccRol;
+        if (token.name) session.user.name = token.name;
       }
       return session;
     },

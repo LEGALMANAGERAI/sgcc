@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
 import Link from "next/link";
 import { AudienciaForm } from "@/components/modules/casos/AudienciaForm";
+import { CollaborationBar } from "@/components/ui/CollaborationBar";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -71,6 +72,13 @@ export default async function AudienciaPage({ params }: Props) {
           ← {caso.numero_radicado}
         </Link>
       </div>
+      <CollaborationBar
+        resourceType="audiencia"
+        resourceId={id}
+        userId={(session!.user as any).id}
+        nombre={session!.user?.name ?? "Usuario"}
+        rol={(session!.user as any).sgccRol ?? "staff"}
+      />
       <PageHeader
         title={tituloPagina}
         subtitle={`Caso ${caso.numero_radicado} — ${caso.materia}`}

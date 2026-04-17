@@ -148,7 +148,7 @@ export default function RegistroConciliadorPage() {
                 required
                 value={form.codigo_centro}
                 onChange={(e) => set("codigo_centro", e.target.value)}
-                placeholder="UUID o codigo de invitacion"
+                placeholder="Ej: ABCD1234"
                 className={inputCls}
               />
             </div>

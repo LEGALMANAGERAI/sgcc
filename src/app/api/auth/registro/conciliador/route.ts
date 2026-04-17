@@ -6,13 +6,13 @@ import { randomUUID } from "crypto";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { nombre, email, tarjeta_profesional, telefono, ciudad, center_code, password } = body;
+    const { nombre, email, tarjeta_profesional, telefono, ciudad, codigo_centro, password } = body;
 
     // ── Validaciones ──────────────────────────────────────────────────────
     const camposRequeridos: { valor: unknown; label: string }[] = [
       { valor: nombre, label: "Nombre" },
       { valor: email, label: "Email" },
-      { valor: center_code, label: "Código del centro" },
+      { valor: codigo_centro, label: "Código del centro" },
       { valor: password, label: "Contraseña" },
     ];
 
@@ -32,11 +32,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── Buscar centro por código (UUID) ───────────────────────────────────
+    // ── Buscar centro por código corto o UUID ─────────────────────────────
+    const code = codigo_centro.trim();
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
+
     const { data: centro, error: centerError } = await supabaseAdmin
       .from("sgcc_centers")
       .select("id, activo")
-      .eq("id", center_code.trim())
+      .eq(isUUID ? "id" : "codigo_corto", isUUID ? code : code.toUpperCase())
       .maybeSingle();
 
     if (centerError || !centro) {
