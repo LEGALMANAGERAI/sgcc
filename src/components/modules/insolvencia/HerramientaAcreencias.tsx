@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import {
   Plus,
   Trash2,
@@ -15,6 +15,7 @@ import {
   Calculator,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Maximize2,
   Minimize2,
 } from "lucide-react";
@@ -325,6 +326,42 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
 
   const propEnVotacion = propuestas.find((p) => p.estado === "en_votacion");
 
+  /* ─── Agrupación por acreedor para la Relación Definitiva ─────────────
+     Un mismo acreedor puede tener varias acreencias (créditos). El derecho
+     de voto en insolvencia es por acreedor, no por crédito — se consolidan. */
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  const gruposAcreedores = useMemo(() => {
+    const map = new Map<string, {
+      key: string;
+      acreedor_nombre: string;
+      acreedor_documento: string | null;
+      acreencias: SgccAcreencia[];
+    }>();
+    for (const a of acreencias) {
+      const key = a.party_id || a.acreedor_documento || a.acreedor_nombre || `sin-${a.id}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          acreedor_nombre: a.acreedor_nombre,
+          acreedor_documento: a.acreedor_documento ?? null,
+          acreencias: [],
+        });
+      }
+      map.get(key)!.acreencias.push(a);
+    }
+    return Array.from(map.values());
+  }, [acreencias]);
+
+  const toggleGrupo = useCallback((key: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
   /* ─── Render ─────────────────────────────────────────────────────── */
 
   return (
@@ -629,44 +666,160 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {acreencias.map((a) => {
-                  const totalRow = Number(a.con_capital) + Number(a.con_intereses_corrientes) + Number(a.con_intereses_moratorios) + Number(a.con_seguros) + Number(a.con_otros);
-                  return (
-                    <tr key={a.id} className={`hover:bg-gray-50/50 ${a.es_pequeno_acreedor ? "bg-amber-50/30" : ""}`}>
-                      <td className="px-3 py-2 font-medium text-gray-900">
-                        <div>{a.acreedor_nombre}{a.acreedor_documento && <span className="text-gray-400 ml-1">({a.acreedor_documento})</span>}</div>
-                        {a.identificacion_credito && <div className="text-[10px] text-gray-500 mt-0.5">{a.identificacion_credito}</div>}
-                      </td>
-                      {conceptos.map((c) => (
-                        <td key={c.key} className="px-1 py-2 text-right">
-                          <MoneyInput
-                            value={Number((a as any)[`con_${c.key}`]) || 0}
-                            onSave={(v) => updateAcreencia(a.id, { [`con_${c.key}`]: v })}
+                {gruposAcreedores.map((grupo) => {
+                  const multiple = grupo.acreencias.length > 1;
+                  const expanded = expandedGroups.has(grupo.key);
+
+                  // Filas simples (1 sola acreencia): comportamiento original editable
+                  if (!multiple) {
+                    const a = grupo.acreencias[0];
+                    const totalRow = Number(a.con_capital) + Number(a.con_intereses_corrientes) + Number(a.con_intereses_moratorios) + Number(a.con_seguros) + Number(a.con_otros);
+                    return (
+                      <tr key={grupo.key} className={`hover:bg-gray-50/50 ${a.es_pequeno_acreedor ? "bg-amber-50/30" : ""}`}>
+                        <td className="px-3 py-2 font-medium text-gray-900">
+                          <div>{a.acreedor_nombre}{a.acreedor_documento && <span className="text-gray-400 ml-1">({a.acreedor_documento})</span>}</div>
+                          {a.identificacion_credito && <div className="text-[10px] text-gray-500 mt-0.5">{a.identificacion_credito}</div>}
+                        </td>
+                        {conceptos.map((c) => (
+                          <td key={c.key} className="px-1 py-2 text-right">
+                            <MoneyInput
+                              value={Number((a as any)[`con_${c.key}`]) || 0}
+                              onSave={(v) => updateAcreencia(a.id, { [`con_${c.key}`]: v })}
+                            />
+                          </td>
+                        ))}
+                        <td className="px-2 py-2 text-right font-semibold text-[#0D2340]">
+                          {fmt(totalRow)}
+                        </td>
+                        <td className="px-1 py-2 text-center">
+                          <input
+                            type="date"
+                            defaultValue={a.fecha_conciliacion ?? ""}
+                            onBlur={(e) => updateAcreencia(a.id, { fecha_conciliacion: e.target.value || null })}
+                            className="border border-gray-200 rounded px-1.5 py-1 text-xs focus:ring-1 focus:ring-[#1B4F9B] outline-none w-28"
                           />
                         </td>
-                      ))}
-                      <td className="px-2 py-2 text-right font-semibold text-[#0D2340]">
-                        {fmt(totalRow)}
-                      </td>
-                      <td className="px-1 py-2 text-center">
-                        <input
-                          type="date"
-                          defaultValue={a.fecha_conciliacion ?? ""}
-                          onBlur={(e) => updateAcreencia(a.id, { fecha_conciliacion: e.target.value || null })}
-                          className="border border-gray-200 rounded px-1.5 py-1 text-xs focus:ring-1 focus:ring-[#1B4F9B] outline-none w-28"
-                        />
-                      </td>
-                      <td className="px-2 py-2 text-center">
-                        <span className="font-bold text-[#1B4F9B]">{pct(a.porcentaje_voto)}</span>
-                      </td>
-                      <td className="px-2 py-2 text-center">
-                        {a.es_pequeno_acreedor ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">Sí</span>
-                        ) : (
-                          <span className="text-gray-300">—</span>
-                        )}
-                      </td>
-                    </tr>
+                        <td className="px-2 py-2 text-center">
+                          <span className="font-bold text-[#1B4F9B]">{pct(a.porcentaje_voto)}</span>
+                        </td>
+                        <td className="px-2 py-2 text-center">
+                          {a.es_pequeno_acreedor ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">Sí</span>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  // Grupo con varias acreencias: fila padre consolidada + hijas expandibles
+                  const totalesGrupo: Record<string, number> = {};
+                  for (const c of conceptos) {
+                    totalesGrupo[c.key] = grupo.acreencias.reduce(
+                      (s, a) => s + (Number((a as any)[`con_${c.key}`]) || 0),
+                      0,
+                    );
+                  }
+                  const totalGrupo = Object.values(totalesGrupo).reduce((s, v) => s + v, 0);
+                  const pctGrupo = grupo.acreencias.reduce((s, a) => s + Number(a.porcentaje_voto || 0), 0);
+                  const todosPequenos = grupo.acreencias.every((a) => a.es_pequeno_acreedor);
+
+                  return (
+                    <Fragment key={grupo.key}>
+                      <tr
+                        className="bg-blue-50/40 border-t-2 border-blue-200 cursor-pointer hover:bg-blue-100/40"
+                        onClick={() => toggleGrupo(grupo.key)}
+                      >
+                        <td className="px-3 py-2.5 font-bold text-gray-900">
+                          <div className="flex items-center gap-2">
+                            {expanded ? (
+                              <ChevronDown className="w-3.5 h-3.5 text-[#1B4F9B]" />
+                            ) : (
+                              <ChevronRight className="w-3.5 h-3.5 text-[#1B4F9B]" />
+                            )}
+                            <div>
+                              <div>
+                                {grupo.acreedor_nombre}
+                                {grupo.acreedor_documento && (
+                                  <span className="text-gray-500 ml-1 font-normal">({grupo.acreedor_documento})</span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-[#1B4F9B] font-semibold mt-0.5">
+                                {grupo.acreencias.length} acreencias consolidadas
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        {conceptos.map((c) => (
+                          <td key={c.key} className="px-2 py-2.5 text-right font-bold text-gray-900">
+                            {fmt(totalesGrupo[c.key])}
+                          </td>
+                        ))}
+                        <td className="px-2 py-2.5 text-right font-bold text-[#0D2340]">
+                          {fmt(totalGrupo)}
+                        </td>
+                        <td></td>
+                        <td className="px-2 py-2.5 text-center">
+                          <span className="font-bold text-[#1B4F9B]">{pct(pctGrupo)}</span>
+                        </td>
+                        <td className="px-2 py-2.5 text-center">
+                          {todosPequenos ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">Sí</span>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                      </tr>
+                      {expanded && grupo.acreencias.map((a) => {
+                        const totalRow = Number(a.con_capital) + Number(a.con_intereses_corrientes) + Number(a.con_intereses_moratorios) + Number(a.con_seguros) + Number(a.con_otros);
+                        return (
+                          <tr key={a.id} className={`bg-gray-50/40 hover:bg-gray-100/40 ${a.es_pequeno_acreedor ? "bg-amber-50/30" : ""}`}>
+                            <td className="px-3 py-2 text-gray-700">
+                              <div className="flex items-start gap-2 pl-5">
+                                <span className="text-gray-400 text-sm">↳</span>
+                                <div>
+                                  {a.identificacion_credito ? (
+                                    <div className="text-xs font-medium text-gray-700">{a.identificacion_credito}</div>
+                                  ) : (
+                                    <div className="text-[11px] italic text-gray-400">Sin identificación</div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            {conceptos.map((c) => (
+                              <td key={c.key} className="px-1 py-2 text-right">
+                                <MoneyInput
+                                  value={Number((a as any)[`con_${c.key}`]) || 0}
+                                  onSave={(v) => updateAcreencia(a.id, { [`con_${c.key}`]: v })}
+                                />
+                              </td>
+                            ))}
+                            <td className="px-2 py-2 text-right font-semibold text-[#0D2340]">
+                              {fmt(totalRow)}
+                            </td>
+                            <td className="px-1 py-2 text-center">
+                              <input
+                                type="date"
+                                defaultValue={a.fecha_conciliacion ?? ""}
+                                onBlur={(e) => updateAcreencia(a.id, { fecha_conciliacion: e.target.value || null })}
+                                className="border border-gray-200 rounded px-1.5 py-1 text-xs focus:ring-1 focus:ring-[#1B4F9B] outline-none w-28"
+                              />
+                            </td>
+                            <td className="px-2 py-2 text-center">
+                              <span className="text-[#1B4F9B] text-xs">{pct(a.porcentaje_voto)}</span>
+                            </td>
+                            <td className="px-2 py-2 text-center">
+                              {a.es_pequeno_acreedor ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">Sí</span>
+                              ) : (
+                                <span className="text-gray-300">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -1119,8 +1272,6 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
 }
 
 /* ─── Componentes auxiliares ─────────────────────────────────────────── */
-
-import { Fragment } from "react";
 
 function SectionHeader({ icon, title, subtitle, active, onClick }: {
   icon: React.ReactNode; title: string; subtitle: string; active: boolean; onClick: () => void;
