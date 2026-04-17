@@ -16,6 +16,8 @@ import {
   User,
   Briefcase,
 } from "lucide-react";
+import { InsertarClausulaButton } from "@/components/modules/plantillas/InsertarClausulaButton";
+import type { ActaTipo } from "@/types";
 
 /* ─── Props ─────────────────────────────────────────────────────────────── */
 
@@ -46,6 +48,18 @@ const TIPOS_ACTA: { value: TipoActaInsolvencia; label: string }[] = [
   { value: "no_acuerdo", label: "No acuerdo" },
   { value: "desistimiento", label: "Desistimiento" },
 ];
+
+const TIPO_INSOLVENCIA_A_ACTA: Record<TipoActaInsolvencia, ActaTipo> = {
+  acuerdo_pago: "acuerdo_total",
+  liquidacion_patrimonial: "no_acuerdo",
+  validacion_acuerdo_privado: "acuerdo_total",
+  no_acuerdo: "no_acuerdo",
+  desistimiento: "desistimiento",
+};
+
+function resultadoActaTipo(tipo: TipoActaInsolvencia): ActaTipo {
+  return TIPO_INSOLVENCIA_A_ACTA[tipo];
+}
 
 interface Obligacion {
   acreedor: string;
@@ -467,9 +481,19 @@ export function CrearActaInsolvencia({
 
           {/* Consideraciones */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Consideraciones
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-gray-700">
+                Consideraciones
+              </label>
+              <InsertarClausulaButton
+                tipoTramite="insolvencia"
+                resultado={resultadoActaTipo(tipo)}
+                categoriasPreferidas={["consideraciones", "preambulo", "identificacion_partes"]}
+                onInsert={(contenido) =>
+                  setConsideraciones((prev: string) => (prev ? prev + "\n\n" + contenido : contenido))
+                }
+              />
+            </div>
             <textarea
               value={consideraciones}
               onChange={(e) => setConsideraciones(e.target.value)}
@@ -481,9 +505,27 @@ export function CrearActaInsolvencia({
 
           {/* Acuerdo / Decisión */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Acuerdo / Decisión
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-gray-700">
+                Acuerdo / Decisión
+              </label>
+              <InsertarClausulaButton
+                tipoTramite="insolvencia"
+                resultado={resultadoActaTipo(tipo)}
+                categoriasPreferidas={[
+                  "insolvencia_acuerdo_pago",
+                  "insolvencia_liquidacion",
+                  "obligacion_dar",
+                  "obligacion_hacer",
+                  "garantias",
+                  "clausula_penal",
+                  "cierre",
+                ]}
+                onInsert={(contenido) =>
+                  setAcuerdoTexto((prev: string) => (prev ? prev + "\n\n" + contenido : contenido))
+                }
+              />
+            </div>
             <textarea
               value={acuerdoTexto}
               onChange={(e) => setAcuerdoTexto(e.target.value)}
