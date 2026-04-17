@@ -144,20 +144,20 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { hearing_id, estado, resultado, fecha_continuacion } = body;
+  const { hearing_id, estado, resultado, fecha_continuacion, notas_previas } = body;
 
-  if (!hearing_id || !estado) {
-    return NextResponse.json({ error: "hearing_id y estado son requeridos" }, { status: 400 });
+  if (!hearing_id) {
+    return NextResponse.json({ error: "hearing_id es requerido" }, { status: 400 });
   }
 
-  // Actualizar audiencia
+  const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+  if (estado !== undefined) updates.estado = estado;
+  if (resultado !== undefined) updates.resultado = resultado ?? null;
+  if (notas_previas !== undefined) updates.notas_previas = notas_previas;
+
   const { error: hearingError } = await supabaseAdmin
     .from("sgcc_hearings")
-    .update({
-      estado,
-      resultado: resultado ?? null,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updates)
     .eq("id", hearing_id)
     .eq("case_id", caseId);
 
