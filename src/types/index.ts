@@ -311,6 +311,71 @@ export interface SgccTemplate {
   updated_at: string;
 }
 
+// ─── Cláusulas reutilizables ────────────────────────────────────────────────
+
+export type ClausulaCategoria =
+  | "preambulo"
+  | "identificacion_partes"
+  | "consideraciones"
+  | "obligacion_dar"
+  | "obligacion_hacer"
+  | "obligacion_no_hacer"
+  | "garantias"
+  | "clausula_penal"
+  | "confidencialidad"
+  | "domicilio_notificaciones"
+  | "desistimiento"
+  | "inasistencia"
+  | "cierre"
+  | "insolvencia_acuerdo_pago"
+  | "insolvencia_liquidacion"
+  | "apoyo_decision"
+  | "otro";
+
+export const CLAUSULA_CATEGORIA_LABEL: Record<ClausulaCategoria, string> = {
+  preambulo: "Preámbulo",
+  identificacion_partes: "Identificación de partes",
+  consideraciones: "Consideraciones",
+  obligacion_dar: "Obligación de dar",
+  obligacion_hacer: "Obligación de hacer",
+  obligacion_no_hacer: "Obligación de no hacer",
+  garantias: "Garantías",
+  clausula_penal: "Cláusula penal",
+  confidencialidad: "Confidencialidad",
+  domicilio_notificaciones: "Domicilio y notificaciones",
+  desistimiento: "Desistimiento",
+  inasistencia: "Inasistencia",
+  cierre: "Cierre",
+  insolvencia_acuerdo_pago: "Insolvencia — Acuerdo de pago",
+  insolvencia_liquidacion: "Insolvencia — Liquidación",
+  apoyo_decision: "Acuerdos de apoyo",
+  otro: "Otro",
+};
+
+export const TIPO_TRAMITE_LABEL: Record<TipoTramite, string> = {
+  conciliacion: "Conciliación",
+  insolvencia: "Insolvencia",
+  acuerdo_apoyo: "Acuerdos de apoyo",
+  arbitraje_ejecutivo: "Arbitraje ejecutivo",
+};
+
+export interface SgccClausula {
+  id: string;
+  center_id: string | null;  // null = global del sistema
+  titulo: string;
+  categoria: ClausulaCategoria;
+  tipo_tramite: TipoTramite | null;  // null = aplica a cualquier trámite
+  resultado_aplicable: ActaTipo[] | null;  // null = aplica a cualquier resultado
+  contenido: string;
+  variables_requeridas: string[];
+  tags: string[];
+  es_default: boolean;
+  activo: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── Notificaciones ─────────────────────────────────────────────────────────
 
 export type NotifTipo =
