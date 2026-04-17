@@ -17,6 +17,7 @@ import { ArrowLeft } from "lucide-react";
 import { HerramientaAcreencias } from "@/components/modules/insolvencia/HerramientaAcreencias";
 import { CasoTimeline } from "@/components/modules/casos/CasoTimeline";
 import { CollaborationBar } from "@/components/ui/CollaborationBar";
+import { HistorialObservacionesAudiencias } from "@/components/modules/expediente/HistorialObservacionesAudiencias";
 import type { TipoTramite } from "@/types";
 import { partyDisplayName } from "@/types";
 import { sumarDiasHabiles, diasHabilesEntre } from "@/lib/dias-habiles-colombia";
@@ -371,12 +372,21 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
 
       {/* Tab content */}
       {activeTab === "info" && (
-        <TabInfo
-          caso={caso}
-          parties={parties}
-          attorneys={attorneys.filter((a: any) => a.activo)}
-          timeline={timeline}
-        />
+        <>
+          <TabInfo
+            caso={caso}
+            parties={parties}
+            attorneys={attorneys.filter((a: any) => a.activo)}
+            timeline={timeline}
+          />
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-700">Observaciones de audiencias</h3>
+              <p className="text-[11px] text-gray-400">Edita cada observación en línea</p>
+            </div>
+            <HistorialObservacionesAudiencias caseId={id} audiencias={hearings} />
+          </div>
+        </>
       )}
 
       {activeTab === "documentos" && (
