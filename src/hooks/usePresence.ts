@@ -29,7 +29,7 @@ export function usePresence({ channelName, userId, nombre, rol, page }: UsePrese
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
-    if (!userId || !channelName) return;
+    if (!userId || !channelName || typeof window === "undefined" || !supabaseBrowser) return;
 
     const channel = supabaseBrowser.channel(channelName, {
       config: { presence: { key: userId } },
