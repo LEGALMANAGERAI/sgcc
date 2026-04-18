@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Mic, Save, Check, AlertCircle } from "lucide-react";
 
 interface Audiencia {
@@ -58,6 +58,11 @@ function ObservacionItem({ caseId, audiencia, index }: { caseId: string; audienc
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [fechaDisplay, setFechaDisplay] = useState("");
+
+  useEffect(() => {
+    setFechaDisplay(formatFecha(audiencia.fecha_hora));
+  }, [audiencia.fecha_hora]);
 
   const original = audiencia.notas_previas ?? "";
   const dirty = text !== original;
@@ -99,7 +104,7 @@ function ObservacionItem({ caseId, audiencia, index }: { caseId: string; audienc
             <p className="text-sm font-semibold text-gray-900">
               Audiencia {index} · <span className="capitalize text-gray-600 font-medium">{audiencia.tipo}</span>
             </p>
-            <p className="text-xs text-gray-500 mt-0.5">{formatFecha(audiencia.fecha_hora)}</p>
+            <p className="text-xs text-gray-500 mt-0.5 min-h-[14px]" suppressHydrationWarning>{fechaDisplay}</p>
             <div className="flex flex-wrap items-center gap-3 mt-1.5 text-[11px] text-gray-500">
               {audiencia.conciliador?.nombre && (
                 <span>Conciliador: <strong className="text-gray-700">{audiencia.conciliador.nombre}</strong></span>
