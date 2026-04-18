@@ -215,5 +215,19 @@ export async function POST(
     }
   }
 
+  // Registrar en timeline si es un cambio (no el inicial)
+  if (motivo_cambio && motivo_cambio !== "inicial") {
+    await supabaseAdmin.from("sgcc_case_timeline").insert({
+      id: randomUUID(),
+      case_id: caseId,
+      etapa: "audiencia",
+      descripcion: `Cambio de apoderado (${motivo_cambio}) — ${attorney.nombre}`,
+      completado: true,
+      fecha: now,
+      referencia_id: caseAttorneyId,
+      created_at: now,
+    });
+  }
+
   return NextResponse.json(created, { status: 201 });
 }
