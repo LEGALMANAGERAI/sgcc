@@ -27,6 +27,7 @@ const TIPO_LABELS: Record<TipoTramite, string> = {
   insolvencia: "Insolvencia",
   acuerdo_apoyo: "Acuerdo de Apoyo",
   arbitraje_ejecutivo: "Arbitraje Ejecutivo",
+  directiva_anticipada: "Directiva anticipada",
 };
 
 const ETAPA_COLORS: Record<string, string> = {

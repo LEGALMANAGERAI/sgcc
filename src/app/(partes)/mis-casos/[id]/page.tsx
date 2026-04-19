@@ -46,6 +46,7 @@ const tramiteLabel: Record<TipoTramite, string> = {
   insolvencia: "Insolvencia",
   acuerdo_apoyo: "Acuerdo de apoyo",
   arbitraje_ejecutivo: "Arbitraje Ejecutivo",
+  directiva_anticipada: "Directiva anticipada",
 };
 
 const materiaLabel: Record<CaseMateria, string> = {
