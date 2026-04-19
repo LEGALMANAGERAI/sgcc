@@ -22,6 +22,7 @@ import { CollaborationBar } from "@/components/ui/CollaborationBar";
 import { HistorialObservacionesAudiencias } from "@/components/modules/expediente/HistorialObservacionesAudiencias";
 import type { TipoTramite } from "@/types";
 import { sumarDiasHabiles, diasHabilesEntre } from "@/lib/dias-habiles-colombia";
+import { sincronizarApoderadosDePartes } from "@/lib/sincronizar-apoderados";
 
 /* ─── Constantes ────────────────────────────────────────────────────────── */
 
@@ -75,6 +76,12 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
     .single();
 
   if (!caso) notFound();
+
+  // Auto-sincronizar apoderados capturados como texto en case_parties
+  // hacia sgcc_case_attorneys (idempotente). Evita que el tab Asistencia
+  // muestre "Sin representación" cuando el apoderado se capturó en el modal
+  // de edición de etapas.
+  await sincronizarApoderadosDePartes(id, (session.user as any).id);
 
   // Queries paralelas para el resto de datos
   const [
