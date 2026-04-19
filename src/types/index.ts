@@ -49,6 +49,7 @@ export interface SgccStaff {
   telefono: string | null;
   rol: StaffRol;
   tarjeta_profesional: string | null;
+  codigo_interno: string | null;
   firma_url: string | null;
   supervisor_id: string | null;
   activo: boolean;
@@ -197,6 +198,8 @@ export type HearingEstado =
 
 export type HearingTipo = "inicial" | "continuacion" | "complementaria";
 
+export type HearingModalidad = "presencial" | "virtual" | "mixta";
+
 export interface SgccHearing {
   id: string;
   case_id: string;
@@ -206,6 +209,8 @@ export interface SgccHearing {
   duracion_min: number;
   estado: HearingEstado;
   tipo: HearingTipo;
+  modalidad: HearingModalidad;
+  plataforma_virtual: string | null;
   notas_previas: string | null;
   created_at: string;
   updated_at: string;
@@ -222,7 +227,9 @@ export type ActaTipo =
   | "no_acuerdo"
   | "inasistencia"
   | "desistimiento"
-  | "improcedente";
+  | "improcedente"
+  | "suscripcion_apoyo"
+  | "no_suscripcion_apoyo";
 
 export type ActaEstadoFirma =
   | "pendiente"

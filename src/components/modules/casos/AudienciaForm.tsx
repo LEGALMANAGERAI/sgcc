@@ -32,6 +32,8 @@ export function AudienciaForm({ caseId, conciliadores, salas, defaultConciliador
   );
   const [duracion, setDuracion] = useState("60");
   const [tipo, setTipo] = useState(defaultTipo);
+  const [modalidad, setModalidad] = useState<"presencial" | "virtual" | "mixta">("presencial");
+  const [plataformaVirtual, setPlataformaVirtual] = useState("");
   const [notas, setNotas] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -55,6 +57,9 @@ export function AudienciaForm({ caseId, conciliadores, salas, defaultConciliador
         fecha_hora: fechaHoraUTC,
         duracion_min: Number(duracion),
         tipo,
+        modalidad,
+        plataforma_virtual:
+          modalidad === "presencial" ? null : plataformaVirtual || null,
         notas_previas: notas || undefined,
       }),
     });
@@ -137,18 +142,51 @@ export function AudienciaForm({ caseId, conciliadores, salas, defaultConciliador
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de audiencia</label>
-          <select
-            value={tipo}
-            onChange={(e) => setTipo(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
-          >
-            <option value="inicial">Inicial</option>
-            <option value="continuacion">Continuación</option>
-            <option value="complementaria">Complementaria</option>
-          </select>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de audiencia</label>
+            <select
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+            >
+              <option value="inicial">Inicial</option>
+              <option value="continuacion">Continuación</option>
+              <option value="complementaria">Complementaria</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Modalidad</label>
+            <select
+              value={modalidad}
+              onChange={(e) => setModalidad(e.target.value as any)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+            >
+              <option value="presencial">Presencial</option>
+              <option value="virtual">Virtual</option>
+              <option value="mixta">Mixta (sala + virtual)</option>
+            </select>
+          </div>
         </div>
+
+        {modalidad !== "presencial" && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Plataforma virtual <span className="text-gray-400 font-normal">(opcional)</span>
+            </label>
+            <select
+              value={plataformaVirtual}
+              onChange={(e) => setPlataformaVirtual(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+            >
+              <option value="">Sin especificar</option>
+              <option value="Zoom">Zoom</option>
+              <option value="Google Meet">Google Meet</option>
+              <option value="Microsoft Teams">Microsoft Teams</option>
+              <option value="Otra">Otra</option>
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Notas previas</label>

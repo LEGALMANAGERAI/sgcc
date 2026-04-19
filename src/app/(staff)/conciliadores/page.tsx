@@ -24,7 +24,7 @@ export default async function ConciliadoresPage({ searchParams }: Props) {
   // Obtener staff del centro con conteo de casos activos
   let query = supabaseAdmin
     .from("sgcc_staff")
-    .select("id, nombre, email, telefono, tarjeta_profesional, rol, activo, supervisor_id, created_at")
+    .select("id, nombre, email, telefono, tarjeta_profesional, codigo_interno, rol, activo, supervisor_id, created_at")
     .eq("center_id", centerId)
     .order("nombre", { ascending: true });
 

@@ -9,6 +9,7 @@ interface StaffMember {
   email: string;
   telefono: string | null;
   tarjeta_profesional: string | null;
+  codigo_interno: string | null;
   rol: string;
   activo: boolean;
   supervisor_id: string | null;
@@ -34,11 +35,12 @@ export function ConciliadoresClient({ staff, conciliadores }: Props) {
     telefono: "",
     rol: "conciliador",
     tarjeta_profesional: "",
+    codigo_interno: "",
     supervisor_id: "",
   });
 
   function resetForm() {
-    setForm({ nombre: "", email: "", telefono: "", rol: "conciliador", tarjeta_profesional: "", supervisor_id: "" });
+    setForm({ nombre: "", email: "", telefono: "", rol: "conciliador", tarjeta_profesional: "", codigo_interno: "", supervisor_id: "" });
     setEditingId(null);
     setError("");
   }
@@ -50,6 +52,7 @@ export function ConciliadoresClient({ staff, conciliadores }: Props) {
       telefono: s.telefono ?? "",
       rol: s.rol,
       tarjeta_profesional: s.tarjeta_profesional ?? "",
+      codigo_interno: s.codigo_interno ?? "",
       supervisor_id: s.supervisor_id ?? "",
     });
     setEditingId(s.id);
@@ -223,6 +226,18 @@ export function ConciliadoresClient({ staff, conciliadores }: Props) {
                 onChange={(e) => setForm({ ...form, tarjeta_profesional: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
                 placeholder="Numero T.P."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Código interno <span className="text-gray-400 font-normal">(opcional, asignado por el centro)</span>
+              </label>
+              <input
+                value={form.codigo_interno}
+                onChange={(e) => setForm({ ...form, codigo_interno: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+                placeholder="Ej: 1789"
               />
             </div>
 

@@ -15,7 +15,7 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await req.json();
-  const { nombre, email, telefono, rol, tarjeta_profesional, supervisor_id } = body;
+  const { nombre, email, telefono, rol, tarjeta_profesional, codigo_interno, supervisor_id } = body;
 
   // Verificar que el staff pertenece al centro
   const { data: existing } = await supabaseAdmin
@@ -40,6 +40,7 @@ export async function PATCH(
   if (telefono !== undefined) updates.telefono = telefono || null;
   if (rol !== undefined) updates.rol = rol;
   if (tarjeta_profesional !== undefined) updates.tarjeta_profesional = tarjeta_profesional || null;
+  if (codigo_interno !== undefined) updates.codigo_interno = codigo_interno || null;
   if (supervisor_id !== undefined) updates.supervisor_id = supervisor_id || null;
 
   const { data, error } = await supabaseAdmin
