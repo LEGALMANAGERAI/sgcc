@@ -1,16 +1,8 @@
 "use client";
 import { useState } from "react";
 import { Upload, File as FileIcon, X } from "lucide-react";
-import type { TipoAnexo } from "@/types/solicitudes";
+import type { TipoAnexo, AdjuntoDraft } from "@/types/solicitudes";
 import { TIPO_ANEXO_LABEL } from "@/lib/solicitudes/constants";
-
-interface Adjunto {
-  id: string;
-  tipo_anexo: TipoAnexo;
-  nombre_archivo: string;
-  tamano_bytes: number;
-  url: string;
-}
 
 export function FileUploadBox({
   draftId,
@@ -22,8 +14,8 @@ export function FileUploadBox({
   draftId: string;
   tipoAnexo: TipoAnexo;
   obligatorio?: boolean;
-  adjuntos: Adjunto[];
-  onChange: (adjuntos: Adjunto[]) => void;
+  adjuntos: AdjuntoDraft[];
+  onChange: (adjuntos: AdjuntoDraft[]) => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
