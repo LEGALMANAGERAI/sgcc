@@ -389,7 +389,10 @@ export type NotifTipo =
   | "caso_cerrado"
   | "vigilancia"
   | "correspondencia_vencida"
-  | "documento_subido";
+  | "documento_subido"
+  | "ticket_nuevo"
+  | "ticket_respondido"
+  | "ticket_asignado";
 
 export interface SgccNotification {
   id: string;
@@ -405,6 +408,30 @@ export interface SgccNotification {
   leida: boolean;
   leida_at: string | null;
   created_at: string;
+}
+
+// ─── Tickets ────────────────────────────────────────────────────────────────
+
+export type TicketCategoria = "soporte" | "administrativo" | "operativo";
+export type TicketPrioridad = "Normal" | "Media" | "Alta";
+export type TicketEstado = "Pendiente" | "EnRevision" | "Respondido" | "Cerrado";
+
+export interface SgccTicket {
+  id: string;
+  center_id: string;
+  case_id: string | null;
+  titulo: string;
+  descripcion: string | null;
+  categoria: TicketCategoria;
+  prioridad: TicketPrioridad;
+  estado: TicketEstado;
+  solicitante_staff_id: string | null;
+  asignado_staff_id: string | null;
+  respuesta: string | null;
+  respondido_por: string | null;
+  respondido_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // ─── Timeline ───────────────────────────────────────────────────────────────
