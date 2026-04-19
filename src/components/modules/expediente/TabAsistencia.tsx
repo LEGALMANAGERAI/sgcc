@@ -454,13 +454,13 @@ export function TabAsistencia({
               </div>
             )}
 
-            {/* Sección finalizar */}
-            {(hearing.estado === "programada" || hearing.estado === "en_curso") && hasAttendanceRecords && (
-              <FinalizarAudiencia
-                caseId={caseId}
-                hearing={hearing}
-              />
-            )}
+            {/* Sección finalizar — se permite también desde suspendida (la continuación puede terminar la audiencia) */}
+            {(hearing.estado === "programada" ||
+              hearing.estado === "en_curso" ||
+              hearing.estado === "suspendida") &&
+              hasAttendanceRecords && (
+                <FinalizarAudiencia caseId={caseId} hearing={hearing} />
+              )}
           </section>
         );
       })}
@@ -549,9 +549,12 @@ function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any 
     }
   }
 
+  const yaSuspendida = hearing.estado === "suspendida";
+  const titulo = yaSuspendida ? "Cerrar / reprogramar audiencia" : "Finalizar audiencia";
+
   return (
     <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
-      <h4 className="text-sm font-semibold text-gray-700 mb-3">Finalizar audiencia</h4>
+      <h4 className="text-sm font-semibold text-gray-700 mb-3">{titulo}</h4>
 
       {errorFin && (
         <div className="bg-red-50 text-red-700 text-xs px-3 py-2 rounded-lg mb-3 border border-red-200">
@@ -571,7 +574,12 @@ function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any 
             <option value="acuerdo_total">Acuerdo total</option>
             <option value="acuerdo_parcial">Acuerdo parcial</option>
             <option value="no_acuerdo">No acuerdo</option>
-            <option value="suspendida">Suspendida - continuar</option>
+            {!yaSuspendida && (
+              <option value="suspendida">Suspendida - continuar</option>
+            )}
+            {yaSuspendida && (
+              <option value="suspendida">Reprogramar nueva fecha</option>
+            )}
           </select>
         </div>
 
@@ -603,7 +611,7 @@ function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any 
         disabled={!resultado || savingFin}
         className="mt-4 bg-[#0D2340] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#0d2340dd] transition-colors disabled:opacity-50"
       >
-        {savingFin ? "Finalizando..." : "Finalizar audiencia"}
+        {savingFin ? "Guardando..." : titulo}
       </button>
     </div>
   );
