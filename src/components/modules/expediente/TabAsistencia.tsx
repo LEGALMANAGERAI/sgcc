@@ -37,18 +37,38 @@ export function TabAsistencia({
   attendance,
 }: TabAsistenciaProps) {
   const [saving, setSaving] = useState<string | null>(null);
+
+  // Resolver apoderado activo por parte (el primero activo)
+  const apoderadoActivoPorParte = new Map<string, any>();
+  for (const ca of attorneys) {
+    if (ca.activo && !apoderadoActivoPorParte.has(ca.party_id)) {
+      apoderadoActivoPorParte.set(ca.party_id, ca);
+    }
+  }
+
   const [localAttendance, setLocalAttendance] = useState<Record<string, any>>(
     () => {
       const map: Record<string, any> = {};
       for (const a of attendance) {
-        // key: hearingId-partyId
-        map[`${a.hearing_id}-${a.party_id}`] = a;
+        // Auto-resolver attorney_id si está vacío y hay apoderado activo
+        let rec = a;
+        if (!a.attorney_id) {
+          const activo = apoderadoActivoPorParte.get(a.party_id);
+          if (activo?.attorney_id) {
+            rec = {
+              ...a,
+              attorney_id: activo.attorney_id,
+              representado_por_nombre: activo.attorney?.nombre ?? a.representado_por_nombre,
+            };
+          }
+        }
+        map[`${a.hearing_id}-${a.party_id}`] = rec;
       }
       return map;
     }
   );
 
-  // Mapa de apoderados activos por party_id
+  // Mapa de apoderados (activos e inactivos) por party_id para el select
   const activeAttorneysByParty = new Map<string, any[]>();
   for (const ca of attorneys) {
     const arr = activeAttorneysByParty.get(ca.party_id) ?? [];
@@ -99,15 +119,24 @@ export function TabAsistencia({
       },
     }));
 
+    // Si el campo que cambia NO es attorney_id pero el registro tiene
+    // un attorney_id resuelto localmente (ej. por auto-asignación),
+    // incluirlo en el PATCH para persistirlo también.
+    const currentRecord = localAttendance[key];
+    const payload: Record<string, any> = {
+      hearing_id: hearingId,
+      party_id: partyId,
+      [field]: value,
+    };
+    if (field !== "attorney_id" && currentRecord?.attorney_id) {
+      payload.attorney_id = currentRecord.attorney_id;
+    }
+
     try {
       const res = await fetch(`/api/expediente/${caseId}/asistencia`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          hearing_id: hearingId,
-          party_id: partyId,
-          [field]: value,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
