@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const TRAMITES = [
   {
@@ -20,6 +20,14 @@ export default function NuevaSolicitudPage() {
   const [sel, setSel] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Redirige si el flag está desactivado (cliente) — la guardia server-side
+  // ocurre en /mis-solicitudes via process.env.
+  useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_ENABLE_PORTAL_PARTES_SOLICITUDES) {
+      router.replace("/mis-casos");
+    }
+  }, [router]);
 
   async function crear() {
     if (!sel) return;

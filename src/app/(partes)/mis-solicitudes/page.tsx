@@ -6,6 +6,10 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { MisSolicitudesClient } from "./MisSolicitudesClient";
 
 export default async function MisSolicitudesPage() {
+  if (process.env.ENABLE_PORTAL_PARTES_SOLICITUDES !== "true") {
+    redirect("/mis-casos");
+  }
+
   const session = await auth();
   if (!session) redirect("/login");
   const userId = (session.user as { id: string }).id;
