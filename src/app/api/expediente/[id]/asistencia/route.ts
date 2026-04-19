@@ -79,11 +79,8 @@ export async function POST(
     notas,
   } = body;
 
-  if (!hearing_id || !party_id) {
-    return NextResponse.json(
-      { error: "hearing_id y party_id son requeridos" },
-      { status: 400 }
-    );
+  if (!hearing_id) {
+    return NextResponse.json({ error: "hearing_id es requerido" }, { status: 400 });
   }
 
   // Verificar que la audiencia pertenece al caso
@@ -103,6 +100,61 @@ export async function POST(
 
   const userId = (session.user as any).id;
   const now = new Date().toISOString();
+
+  // Bootstrap: si no viene party_id, crear registros iniciales para todas las partes
+  if (!party_id) {
+    const { data: partes, error: partesError } = await supabaseAdmin
+      .from("sgcc_case_parties")
+      .select("party_id")
+      .eq("case_id", caseId);
+
+    if (partesError) {
+      return NextResponse.json({ error: partesError.message }, { status: 500 });
+    }
+    if (!partes || partes.length === 0) {
+      return NextResponse.json(
+        { error: "El caso no tiene partes registradas" },
+        { status: 400 }
+      );
+    }
+
+    // Apoderados vigentes para pre-llenar attorney_id
+    const { data: apoderados } = await supabaseAdmin
+      .from("sgcc_case_attorneys")
+      .select("party_id, attorney_id, attorney:sgcc_attorneys(nombre, verificado)")
+      .eq("case_id", caseId)
+      .eq("activo", true);
+
+    const apoderadoPorParte = new Map<string, any>();
+    for (const a of apoderados ?? []) apoderadoPorParte.set(a.party_id, a);
+
+    const rows = partes.map((cp) => {
+      const ap = apoderadoPorParte.get(cp.party_id);
+      return {
+        hearing_id,
+        party_id: cp.party_id,
+        attorney_id: ap?.attorney_id ?? null,
+        asistio: false,
+        representado_por_nombre: ap?.attorney?.nombre ?? null,
+        poder_verificado: ap?.attorney?.verificado ?? false,
+        notas: null,
+        registrado_por_staff: userId,
+      };
+    });
+
+    const { data: creados, error: upsertError } = await supabaseAdmin
+      .from("sgcc_hearing_attendance")
+      .upsert(rows, { onConflict: "hearing_id,party_id" })
+      .select(
+        "*, party:sgcc_parties(nombres, apellidos, razon_social), attorney:sgcc_attorneys(nombre, tarjeta_profesional)"
+      );
+
+    if (upsertError) {
+      return NextResponse.json({ error: upsertError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ attendance: creados }, { status: 201 });
+  }
 
   // Upsert: buscar registro existente por hearing_id + party_id
   const { data: existing } = await supabaseAdmin

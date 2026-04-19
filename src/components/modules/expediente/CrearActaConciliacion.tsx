@@ -15,55 +15,40 @@ import { InsertarClausulaButton } from "@/components/modules/plantillas/Insertar
 import { DatosHeredadosBanner } from "./DatosHeredadosBanner";
 import { PanelAsistenciaAudiencia } from "./PanelAsistenciaAudiencia";
 import { useContextoAudiencia } from "@/hooks/useContextoAudiencia";
-import { partyDisplayName } from "@/types";
 import type { ActaTipo } from "@/types";
 
-interface CrearActaInsolvenciaProps {
+interface CrearActaConciliacionProps {
   caseId: string;
   hearingId: string;
 }
 
-type TipoActaInsolvencia =
-  | "acuerdo_pago"
-  | "liquidacion_patrimonial"
-  | "validacion_acuerdo_privado"
-  | "no_acuerdo"
-  | "desistimiento";
-
-const TIPOS_ACTA: { value: TipoActaInsolvencia; label: string }[] = [
-  { value: "acuerdo_pago", label: "Acuerdo de pago" },
-  { value: "liquidacion_patrimonial", label: "Liquidación patrimonial" },
-  { value: "validacion_acuerdo_privado", label: "Validación acuerdo privado" },
-  { value: "no_acuerdo", label: "No acuerdo" },
+const TIPOS_ACTA: { value: ActaTipo; label: string }[] = [
+  { value: "acuerdo_total", label: "Acuerdo total" },
+  { value: "acuerdo_parcial", label: "Acuerdo parcial" },
+  { value: "no_acuerdo", label: "Sin acuerdo" },
+  { value: "inasistencia", label: "Inasistencia" },
   { value: "desistimiento", label: "Desistimiento" },
+  { value: "improcedente", label: "Improcedencia" },
 ];
 
-const TIPO_INSOLVENCIA_A_ACTA: Record<TipoActaInsolvencia, ActaTipo> = {
-  acuerdo_pago: "acuerdo_total",
-  liquidacion_patrimonial: "no_acuerdo",
-  validacion_acuerdo_privado: "acuerdo_total",
-  no_acuerdo: "no_acuerdo",
-  desistimiento: "desistimiento",
-};
-
 interface Obligacion {
-  acreedor: string;
+  parte: string;
   obligacion: string;
   plazo: string;
   monto: string;
 }
 
-export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvenciaProps) {
+export function CrearActaConciliacion({ caseId, hearingId }: CrearActaConciliacionProps) {
   const { data: contexto, loading, error: contextoError, refresh } = useContextoAudiencia(
     caseId,
     hearingId
   );
 
-  const [tipo, setTipo] = useState<TipoActaInsolvencia>("acuerdo_pago");
+  const [tipo, setTipo] = useState<ActaTipo>("acuerdo_total");
   const [consideraciones, setConsideraciones] = useState("");
   const [acuerdoTexto, setAcuerdoTexto] = useState("");
   const [obligaciones, setObligaciones] = useState<Obligacion[]>([
-    { acreedor: "", obligacion: "", plazo: "", monto: "" },
+    { parte: "", obligacion: "", plazo: "", monto: "" },
   ]);
   const [generando, setGenerando] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -71,26 +56,19 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
   const [exito, setExito] = useState<string | null>(null);
   const [actaCreada, setActaCreada] = useState<any | null>(null);
 
-  // Heredar datos de la última acta
+  // Hidratar desde la última acta (heredar consideraciones/acuerdo/obligaciones)
   useEffect(() => {
-    if (!contexto || actaCreada) return;
+    if (!contexto) return;
     const ultima = contexto.ultimaActa;
+    if (actaCreada) return;
     if (ultima) {
-      const tipoHeredado: TipoActaInsolvencia =
-        ultima.tipo === "acuerdo_total"
-          ? "acuerdo_pago"
-          : ultima.tipo === "no_acuerdo"
-          ? "no_acuerdo"
-          : ultima.tipo === "desistimiento"
-          ? "desistimiento"
-          : "acuerdo_pago";
-      setTipo(tipoHeredado);
+      setTipo(ultima.tipo ?? "acuerdo_total");
       setConsideraciones(ultima.consideraciones ?? "");
       setAcuerdoTexto(ultima.acuerdo_texto ?? "");
       if (Array.isArray(ultima.obligaciones) && ultima.obligaciones.length > 0) {
         setObligaciones(
           ultima.obligaciones.map((ob: any) => ({
-            acreedor: ob.parte ?? "",
+            parte: ob.parte ?? "",
             obligacion: ob.obligacion ?? "",
             plazo: ob.plazo ?? "",
             monto: ob.monto != null ? String(ob.monto) : "",
@@ -100,21 +78,19 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
     }
   }, [contexto, actaCreada]);
 
-  const acreedores = useMemo(() => {
+  const partesSelect = useMemo(() => {
     if (!contexto?.caso?.partes) return [];
-    return contexto.caso.partes
-      .filter((cp: any) => cp.rol === "convocado" && cp.party)
-      .map((cp: any) => ({
-        id: cp.party.id,
-        nombre: partyDisplayName(cp.party),
-      }));
+    return contexto.caso.partes.map((cp: any) => ({
+      id: cp.party?.id ?? cp.id,
+      label:
+        cp.party?.tipo_persona === "juridica"
+          ? cp.party.razon_social ?? "—"
+          : [cp.party?.nombres, cp.party?.apellidos].filter(Boolean).join(" ") || "—",
+    }));
   }, [contexto]);
 
   const agregarObligacion = useCallback(() => {
-    setObligaciones((prev) => [
-      ...prev,
-      { acreedor: "", obligacion: "", plazo: "", monto: "" },
-    ]);
+    setObligaciones((prev) => [...prev, { parte: "", obligacion: "", plazo: "", monto: "" }]);
   }, []);
   const eliminarObligacion = useCallback((idx: number) => {
     setObligaciones((prev) => prev.filter((_, i) => i !== idx));
@@ -128,37 +104,31 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
     []
   );
 
-  function resultadoActaTipo(t: TipoActaInsolvencia): ActaTipo {
-    return TIPO_INSOLVENCIA_A_ACTA[t];
-  }
-
   async function generarActa() {
     setGenerando(true);
     setApiError(null);
     setExito(null);
     try {
       const obligacionesPayload = obligaciones
-        .filter((ob) => ob.acreedor || ob.obligacion)
+        .filter((ob) => ob.parte || ob.obligacion)
         .map((ob) => ({
-          parte: ob.acreedor,
+          parte: ob.parte,
           obligacion: ob.obligacion,
           plazo: ob.plazo,
           monto: ob.monto ? parseFloat(ob.monto.replace(/[^0-9.]/g, "")) : undefined,
         }));
-
-      const tipoLabel = TIPOS_ACTA.find((t) => t.value === tipo)?.label ?? tipo;
-      const consideracionesFull = `TRÁMITE DE INSOLVENCIA — ${tipoLabel.toUpperCase()}\n\n${consideraciones}`;
 
       const res = await fetch(`/api/casos/${caseId}/acta`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           hearing_id: hearingId,
-          tipo: TIPO_INSOLVENCIA_A_ACTA[tipo],
-          consideraciones: consideracionesFull,
+          tipo,
+          consideraciones: consideraciones || null,
           acuerdo_texto: acuerdoTexto || null,
           obligaciones: obligacionesPayload.length ? obligacionesPayload : null,
-          es_constancia: tipo === "no_acuerdo" || tipo === "desistimiento",
+          es_constancia:
+            tipo === "inasistencia" || tipo === "desistimiento" || tipo === "improcedente",
         }),
       });
 
@@ -217,18 +187,18 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
     );
   }
 
+  const muestraObligaciones = tipo === "acuerdo_total" || tipo === "acuerdo_parcial";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-purple-100">
-          <FileText className="w-5 h-5 text-purple-700" />
+        <div className="p-2 rounded-lg bg-blue-100">
+          <FileText className="w-5 h-5 text-[#1B4F9B]" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-[#0D2340]">
-            Acta de audiencia — Insolvencia
-          </h3>
+          <h3 className="text-lg font-bold text-[#0D2340]">Acta de conciliación</h3>
           <p className="text-sm text-gray-500">
-            Genere el acta y envíela a firma electrónica
+            Genera el acta y envíala a firma electrónica
           </p>
         </div>
       </div>
@@ -277,7 +247,7 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
             </label>
             <select
               value={tipo}
-              onChange={(e) => setTipo(e.target.value as TipoActaInsolvencia)}
+              onChange={(e) => setTipo(e.target.value as ActaTipo)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]"
             >
               {TIPOS_ACTA.map((t) => (
@@ -294,10 +264,12 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
                 Consideraciones
               </label>
               <InsertarClausulaButton
-                tipoTramite="insolvencia"
-                resultado={resultadoActaTipo(tipo)}
+                tipoTramite="conciliacion"
+                resultado={tipo}
                 categoriasPreferidas={["consideraciones", "preambulo", "identificacion_partes"]}
-                onInsert={(c) => setConsideraciones((p) => (p ? p + "\n\n" + c : c))}
+                onInsert={(c) =>
+                  setConsideraciones((p) => (p ? p + "\n\n" + c : c))
+                }
               />
             </div>
             <textarea
@@ -315,15 +287,17 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
                 Acuerdo / Decisión
               </label>
               <InsertarClausulaButton
-                tipoTramite="insolvencia"
-                resultado={resultadoActaTipo(tipo)}
+                tipoTramite="conciliacion"
+                resultado={tipo}
                 categoriasPreferidas={[
-                  "insolvencia_acuerdo_pago",
-                  "insolvencia_liquidacion",
                   "obligacion_dar",
                   "obligacion_hacer",
+                  "obligacion_no_hacer",
                   "garantias",
                   "clausula_penal",
+                  "confidencialidad",
+                  "desistimiento",
+                  "inasistencia",
                   "cierre",
                 ]}
                 onInsert={(c) => setAcuerdoTexto((p) => (p ? p + "\n\n" + c : c))}
@@ -333,84 +307,86 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
               value={acuerdoTexto}
               onChange={(e) => setAcuerdoTexto(e.target.value)}
               rows={4}
-              placeholder="Descripción del acuerdo o decisión tomada..."
+              placeholder="Descripción del acuerdo alcanzado o decisión..."
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F9B] resize-y"
             />
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium text-gray-700">
-                Obligaciones pactadas
-              </label>
-              <button
-                type="button"
-                onClick={agregarObligacion}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#1B4F9B] bg-blue-50 hover:bg-blue-100 rounded-lg"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Agregar
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div className="hidden md:grid grid-cols-[1fr_1fr_0.7fr_0.7fr_auto] gap-2 text-xs font-semibold text-gray-500 px-1">
-                <span>Acreedor</span>
-                <span>Obligación</span>
-                <span>Plazo</span>
-                <span>Monto</span>
-                <span className="w-8" />
+          {muestraObligaciones && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-gray-700">
+                  Obligaciones pactadas
+                </label>
+                <button
+                  type="button"
+                  onClick={agregarObligacion}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#1B4F9B] bg-blue-50 hover:bg-blue-100 rounded-lg"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Agregar
+                </button>
               </div>
 
-              {obligaciones.map((ob, idx) => (
-                <div
-                  key={idx}
-                  className="grid grid-cols-1 md:grid-cols-[1fr_1fr_0.7fr_0.7fr_auto] gap-2 items-start bg-gray-50 rounded-lg p-3 md:p-2"
-                >
-                  <select
-                    value={ob.acreedor}
-                    onChange={(e) => actualizarObligacion(idx, "acreedor", e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1B4F9B]"
-                  >
-                    <option value="">Seleccionar acreedor...</option>
-                    {acreedores.map((ac: any) => (
-                      <option key={ac.id} value={ac.nombre}>
-                        {ac.nombre}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    value={ob.obligacion}
-                    onChange={(e) => actualizarObligacion(idx, "obligacion", e.target.value)}
-                    placeholder="Descripción..."
-                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1B4F9B]"
-                  />
-                  <input
-                    type="text"
-                    value={ob.plazo}
-                    onChange={(e) => actualizarObligacion(idx, "plazo", e.target.value)}
-                    placeholder="30 días"
-                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1B4F9B]"
-                  />
-                  <input
-                    type="text"
-                    value={ob.monto}
-                    onChange={(e) => actualizarObligacion(idx, "monto", e.target.value)}
-                    placeholder="$0"
-                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1B4F9B]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => eliminarObligacion(idx)}
-                    className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+              <div className="space-y-3">
+                <div className="hidden md:grid grid-cols-[1fr_1fr_0.7fr_0.7fr_auto] gap-2 text-xs font-semibold text-gray-500 px-1">
+                  <span>Parte obligada</span>
+                  <span>Obligación</span>
+                  <span>Plazo</span>
+                  <span>Monto</span>
+                  <span className="w-8" />
                 </div>
-              ))}
+
+                {obligaciones.map((ob, idx) => (
+                  <div
+                    key={idx}
+                    className="grid grid-cols-1 md:grid-cols-[1fr_1fr_0.7fr_0.7fr_auto] gap-2 items-start bg-gray-50 rounded-lg p-3 md:p-2"
+                  >
+                    <select
+                      value={ob.parte}
+                      onChange={(e) => actualizarObligacion(idx, "parte", e.target.value)}
+                      className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1B4F9B]"
+                    >
+                      <option value="">Seleccionar parte...</option>
+                      {partesSelect.map((p: any) => (
+                        <option key={p.id} value={p.label}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={ob.obligacion}
+                      onChange={(e) => actualizarObligacion(idx, "obligacion", e.target.value)}
+                      placeholder="Descripción..."
+                      className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1B4F9B]"
+                    />
+                    <input
+                      type="text"
+                      value={ob.plazo}
+                      onChange={(e) => actualizarObligacion(idx, "plazo", e.target.value)}
+                      placeholder="30 días"
+                      className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1B4F9B]"
+                    />
+                    <input
+                      type="text"
+                      value={ob.monto}
+                      onChange={(e) => actualizarObligacion(idx, "monto", e.target.value)}
+                      placeholder="$0"
+                      className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1B4F9B]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => eliminarObligacion(idx)}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="pt-2">
             <button
@@ -418,12 +394,8 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
               disabled={generando || !tipo}
               className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#0D2340] hover:bg-[#1B4F9B] rounded-lg disabled:opacity-50"
             >
-              {generando ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <FileText className="w-4 h-4" />
-              )}
-              {generando ? "Generando acta..." : "Generar acta"}
+              {generando ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+              {generando ? "Generando..." : "Generar acta"}
             </button>
           </div>
         </div>
@@ -515,11 +487,7 @@ function ActaCreadaCard({
             disabled={enviando}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#0D2340] hover:bg-[#1B4F9B] rounded-lg disabled:opacity-50"
           >
-            {enviando ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
+            {enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             Enviar a firma electrónica
           </button>
         )}

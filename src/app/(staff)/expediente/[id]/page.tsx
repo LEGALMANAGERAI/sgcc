@@ -12,6 +12,8 @@ import { TabChecklistPoderes } from "@/components/modules/expediente/TabChecklis
 import { TabAsistencia } from "@/components/modules/expediente/TabAsistencia";
 import { ContadorTermino } from "@/components/modules/expediente/ContadorTermino";
 import { CrearActaInsolvencia } from "@/components/modules/expediente/CrearActaInsolvencia";
+import { CrearActaConciliacion } from "@/components/modules/expediente/CrearActaConciliacion";
+import { CrearActaAcuerdoApoyo } from "@/components/modules/expediente/CrearActaAcuerdoApoyo";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { HerramientaAcreencias } from "@/components/modules/insolvencia/HerramientaAcreencias";
@@ -19,7 +21,6 @@ import { CasoTimeline } from "@/components/modules/casos/CasoTimeline";
 import { CollaborationBar } from "@/components/ui/CollaborationBar";
 import { HistorialObservacionesAudiencias } from "@/components/modules/expediente/HistorialObservacionesAudiencias";
 import type { TipoTramite } from "@/types";
-import { partyDisplayName } from "@/types";
 import { sumarDiasHabiles, diasHabilesEntre } from "@/lib/dias-habiles-colombia";
 
 /* ─── Constantes ────────────────────────────────────────────────────────── */
@@ -37,9 +38,10 @@ const BASE_TABS = [
   { key: "admision", label: "Admisión" },
   { key: "poderes", label: "Poderes" },
   { key: "asistencia", label: "Asistencia" },
+  { key: "acta", label: "Acta" },
 ];
 
-type TabKey = "info" | "documentos" | "admision" | "poderes" | "asistencia" | "acreencias";
+type TabKey = "info" | "documentos" | "admision" | "poderes" | "asistencia" | "acta" | "acreencias";
 
 /* ─── Page ──────────────────────────────────────────────────────────────── */
 
@@ -426,64 +428,37 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
         />
       )}
 
-      {activeTab === "asistencia" && caso.tipo_tramite === "insolvencia" && (
+      {activeTab === "acta" && hearings.length > 0 && (
         <div className="mt-6">
-          <CrearActaInsolvencia
-            caseId={id}
-            radicado={caso.numero_radicado}
-            insolvente={{
-              nombre: (() => {
-                const conv = parties.find((p: any) => p.rol === "convocante");
-                return conv?.party ? partyDisplayName(conv.party) : "Sin convocante";
-              })(),
-              documento: parties.find((p: any) => p.rol === "convocante")?.party?.numero_doc ?? "",
-              email: parties.find((p: any) => p.rol === "convocante")?.party?.email ?? "",
-            }}
-            acreedores={parties
-              .filter((p: any) => p.rol === "convocado")
-              .map((p: any) => ({
-                nombre: p.party ? partyDisplayName(p.party) : "",
-                documento: p.party?.numero_doc ?? "",
-                email: p.party?.email ?? "",
-              }))}
-            operador={
-              caso.conciliador
-                ? {
-                    id: caso.conciliador.id,
-                    nombre: caso.conciliador.nombre,
-                    email: (() => {
-                      // Buscar email del staff conciliador
-                      const staffEntry = attorneys.find(
-                        (a: any) => a.attorney?.id === caso.conciliador?.id
-                      );
-                      return staffEntry?.attorney?.email ?? "";
-                    })(),
-                    tarjeta: "",
-                  }
-                : null
-            }
-            apoderadoInsolvente={(() => {
-              const convParty = parties.find((p: any) => p.rol === "convocante")?.party;
-              if (!convParty) return null;
-              const apoderado = attorneys.find(
-                (a: any) => a.party?.id === convParty.id && a.activo
-              );
-              if (!apoderado?.attorney) return null;
-              return {
-                nombre: apoderado.attorney.nombre ?? "",
-                documento: apoderado.attorney.tarjeta_profesional ?? "",
-                email: apoderado.attorney.email ?? apoderado.party?.email ?? "",
-              };
-            })()}
-            hearingId={hearings.length > 0 ? hearings[hearings.length - 1].id : null}
-            fechaAudiencia={hearings.length > 0 ? hearings[hearings.length - 1].fecha_hora : null}
-            actaExistente={
-              (rawActas ?? []).length > 0 ? (rawActas ?? [])[0] : null
-            }
-            actasPrevias={(rawActas ?? []).sort((a: any, b: any) =>
-              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            )}
-          />
+          {caso.tipo_tramite === "insolvencia" && (
+            <CrearActaInsolvencia
+              caseId={id}
+              hearingId={hearings[hearings.length - 1].id}
+            />
+          )}
+          {caso.tipo_tramite === "conciliacion" && (
+            <CrearActaConciliacion
+              caseId={id}
+              hearingId={hearings[hearings.length - 1].id}
+            />
+          )}
+          {caso.tipo_tramite === "acuerdo_apoyo" && (
+            <CrearActaAcuerdoApoyo
+              caseId={id}
+              hearingId={hearings[hearings.length - 1].id}
+            />
+          )}
+        </div>
+      )}
+
+      {activeTab === "acta" && hearings.length === 0 && (
+        <div className="mt-6 bg-white border border-gray-200 rounded-xl p-8 text-center">
+          <p className="text-sm text-gray-600 mb-2">
+            No hay audiencias programadas para este caso.
+          </p>
+          <p className="text-xs text-gray-400">
+            Programa una audiencia desde la vista del caso para poder generar el acta.
+          </p>
         </div>
       )}
 

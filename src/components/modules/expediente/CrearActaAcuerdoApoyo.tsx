@@ -1,163 +1,114 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   FileText,
   Send,
-  Plus,
-  Trash2,
   Loader2,
   CheckCircle,
   AlertCircle,
   Download,
+  Heart,
 } from "lucide-react";
 import { InsertarClausulaButton } from "@/components/modules/plantillas/InsertarClausulaButton";
 import { DatosHeredadosBanner } from "./DatosHeredadosBanner";
 import { PanelAsistenciaAudiencia } from "./PanelAsistenciaAudiencia";
 import { useContextoAudiencia } from "@/hooks/useContextoAudiencia";
-import { partyDisplayName } from "@/types";
 import type { ActaTipo } from "@/types";
 
-interface CrearActaInsolvenciaProps {
+interface CrearActaAcuerdoApoyoProps {
   caseId: string;
   hearingId: string;
 }
 
-type TipoActaInsolvencia =
-  | "acuerdo_pago"
-  | "liquidacion_patrimonial"
-  | "validacion_acuerdo_privado"
+type TipoActaApoyo =
+  | "apoyo_formalizado"
+  | "apoyo_modificado"
+  | "apoyo_terminado"
   | "no_acuerdo"
   | "desistimiento";
 
-const TIPOS_ACTA: { value: TipoActaInsolvencia; label: string }[] = [
-  { value: "acuerdo_pago", label: "Acuerdo de pago" },
-  { value: "liquidacion_patrimonial", label: "Liquidación patrimonial" },
-  { value: "validacion_acuerdo_privado", label: "Validación acuerdo privado" },
-  { value: "no_acuerdo", label: "No acuerdo" },
-  { value: "desistimiento", label: "Desistimiento" },
+const TIPOS_ACTA: { value: TipoActaApoyo; label: string; descripcion: string }[] = [
+  {
+    value: "apoyo_formalizado",
+    label: "Acuerdo de apoyo formalizado",
+    descripcion: "Se formaliza el acuerdo de apoyo entre el titular y la persona de apoyo",
+  },
+  {
+    value: "apoyo_modificado",
+    label: "Modificación del acuerdo de apoyo",
+    descripcion: "Ajuste al acuerdo de apoyo ya existente",
+  },
+  {
+    value: "apoyo_terminado",
+    label: "Terminación del acuerdo",
+    descripcion: "Se termina el acuerdo de apoyo (por voluntad, fin del objeto, etc.)",
+  },
+  {
+    value: "no_acuerdo",
+    label: "No acuerdo",
+    descripcion: "No se logró acuerdo entre el titular y la persona de apoyo",
+  },
+  {
+    value: "desistimiento",
+    label: "Desistimiento",
+    descripcion: "Desistimiento expreso de alguna de las partes",
+  },
 ];
 
-const TIPO_INSOLVENCIA_A_ACTA: Record<TipoActaInsolvencia, ActaTipo> = {
-  acuerdo_pago: "acuerdo_total",
-  liquidacion_patrimonial: "no_acuerdo",
-  validacion_acuerdo_privado: "acuerdo_total",
+const TIPO_APOYO_A_ACTA: Record<TipoActaApoyo, ActaTipo> = {
+  apoyo_formalizado: "acuerdo_total",
+  apoyo_modificado: "acuerdo_parcial",
+  apoyo_terminado: "desistimiento",
   no_acuerdo: "no_acuerdo",
   desistimiento: "desistimiento",
 };
 
-interface Obligacion {
-  acreedor: string;
-  obligacion: string;
-  plazo: string;
-  monto: string;
-}
-
-export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvenciaProps) {
+export function CrearActaAcuerdoApoyo({ caseId, hearingId }: CrearActaAcuerdoApoyoProps) {
   const { data: contexto, loading, error: contextoError, refresh } = useContextoAudiencia(
     caseId,
     hearingId
   );
 
-  const [tipo, setTipo] = useState<TipoActaInsolvencia>("acuerdo_pago");
+  const [tipo, setTipo] = useState<TipoActaApoyo>("apoyo_formalizado");
   const [consideraciones, setConsideraciones] = useState("");
-  const [acuerdoTexto, setAcuerdoTexto] = useState("");
-  const [obligaciones, setObligaciones] = useState<Obligacion[]>([
-    { acreedor: "", obligacion: "", plazo: "", monto: "" },
-  ]);
+  const [decisionApoyo, setDecisionApoyo] = useState("");
+  const [salvaguardias, setSalvaguardias] = useState("");
   const [generando, setGenerando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
   const [actaCreada, setActaCreada] = useState<any | null>(null);
 
-  // Heredar datos de la última acta
   useEffect(() => {
     if (!contexto || actaCreada) return;
     const ultima = contexto.ultimaActa;
     if (ultima) {
-      const tipoHeredado: TipoActaInsolvencia =
-        ultima.tipo === "acuerdo_total"
-          ? "acuerdo_pago"
-          : ultima.tipo === "no_acuerdo"
-          ? "no_acuerdo"
-          : ultima.tipo === "desistimiento"
-          ? "desistimiento"
-          : "acuerdo_pago";
-      setTipo(tipoHeredado);
       setConsideraciones(ultima.consideraciones ?? "");
-      setAcuerdoTexto(ultima.acuerdo_texto ?? "");
-      if (Array.isArray(ultima.obligaciones) && ultima.obligaciones.length > 0) {
-        setObligaciones(
-          ultima.obligaciones.map((ob: any) => ({
-            acreedor: ob.parte ?? "",
-            obligacion: ob.obligacion ?? "",
-            plazo: ob.plazo ?? "",
-            monto: ob.monto != null ? String(ob.monto) : "",
-          }))
-        );
-      }
+      setDecisionApoyo(ultima.acuerdo_texto ?? "");
     }
   }, [contexto, actaCreada]);
-
-  const acreedores = useMemo(() => {
-    if (!contexto?.caso?.partes) return [];
-    return contexto.caso.partes
-      .filter((cp: any) => cp.rol === "convocado" && cp.party)
-      .map((cp: any) => ({
-        id: cp.party.id,
-        nombre: partyDisplayName(cp.party),
-      }));
-  }, [contexto]);
-
-  const agregarObligacion = useCallback(() => {
-    setObligaciones((prev) => [
-      ...prev,
-      { acreedor: "", obligacion: "", plazo: "", monto: "" },
-    ]);
-  }, []);
-  const eliminarObligacion = useCallback((idx: number) => {
-    setObligaciones((prev) => prev.filter((_, i) => i !== idx));
-  }, []);
-  const actualizarObligacion = useCallback(
-    (idx: number, campo: keyof Obligacion, valor: string) => {
-      setObligaciones((prev) =>
-        prev.map((ob, i) => (i === idx ? { ...ob, [campo]: valor } : ob))
-      );
-    },
-    []
-  );
-
-  function resultadoActaTipo(t: TipoActaInsolvencia): ActaTipo {
-    return TIPO_INSOLVENCIA_A_ACTA[t];
-  }
 
   async function generarActa() {
     setGenerando(true);
     setApiError(null);
     setExito(null);
     try {
-      const obligacionesPayload = obligaciones
-        .filter((ob) => ob.acreedor || ob.obligacion)
-        .map((ob) => ({
-          parte: ob.acreedor,
-          obligacion: ob.obligacion,
-          plazo: ob.plazo,
-          monto: ob.monto ? parseFloat(ob.monto.replace(/[^0-9.]/g, "")) : undefined,
-        }));
-
       const tipoLabel = TIPOS_ACTA.find((t) => t.value === tipo)?.label ?? tipo;
-      const consideracionesFull = `TRÁMITE DE INSOLVENCIA — ${tipoLabel.toUpperCase()}\n\n${consideraciones}`;
+      const consideracionesFull = `ACUERDO DE APOYO — LEY 1996 DE 2019 — ${tipoLabel.toUpperCase()}\n\n${consideraciones}`;
+      const acuerdoFull = salvaguardias
+        ? `${decisionApoyo}\n\nSALVAGUARDIAS:\n${salvaguardias}`
+        : decisionApoyo;
 
       const res = await fetch(`/api/casos/${caseId}/acta`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           hearing_id: hearingId,
-          tipo: TIPO_INSOLVENCIA_A_ACTA[tipo],
+          tipo: TIPO_APOYO_A_ACTA[tipo],
           consideraciones: consideracionesFull,
-          acuerdo_texto: acuerdoTexto || null,
-          obligaciones: obligacionesPayload.length ? obligacionesPayload : null,
+          acuerdo_texto: acuerdoFull || null,
+          obligaciones: null,
           es_constancia: tipo === "no_acuerdo" || tipo === "desistimiento",
         }),
       });
@@ -217,18 +168,20 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
     );
   }
 
+  const tipoActual = TIPOS_ACTA.find((t) => t.value === tipo);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-purple-100">
-          <FileText className="w-5 h-5 text-purple-700" />
+        <div className="p-2 rounded-lg bg-pink-100">
+          <Heart className="w-5 h-5 text-pink-700" />
         </div>
         <div>
           <h3 className="text-lg font-bold text-[#0D2340]">
-            Acta de audiencia — Insolvencia
+            Acta — Acuerdo de apoyo (Ley 1996/2019)
           </h3>
           <p className="text-sm text-gray-500">
-            Genere el acta y envíela a firma electrónica
+            Capacidad legal plena de personas con discapacidad
           </p>
         </div>
       </div>
@@ -265,7 +218,7 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
                   Datos heredados del acta anterior ({contexto.ultimaActa.numero_acta})
                 </p>
                 <p className="text-xs text-blue-600 mt-0.5">
-                  Puedes editarlos. Los datos del expediente no se reescriben.
+                  Puedes editarlos.
                 </p>
               </div>
             </div>
@@ -277,7 +230,7 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
             </label>
             <select
               value={tipo}
-              onChange={(e) => setTipo(e.target.value as TipoActaInsolvencia)}
+              onChange={(e) => setTipo(e.target.value as TipoActaApoyo)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]"
             >
               {TIPOS_ACTA.map((t) => (
@@ -286,6 +239,9 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
                 </option>
               ))}
             </select>
+            {tipoActual && (
+              <p className="text-[11px] text-gray-500 mt-1">{tipoActual.descripcion}</p>
+            )}
           </div>
 
           <div>
@@ -294,8 +250,8 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
                 Consideraciones
               </label>
               <InsertarClausulaButton
-                tipoTramite="insolvencia"
-                resultado={resultadoActaTipo(tipo)}
+                tipoTramite="acuerdo_apoyo"
+                resultado={TIPO_APOYO_A_ACTA[tipo]}
                 categoriasPreferidas={["consideraciones", "preambulo", "identificacion_partes"]}
                 onInsert={(c) => setConsideraciones((p) => (p ? p + "\n\n" + c : c))}
               />
@@ -304,7 +260,7 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
               value={consideraciones}
               onChange={(e) => setConsideraciones(e.target.value)}
               rows={4}
-              placeholder="Antecedentes, contexto y consideraciones relevantes..."
+              placeholder="Situación del titular, voluntad y preferencias expresadas, identificación de la persona de apoyo..."
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F9B] resize-y"
             />
           </div>
@@ -312,105 +268,41 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-sm font-medium text-gray-700">
-                Acuerdo / Decisión
+                Decisión de apoyo
               </label>
               <InsertarClausulaButton
-                tipoTramite="insolvencia"
-                resultado={resultadoActaTipo(tipo)}
-                categoriasPreferidas={[
-                  "insolvencia_acuerdo_pago",
-                  "insolvencia_liquidacion",
-                  "obligacion_dar",
-                  "obligacion_hacer",
-                  "garantias",
-                  "clausula_penal",
-                  "cierre",
-                ]}
-                onInsert={(c) => setAcuerdoTexto((p) => (p ? p + "\n\n" + c : c))}
+                tipoTramite="acuerdo_apoyo"
+                resultado={TIPO_APOYO_A_ACTA[tipo]}
+                categoriasPreferidas={["apoyo_decision", "obligacion_hacer", "cierre"]}
+                onInsert={(c) => setDecisionApoyo((p) => (p ? p + "\n\n" + c : c))}
               />
             </div>
             <textarea
-              value={acuerdoTexto}
-              onChange={(e) => setAcuerdoTexto(e.target.value)}
-              rows={4}
-              placeholder="Descripción del acuerdo o decisión tomada..."
+              value={decisionApoyo}
+              onChange={(e) => setDecisionApoyo(e.target.value)}
+              rows={5}
+              placeholder="Alcance del apoyo, actos jurídicos específicos sobre los que recae, duración, condiciones..."
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F9B] resize-y"
             />
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium text-gray-700">
-                Obligaciones pactadas
+          {(tipo === "apoyo_formalizado" || tipo === "apoyo_modificado") && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Salvaguardias
               </label>
-              <button
-                type="button"
-                onClick={agregarObligacion}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#1B4F9B] bg-blue-50 hover:bg-blue-100 rounded-lg"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Agregar
-              </button>
+              <textarea
+                value={salvaguardias}
+                onChange={(e) => setSalvaguardias(e.target.value)}
+                rows={3}
+                placeholder="Medidas de protección para evitar abusos, conflictos de interés, obligación de rendir cuentas..."
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F9B] resize-y"
+              />
+              <p className="text-[11px] text-gray-500 mt-1">
+                Ley 1996/2019 arts. 32-35: salvaguardias deben ser proporcionales y revisables.
+              </p>
             </div>
-
-            <div className="space-y-3">
-              <div className="hidden md:grid grid-cols-[1fr_1fr_0.7fr_0.7fr_auto] gap-2 text-xs font-semibold text-gray-500 px-1">
-                <span>Acreedor</span>
-                <span>Obligación</span>
-                <span>Plazo</span>
-                <span>Monto</span>
-                <span className="w-8" />
-              </div>
-
-              {obligaciones.map((ob, idx) => (
-                <div
-                  key={idx}
-                  className="grid grid-cols-1 md:grid-cols-[1fr_1fr_0.7fr_0.7fr_auto] gap-2 items-start bg-gray-50 rounded-lg p-3 md:p-2"
-                >
-                  <select
-                    value={ob.acreedor}
-                    onChange={(e) => actualizarObligacion(idx, "acreedor", e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1B4F9B]"
-                  >
-                    <option value="">Seleccionar acreedor...</option>
-                    {acreedores.map((ac: any) => (
-                      <option key={ac.id} value={ac.nombre}>
-                        {ac.nombre}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    value={ob.obligacion}
-                    onChange={(e) => actualizarObligacion(idx, "obligacion", e.target.value)}
-                    placeholder="Descripción..."
-                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1B4F9B]"
-                  />
-                  <input
-                    type="text"
-                    value={ob.plazo}
-                    onChange={(e) => actualizarObligacion(idx, "plazo", e.target.value)}
-                    placeholder="30 días"
-                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1B4F9B]"
-                  />
-                  <input
-                    type="text"
-                    value={ob.monto}
-                    onChange={(e) => actualizarObligacion(idx, "monto", e.target.value)}
-                    placeholder="$0"
-                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1B4F9B]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => eliminarObligacion(idx)}
-                    className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+          )}
 
           <div className="pt-2">
             <button
