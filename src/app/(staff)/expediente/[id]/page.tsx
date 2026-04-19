@@ -38,9 +38,10 @@ const BASE_TABS = [
   { key: "admision", label: "Admisión" },
   { key: "poderes", label: "Poderes" },
   { key: "asistencia", label: "Asistencia" },
+  { key: "acta", label: "Acta" },
 ];
 
-type TabKey = "info" | "documentos" | "admision" | "poderes" | "asistencia" | "acreencias";
+type TabKey = "info" | "documentos" | "admision" | "poderes" | "asistencia" | "acta" | "acreencias";
 
 /* ─── Page ──────────────────────────────────────────────────────────────── */
 
@@ -427,7 +428,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
         />
       )}
 
-      {activeTab === "asistencia" && hearings.length > 0 && (
+      {activeTab === "acta" && hearings.length > 0 && (
         <div className="mt-6">
           {caso.tipo_tramite === "insolvencia" && (
             <CrearActaInsolvencia
@@ -447,6 +448,17 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
               hearingId={hearings[hearings.length - 1].id}
             />
           )}
+        </div>
+      )}
+
+      {activeTab === "acta" && hearings.length === 0 && (
+        <div className="mt-6 bg-white border border-gray-200 rounded-xl p-8 text-center">
+          <p className="text-sm text-gray-600 mb-2">
+            No hay audiencias programadas para este caso.
+          </p>
+          <p className="text-xs text-gray-400">
+            Programa una audiencia desde la vista del caso para poder generar el acta.
+          </p>
         </div>
       )}
 
