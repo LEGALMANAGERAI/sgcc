@@ -85,6 +85,8 @@ export function renderTemplate(template: string, ctx: CaseContext): string {
     "fecha.hoy_letras": fechaEnLetras(new Date()),
     "acta.numero": ctx.acta?.numero_acta ?? "",
     "acta.tipo": ctx.acta?.tipo ?? "",
+    "acta.hechos": ctx.acta?.hechos ?? "",
+    "acta.consideraciones": ctx.acta?.consideraciones ?? "",
     "acta.acuerdo": ctx.acta?.acuerdo_texto ?? "",
   };
 

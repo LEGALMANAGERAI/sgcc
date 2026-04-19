@@ -250,6 +250,7 @@ export interface SgccActa {
   hearing_id: string | null;
   numero_acta: string;
   tipo: ActaTipo;
+  hechos: string | null;
   consideraciones: string | null;
   acuerdo_texto: string | null;
   obligaciones: ObligacionItem[] | null;
