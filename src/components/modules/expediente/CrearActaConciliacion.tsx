@@ -59,8 +59,8 @@ export function CrearActaConciliacion({ caseId, hearingId }: CrearActaConciliaci
   // Hidratar desde la última acta (heredar consideraciones/acuerdo/obligaciones)
   useEffect(() => {
     if (!contexto) return;
-    const ultima = contexto.ultimaActa;
     if (actaCreada) return;
+    const ultima = contexto.ultimaActa;
     if (ultima) {
       setTipo(ultima.tipo ?? "acuerdo_total");
       setConsideraciones(ultima.consideraciones ?? "");
@@ -74,6 +74,20 @@ export function CrearActaConciliacion({ caseId, hearingId }: CrearActaConciliaci
             monto: ob.monto != null ? String(ob.monto) : "",
           }))
         );
+      }
+    } else if (contexto.caso?.sub_estado) {
+      // Pre-seleccionar tipo según resultado de la audiencia (sub_estado del caso)
+      const subEstado = contexto.caso.sub_estado as ActaTipo;
+      const tiposValidos: ActaTipo[] = [
+        "acuerdo_total",
+        "acuerdo_parcial",
+        "no_acuerdo",
+        "inasistencia",
+        "desistimiento",
+        "improcedente",
+      ];
+      if (tiposValidos.includes(subEstado)) {
+        setTipo(subEstado);
       }
     }
   }, [contexto, actaCreada]);
@@ -189,6 +203,8 @@ export function CrearActaConciliacion({ caseId, hearingId }: CrearActaConciliaci
 
   const muestraObligaciones = tipo === "acuerdo_total" || tipo === "acuerdo_parcial";
 
+  const audienciaFinalizada = contexto.audiencia?.estado === "finalizada";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -202,6 +218,21 @@ export function CrearActaConciliacion({ caseId, hearingId }: CrearActaConciliaci
           </p>
         </div>
       </div>
+
+      {audienciaFinalizada && !actaCreada && !contexto.ultimaActa && (
+        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-start gap-2">
+          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-green-800">
+              Audiencia finalizada — lista para generar acta
+            </p>
+            <p className="text-xs text-green-700 mt-0.5">
+              El tipo de acta ya está pre-seleccionado según el resultado de la audiencia.
+              Completa consideraciones y obligaciones (si aplica) y haz clic en Generar acta.
+            </p>
+          </div>
+        </div>
+      )}
 
       <DatosHeredadosBanner caso={contexto.caso} partes={contexto.caso.partes ?? []} />
 
