@@ -201,11 +201,10 @@ export async function POST(req: Request) {
     await supabaseAdmin.from("sgcc_case_timeline").insert({
       id: randomUUID(),
       case_id: caseId,
-      center_id: body.center_id,
-      tipo: "solicitud_recibida",
-      titulo: "Solicitud recibida vía widget",
-      descripcion: `Solicitud de ${body.tipo_tramite} recibida a través del formulario web. Materia: ${body.materia}.`,
-      es_automatico: true,
+      etapa: "solicitud",
+      descripcion: `Solicitud de ${body.tipo_tramite} recibida vía widget. Materia: ${body.materia}.`,
+      completado: true,
+      fecha: new Date().toISOString(),
       created_at: new Date().toISOString(),
     });
 
