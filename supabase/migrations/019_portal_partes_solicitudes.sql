@@ -24,7 +24,9 @@
 -- pero refleja el comportamiento actual del sistema.
 CREATE OR REPLACE FUNCTION generar_numero_radicado(p_center_id UUID)
 RETURNS TEXT
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
 DECLARE
   v_year TEXT := to_char(NOW(), 'YYYY');
   v_seq  INT;
@@ -215,7 +217,9 @@ CREATE POLICY "allow_all" ON sgcc_case_payment_plan       FOR ALL USING (TRUE);
 -- registro en `sgcc_parties` y luego el enlace en `sgcc_case_parties`.
 CREATE OR REPLACE FUNCTION radicar_solicitud(p_draft_id UUID, p_user_id UUID)
 RETURNS JSONB
-LANGUAGE plpgsql SECURITY DEFINER AS $$
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
 DECLARE
   v_draft            sgcc_solicitudes_draft%ROWTYPE;
   v_case_id          UUID;
