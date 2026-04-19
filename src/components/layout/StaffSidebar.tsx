@@ -18,6 +18,7 @@ import {
   Mail,
   Eye,
   PenTool,
+  LifeBuoy,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { SgccLogo } from "@/components/ui/SgccLogo";
@@ -34,6 +35,7 @@ const navItems = [
   { label: "Conciliadores", href: "/conciliadores", icon: UserCog, badgeKey: null },
   { label: "Salas", href: "/salas", icon: DoorOpen, badgeKey: null },
   { label: "Plantillas", href: "/plantillas", icon: FileText, badgeKey: null },
+  { label: "Tickets", href: "/tickets", icon: LifeBuoy, badgeKey: null },
   { label: "Reportes", href: "/reportes", icon: BarChart3, badgeKey: null },
 ];
 
