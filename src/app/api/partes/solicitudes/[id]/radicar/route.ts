@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { requireParte } from "@/lib/partes/auth-guard";
+import { notify } from "@/lib/notifications";
 import {
   validarConciliacion,
   validarInsolvencia,
@@ -71,6 +72,56 @@ export async function POST(
   );
   if (rpcErr) {
     return NextResponse.json({ error: rpcErr.message }, { status: 500 });
+  }
+
+  // 5. Notificar al deudor y al centro (falla silenciosa si Resend no configurado)
+  try {
+    const out = rpcOut as { case_id: string; numero_radicado: string };
+    const [{ data: parte }, { data: adminsCentro }] = await Promise.all([
+      supabaseAdmin
+        .from("sgcc_parties")
+        .select("email, nombres, razon_social")
+        .eq("id", guard.userId)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("sgcc_staff")
+        .select("id, email")
+        .eq("center_id", draft.center_id)
+        .eq("rol", "admin")
+        .eq("activo", true),
+    ]);
+
+    const nombreParte =
+      parte?.nombres ?? parte?.razon_social ?? parte?.email ?? "solicitante";
+    const tramiteLabel =
+      draft.tipo_tramite === "insolvencia" ? "insolvencia" : "conciliación";
+
+    // Al deudor
+    if (parte?.email) {
+      await notify({
+        centerId: draft.center_id,
+        caseId: out.case_id,
+        tipo: "nueva_solicitud",
+        titulo: `Solicitud radicada: ${out.numero_radicado}`,
+        mensaje: `Tu solicitud de ${tramiteLabel} fue radicada exitosamente con el número ${out.numero_radicado}. Puedes hacer seguimiento desde "Mis Casos".`,
+        recipients: [{ partyId: guard.userId, email: parte.email }],
+      });
+    }
+
+    // A los admins del centro
+    for (const a of adminsCentro ?? []) {
+      if (!a.email) continue;
+      await notify({
+        centerId: draft.center_id,
+        caseId: out.case_id,
+        tipo: "nueva_solicitud",
+        titulo: `Nueva solicitud: ${out.numero_radicado}`,
+        mensaje: `${nombreParte} radicó una solicitud de ${tramiteLabel} (${out.numero_radicado}) desde el portal de partes.`,
+        recipients: [{ staffId: a.id, email: a.email }],
+      });
+    }
+  } catch (e) {
+    console.error("[radicar] Error enviando notificaciones:", e);
   }
 
   return NextResponse.json(rpcOut);
