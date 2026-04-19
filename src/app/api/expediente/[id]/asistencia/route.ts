@@ -173,7 +173,6 @@ export async function POST(
     poder_verificado: poder_verificado ?? false,
     notas: notas ?? null,
     registrado_por_staff: userId,
-    updated_at: now,
   };
 
   let result;
@@ -279,11 +278,9 @@ export async function PATCH(
   }
 
   const userId = (session.user as any).id;
-  const now = new Date().toISOString();
 
   const updateData: Record<string, any> = {
     registrado_por_staff: userId,
-    updated_at: now,
   };
 
   if (attorney_id !== undefined) updateData.attorney_id = attorney_id;
