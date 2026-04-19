@@ -535,7 +535,13 @@ function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any 
         return;
       }
 
-      window.location.reload();
+      // Si es suspendida, solo recargar; si es finalizada, redirigir al tab Acta
+      // para que el conciliador genere/complete el acta de inmediato.
+      if (resultado === "suspendida") {
+        window.location.reload();
+      } else {
+        window.location.href = `/expediente/${caseId}?tab=acta`;
+      }
     } catch {
       setErrorFin("Error de conexión");
     } finally {

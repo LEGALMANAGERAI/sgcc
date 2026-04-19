@@ -169,6 +169,7 @@ export function CrearActaAcuerdoApoyo({ caseId, hearingId }: CrearActaAcuerdoApo
   }
 
   const tipoActual = TIPOS_ACTA.find((t) => t.value === tipo);
+  const audienciaFinalizada = contexto.audiencia?.estado === "finalizada";
 
   return (
     <div className="space-y-6">
@@ -185,6 +186,20 @@ export function CrearActaAcuerdoApoyo({ caseId, hearingId }: CrearActaAcuerdoApo
           </p>
         </div>
       </div>
+
+      {audienciaFinalizada && !actaCreada && !contexto.ultimaActa && (
+        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-start gap-2">
+          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-green-800">
+              Audiencia finalizada — lista para generar acta
+            </p>
+            <p className="text-xs text-green-700 mt-0.5">
+              Selecciona el tipo de acta, completa los campos y haz clic en Generar acta.
+            </p>
+          </div>
+        </div>
+      )}
 
       <DatosHeredadosBanner caso={contexto.caso} partes={contexto.caso.partes ?? []} />
 
