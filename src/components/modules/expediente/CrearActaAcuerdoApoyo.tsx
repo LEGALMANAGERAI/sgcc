@@ -194,6 +194,7 @@ export function CrearActaAcuerdoApoyo({ caseId, hearingId }: CrearActaAcuerdoApo
         partes={contexto.caso.partes ?? []}
         apoderadosVigentes={contexto.apoderadosVigentes}
         asistenciaInicial={contexto.asistencia}
+        historialApoderados={contexto.historialApoderados}
         onGuardado={refresh}
       />
 

@@ -211,6 +211,7 @@ export function CrearActaConciliacion({ caseId, hearingId }: CrearActaConciliaci
         partes={contexto.caso.partes ?? []}
         apoderadosVigentes={contexto.apoderadosVigentes}
         asistenciaInicial={contexto.asistencia}
+        historialApoderados={contexto.historialApoderados}
         onGuardado={refresh}
       />
 

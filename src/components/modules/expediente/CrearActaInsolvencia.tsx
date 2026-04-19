@@ -241,6 +241,7 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
         partes={contexto.caso.partes ?? []}
         apoderadosVigentes={contexto.apoderadosVigentes}
         asistenciaInicial={contexto.asistencia}
+        historialApoderados={contexto.historialApoderados}
         onGuardado={refresh}
       />
 

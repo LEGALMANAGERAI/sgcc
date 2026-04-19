@@ -11,6 +11,10 @@ import {
   ShieldAlert,
   CheckCircle,
   AlertCircle,
+  History,
+  ChevronDown,
+  ChevronUp,
+  FileText,
 } from "lucide-react";
 import { partyDisplayName } from "@/types";
 import { CambiarApoderadoModal } from "./CambiarApoderadoModal";
@@ -21,7 +25,25 @@ interface PanelAsistenciaAudienciaProps {
   partes: any[];                 // de contexto.caso.partes
   apoderadosVigentes: any[];     // de contexto.apoderadosVigentes (vigentes a la fecha)
   asistenciaInicial: any[];      // de contexto.asistencia
+  historialApoderados?: any[];   // de contexto.historialApoderados (todos los registros del caso)
   onGuardado: () => void;        // refresh del contexto
+}
+
+const MOTIVO_CAMBIO_LABEL: Record<string, string> = {
+  inicial: "Registro inicial",
+  renuncia: "Renuncia",
+  revocatoria: "Revocatoria",
+  sustitucion: "Sustitución",
+};
+
+function fmtFechaCorta(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("es-CO", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "America/Bogota",
+  });
 }
 
 interface AsistenciaLocal {
@@ -39,6 +61,7 @@ export function PanelAsistenciaAudiencia({
   partes,
   apoderadosVigentes,
   asistenciaInicial,
+  historialApoderados = [],
   onGuardado,
 }: PanelAsistenciaAudienciaProps) {
   const apoderadoPorParte = useMemo(() => {
@@ -48,6 +71,30 @@ export function PanelAsistenciaAudiencia({
     }
     return map;
   }, [apoderadosVigentes]);
+
+  const historialPorParte = useMemo(() => {
+    const map = new Map<string, any[]>();
+    for (const h of historialApoderados) {
+      const arr = map.get(h.party_id) ?? [];
+      arr.push(h);
+      map.set(h.party_id, arr);
+    }
+    // Ya viene ordenado por created_at desc del endpoint
+    return map;
+  }, [historialApoderados]);
+
+  const [historialAbiertoPara, setHistorialAbiertoPara] = useState<Set<string>>(
+    new Set()
+  );
+
+  function toggleHistorial(partyId: string) {
+    setHistorialAbiertoPara((prev) => {
+      const copy = new Set(prev);
+      if (copy.has(partyId)) copy.delete(partyId);
+      else copy.add(partyId);
+      return copy;
+    });
+  }
 
   const [rows, setRows] = useState<Record<string, AsistenciaLocal>>(() => {
     const map: Record<string, AsistenciaLocal> = {};
@@ -260,6 +307,21 @@ export function PanelAsistenciaAudiencia({
                     </button>
                   )}
 
+                  {(historialPorParte.get(cp.party_id)?.length ?? 0) > 0 && (
+                    <button
+                      onClick={() => toggleHistorial(cp.party_id)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-medium text-gray-600 bg-gray-100 hover:bg-gray-200"
+                    >
+                      <History className="w-3.5 h-3.5" />
+                      Historial ({historialPorParte.get(cp.party_id)?.length ?? 0})
+                      {historialAbiertoPara.has(cp.party_id) ? (
+                        <ChevronUp className="w-3 h-3" />
+                      ) : (
+                        <ChevronDown className="w-3 h-3" />
+                      )}
+                    </button>
+                  )}
+
                   <button
                     onClick={() =>
                       setCambiarPara({
@@ -275,6 +337,12 @@ export function PanelAsistenciaAudiencia({
                   </button>
                 </div>
               </div>
+
+              {historialAbiertoPara.has(cp.party_id) && (
+                <HistorialApoderadosParte
+                  registros={historialPorParte.get(cp.party_id) ?? []}
+                />
+              )}
             </div>
           );
         })}
@@ -310,6 +378,85 @@ export function PanelAsistenciaAudiencia({
           }}
         />
       )}
+    </div>
+  );
+}
+
+function HistorialApoderadosParte({ registros }: { registros: any[] }) {
+  if (!registros.length) return null;
+
+  return (
+    <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-3">
+      <p className="text-[11px] font-semibold text-gray-600 uppercase mb-2 flex items-center gap-1">
+        <History className="w-3 h-3" />
+        Historial de apoderados
+      </p>
+      <div className="space-y-2">
+        {registros.map((r, idx) => {
+          const isActive = r.activo === true;
+          const esActual = idx === 0 && isActive;
+          return (
+            <div
+              key={r.id}
+              className={`flex items-start justify-between gap-3 p-2.5 rounded-lg border ${
+                esActual
+                  ? "bg-green-50 border-green-200"
+                  : "bg-white border-gray-200"
+              }`}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-medium text-[#0D2340]">
+                    {r.attorney?.nombre ?? "—"}
+                  </p>
+                  {esActual && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
+                      Actual
+                    </span>
+                  )}
+                  {!esActual && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600">
+                      Inactivo
+                    </span>
+                  )}
+                  {r.motivo_cambio && (
+                    <span className="text-[10px] text-gray-500">
+                      · {MOTIVO_CAMBIO_LABEL[r.motivo_cambio] ?? r.motivo_cambio}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[11px] text-gray-500">
+                  {r.attorney?.numero_doc && (
+                    <span>Doc: {r.attorney.numero_doc}</span>
+                  )}
+                  {r.attorney?.tarjeta_profesional && (
+                    <span>T.P. {r.attorney.tarjeta_profesional}</span>
+                  )}
+                  <span>
+                    Desde:{" "}
+                    {fmtFechaCorta(r.poder_vigente_desde ?? r.created_at)}
+                  </span>
+                  {r.poder_vigente_hasta && (
+                    <span>Hasta: {fmtFechaCorta(r.poder_vigente_hasta)}</span>
+                  )}
+                </div>
+              </div>
+              {r.poder_url && (
+                <a
+                  href={r.poder_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] text-[#1B4F9B] hover:underline"
+                  title="Ver poder"
+                >
+                  <FileText className="w-3 h-3" />
+                  Poder
+                </a>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
