@@ -150,9 +150,11 @@ export async function PATCH(
     return NextResponse.json({ error: "hearing_id es requerido" }, { status: 400 });
   }
 
-  const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+  const now = new Date().toISOString();
+
+  // Update de audiencia: solo columnas que existen en sgcc_hearings
+  const updates: Record<string, any> = { updated_at: now };
   if (estado !== undefined) updates.estado = estado;
-  if (resultado !== undefined) updates.resultado = resultado ?? null;
   if (notas_previas !== undefined) updates.notas_previas = notas_previas;
 
   const { error: hearingError } = await supabaseAdmin
@@ -165,38 +167,58 @@ export async function PATCH(
     return NextResponse.json({ error: hearingError.message }, { status: 500 });
   }
 
-  // Si suspendida con fecha de continuación, crear entrada en timeline
+  // Si hay resultado, guardarlo en sgcc_cases.sub_estado (solo valores permitidos por el CHECK)
+  const subEstadosValidos = [
+    "acuerdo_total",
+    "acuerdo_parcial",
+    "no_acuerdo",
+    "inasistencia",
+    "desistimiento",
+  ];
+  if (resultado && subEstadosValidos.includes(resultado)) {
+    await supabaseAdmin
+      .from("sgcc_cases")
+      .update({ sub_estado: resultado, updated_at: now })
+      .eq("id", caseId);
+  }
+
+  // Si suspendida con fecha de continuación, entrada en timeline
   if (estado === "suspendida" && fecha_continuacion) {
     await supabaseAdmin.from("sgcc_case_timeline").insert({
       id: randomUUID(),
       case_id: caseId,
-      center_id: (session.user as any).centerId,
-      tipo: "audiencia_suspendida",
-      titulo: "Audiencia suspendida - continuación programada",
-      descripcion: `Audiencia suspendida. Fecha de continuación: ${fecha_continuacion}. Resultado: ${resultado}.`,
-      staff_id: (session.user as any).id,
-      es_automatico: false,
-      created_at: new Date().toISOString(),
+      etapa: "audiencia",
+      descripcion: `Audiencia suspendida. Continuación: ${fecha_continuacion}${
+        resultado ? `. Resultado: ${resultado}` : ""
+      }.`,
+      completado: false,
+      fecha: now,
+      referencia_id: hearing_id,
+      created_at: now,
     });
   }
 
-  // Si finalizada, agregar timeline
+  // Si finalizada, entrada en timeline
   if (estado === "finalizada") {
     const resultLabel: Record<string, string> = {
       acuerdo_total: "Acuerdo total",
       acuerdo_parcial: "Acuerdo parcial",
       no_acuerdo: "No acuerdo",
+      inasistencia: "Inasistencia",
+      desistimiento: "Desistimiento",
     };
+    const desc = resultado
+      ? `Audiencia finalizada con resultado: ${resultLabel[resultado] ?? resultado}.`
+      : "Audiencia finalizada.";
     await supabaseAdmin.from("sgcc_case_timeline").insert({
       id: randomUUID(),
       case_id: caseId,
-      center_id: (session.user as any).centerId,
-      tipo: "audiencia_finalizada",
-      titulo: `Audiencia finalizada: ${resultLabel[resultado] ?? resultado}`,
-      descripcion: `La audiencia finalizó con resultado: ${resultLabel[resultado] ?? resultado}.`,
-      staff_id: (session.user as any).id,
-      es_automatico: false,
-      created_at: new Date().toISOString(),
+      etapa: "audiencia",
+      descripcion: desc,
+      completado: true,
+      fecha: now,
+      referencia_id: hearing_id,
+      created_at: now,
     });
   }
 

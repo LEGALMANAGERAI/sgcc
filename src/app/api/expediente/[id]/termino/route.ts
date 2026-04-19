@@ -47,12 +47,10 @@ export async function POST(
     await supabaseAdmin.from("sgcc_case_timeline").insert({
       id: randomUUID(),
       case_id: caseId,
-      center_id: centerId,
-      tipo: "termino_iniciado",
-      titulo: "Término del procedimiento iniciado",
-      descripcion: `Se inició el conteo de 60 días hábiles para el procedimiento. Fecha de inicio: ${hoy}.`,
-      staff_id: (session.user as any).id,
-      es_automatico: false,
+      etapa: "admision",
+      descripcion: `Término iniciado (60 días hábiles). Fecha de inicio: ${hoy}.`,
+      completado: true,
+      fecha: new Date().toISOString(),
       created_at: new Date().toISOString(),
     });
 
@@ -84,12 +82,10 @@ export async function POST(
     await supabaseAdmin.from("sgcc_case_timeline").insert({
       id: randomUUID(),
       case_id: caseId,
-      center_id: centerId,
-      tipo: "termino_prorrogado",
-      titulo: "Término prorrogado por 30 días hábiles",
-      descripcion: `El operador prorrogó el término del procedimiento por 30 días hábiles adicionales. Nuevo término total: ${nuevoTermino} días hábiles.`,
-      staff_id: (session.user as any).id,
-      es_automatico: false,
+      etapa: "admision",
+      descripcion: `Término prorrogado 30 días hábiles. Nuevo término: ${nuevoTermino} días hábiles.`,
+      completado: true,
+      fecha: new Date().toISOString(),
       created_at: new Date().toISOString(),
     });
 
