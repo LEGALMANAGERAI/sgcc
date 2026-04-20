@@ -10,7 +10,8 @@ export default auth((req) => {
   if (publicPaths.some((p) => pathname.startsWith(p))) return NextResponse.next();
 
   // API routes de auth, health y activación siempre permitidas
-  if (pathname.startsWith("/api/auth") || pathname.startsWith("/api/health") || pathname.startsWith("/api/legados/activar") || pathname.startsWith("/api/widget") || pathname.startsWith("/api/firmar") || pathname.startsWith("/api/votar")) {
+  // /api/partes permite POST con selfRegister sin sesión (el handler valida el resto)
+  if (pathname.startsWith("/api/auth") || pathname.startsWith("/api/health") || pathname.startsWith("/api/legados/activar") || pathname.startsWith("/api/widget") || pathname.startsWith("/api/firmar") || pathname.startsWith("/api/votar") || pathname === "/api/partes") {
     return NextResponse.next();
   }
 
