@@ -31,6 +31,7 @@ const TIPO_BADGE: Record<TipoTramite, { label: string; color: string }> = {
   insolvencia: { label: "Ins", color: "bg-purple-100 text-purple-800" },
   acuerdo_apoyo: { label: "AA", color: "bg-amber-100 text-amber-800" },
   arbitraje_ejecutivo: { label: "AE", color: "bg-teal-100 text-teal-800" },
+  directiva_anticipada: { label: "DA", color: "bg-rose-100 text-rose-800" },
 };
 
 const BASE_TABS = [

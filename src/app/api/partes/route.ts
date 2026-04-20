@@ -43,9 +43,34 @@ export async function POST(req: NextRequest) {
     telefono,
     password,
     invite,
+    codigo_centro,
   } = body;
 
   if (!email) return NextResponse.json({ error: "Email requerido" }, { status: 400 });
+
+  // Resolver center_id desde código corto cuando es auto-registro desde portal
+  let centerId: string | null = null;
+  if (selfRegister) {
+    const codigo = String(codigo_centro ?? "").trim().toUpperCase();
+    if (!codigo || codigo.length !== 8) {
+      return NextResponse.json(
+        { error: "Código del centro inválido (8 caracteres)" },
+        { status: 400 }
+      );
+    }
+    const { data: centro } = await supabaseAdmin
+      .from("sgcc_centers")
+      .select("id")
+      .eq("codigo_corto", codigo)
+      .maybeSingle();
+    if (!centro) {
+      return NextResponse.json(
+        { error: "No se encontró un centro con ese código" },
+        { status: 404 }
+      );
+    }
+    centerId = centro.id;
+  }
 
   // Verificar si ya existe
   const { data: existing } = await supabaseAdmin
@@ -72,6 +97,8 @@ export async function POST(req: NextRequest) {
     telefono: telefono || null,
     updated_at: now,
   };
+
+  if (centerId) data.center_id = centerId;
 
   if (selfRegister && password) {
     data.password_hash = await bcrypt.hash(password, 12);

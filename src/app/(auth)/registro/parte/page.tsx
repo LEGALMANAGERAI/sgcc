@@ -17,6 +17,7 @@ export default function RegistroPage() {
     telefono: "",
     password: "",
     confirm: "",
+    codigo_centro: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -143,6 +144,21 @@ export default function RegistroPage() {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Código del centro</label>
+            <input
+              required
+              value={form.codigo_centro}
+              onChange={(e) => set("codigo_centro", e.target.value.toUpperCase())}
+              placeholder="8 caracteres (provisto por el centro)"
+              maxLength={8}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340] uppercase tracking-wider"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Solicítalo al centro de conciliación donde radicarás tus solicitudes.
+            </p>
           </div>
 
           <div>

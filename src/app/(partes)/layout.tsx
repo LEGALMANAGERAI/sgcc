@@ -38,6 +38,12 @@ export default async function PartesLayout({
                   Mis Casos
                 </Link>
                 <Link
+                  href="/mis-solicitudes"
+                  className="text-gray-300 hover:text-white transition-colors text-sm font-medium"
+                >
+                  Mis Solicitudes
+                </Link>
+                <Link
                   href="/perfil"
                   className="text-gray-300 hover:text-white transition-colors text-sm font-medium"
                 >
@@ -77,6 +83,12 @@ export default async function PartesLayout({
           className="text-gray-300 hover:text-white text-sm"
         >
           Mis Casos
+        </Link>
+        <Link
+          href="/mis-solicitudes"
+          className="text-gray-300 hover:text-white text-sm"
+        >
+          Mis Solicitudes
         </Link>
         <Link
           href="/perfil"

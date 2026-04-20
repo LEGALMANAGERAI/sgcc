@@ -327,6 +327,36 @@ export default function WidgetPage() {
 
   return (
     <div>
+      {/* Banner invitando a crear cuenta */}
+      {step < 6 && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 14,
+            borderRadius: 10,
+            background: "#eff6ff",
+            border: "1px solid #bfdbfe",
+            fontSize: 13,
+            color: "#1e3a8a",
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+            ¿Prefieres seguimiento completo de tu solicitud?
+          </div>
+          <div>
+            Crea una cuenta y radica desde el portal — podrás ver el estado,
+            recibir notificaciones y cargar documentos desde cualquier
+            dispositivo.{" "}
+            <a
+              href="/registro/parte"
+              style={{ color: navy, fontWeight: 600, textDecoration: "underline" }}
+            >
+              Crear cuenta
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* Progress */}
       {step < 6 && (
         <div style={{ marginBottom: 24 }}>

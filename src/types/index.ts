@@ -118,7 +118,7 @@ export type CaseMateria =
   | "arrendamiento"
   | "otro";
 
-export type TipoTramite = "conciliacion" | "insolvencia" | "acuerdo_apoyo" | "arbitraje_ejecutivo";
+export type TipoTramite = "conciliacion" | "insolvencia" | "acuerdo_apoyo" | "arbitraje_ejecutivo" | "directiva_anticipada";
 
 export interface SgccCase {
   id: string;
@@ -357,6 +357,7 @@ export const TIPO_TRAMITE_LABEL: Record<TipoTramite, string> = {
   insolvencia: "Insolvencia",
   acuerdo_apoyo: "Acuerdos de apoyo",
   arbitraje_ejecutivo: "Arbitraje ejecutivo",
+  directiva_anticipada: "Directiva anticipada",
 };
 
 export interface SgccClausula {
@@ -730,3 +731,7 @@ export interface SgccAcuerdoDetalle {
   sentido_voto: VotoInsolvencia | null;
   created_at: string;
 }
+
+// ─── Portal de Partes — Solicitudes ─────────────────────────────────────────
+
+export * from "./solicitudes";
