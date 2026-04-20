@@ -53,10 +53,31 @@ export default function RegistroCentroPage() {
 
     setLoading(true);
     try {
+      const payload = {
+        centro: {
+          nombre: form.nombre,
+          nit: form.nit,
+          tipo: form.tipo_centro,
+          rep_legal: form.representante_legal,
+          resolucion_habilitacion: form.resolucion_habilitacion,
+          fecha_habilitacion: form.fecha_habilitacion,
+          direccion: form.direccion,
+          ciudad: form.ciudad,
+          departamento: form.departamento,
+          telefono: form.telefono,
+          email_contacto: form.email_contacto,
+        },
+        admin: {
+          nombre: form.admin_nombre,
+          email: form.admin_email,
+          password: form.admin_password,
+        },
+      };
+
       const res = await fetch("/api/auth/registro/centro", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
 
