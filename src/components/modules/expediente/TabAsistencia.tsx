@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { partyDisplayName } from "@/types";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ClientDate } from "@/components/ui/ClientDate";
@@ -37,6 +37,10 @@ export function TabAsistencia({
   attorneys,
   attendance,
 }: TabAsistenciaProps) {
+  // Client-only render para evitar hydration mismatch por fechas formateadas.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const [saving, setSaving] = useState<string | null>(null);
 
   // Resolver apoderado activo por parte (el primero activo)
@@ -196,6 +200,15 @@ export function TabAsistencia({
     } finally {
       setSaving(null);
     }
+  }
+
+  // Guard anti-hydration: en SSR y primer render cliente devolvemos placeholder simple
+  if (!mounted) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center text-sm text-gray-400">
+        Cargando asistencia...
+      </div>
+    );
   }
 
   if (hearings.length === 0) {
