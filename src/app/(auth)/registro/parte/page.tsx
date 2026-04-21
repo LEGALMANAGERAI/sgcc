@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Scale } from "lucide-react";
 
 export default function RegistroPage() {
   const router = useRouter();
+  const errorRef = useRef<HTMLDivElement | null>(null);
   const [form, setForm] = useState({
     tipo_persona: "natural",
     nombres: "",
@@ -24,27 +25,39 @@ export default function RegistroPage() {
 
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
+  function showError(msg: string) {
+    setError(msg);
+    requestAnimationFrame(() => {
+      errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    const codigo = form.codigo_centro.trim().toUpperCase();
+    if (codigo.length !== 8) {
+      showError("El código del centro debe tener 8 caracteres");
+      return;
+    }
     if (form.password !== form.confirm) {
-      setError("Las contraseñas no coinciden");
+      showError("Las contraseñas no coinciden");
       return;
     }
     if (form.password.length < 8) {
-      setError("La contraseña debe tener al menos 8 caracteres");
+      showError("La contraseña debe tener al menos 8 caracteres");
       return;
     }
     setLoading(true);
     const res = await fetch("/api/partes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, selfRegister: true }),
+      body: JSON.stringify({ ...form, codigo_centro: codigo, selfRegister: true }),
     });
     const data = await res.json();
     setLoading(false);
     if (!res.ok) {
-      setError(data.error ?? "Error al crear la cuenta");
+      showError(data.error ?? "Error al crear la cuenta");
       return;
     }
     router.push("/login?registered=1");
@@ -65,7 +78,10 @@ export default function RegistroPage() {
 
         <form onSubmit={handleSubmit} className="px-8 py-6 space-y-4">
           {error && (
-            <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg border border-red-200">
+            <div
+              ref={errorRef}
+              className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg border border-red-200"
+            >
               {error}
             </div>
           )}
