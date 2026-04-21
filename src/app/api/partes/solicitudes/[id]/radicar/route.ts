@@ -38,6 +38,47 @@ export async function POST(
     return NextResponse.json({ error: "Draft no encontrado" }, { status: 404 });
   }
 
+  // Guard de firma electrónica para insolvencia. Si la firma fue completada
+  // pero el draft aún no tiene la URL firmada, intentamos sincronizar antes
+  // de devolver error al usuario.
+  if (draft.tipo_tramite === "insolvencia") {
+    if (!draft.solicitud_firma_documento_id) {
+      return NextResponse.json(
+        { error: "Debes generar y firmar el documento antes de radicar." },
+        { status: 400 }
+      );
+    }
+    if (!draft.solicitud_pdf_firmado_url || !draft.solicitud_firmada_at) {
+      const { data: documento } = await supabaseAdmin
+        .from("sgcc_firma_documentos")
+        .select("archivo_firmado_url")
+        .eq("id", draft.solicitud_firma_documento_id)
+        .maybeSingle();
+      const { data: firmante } = await supabaseAdmin
+        .from("sgcc_firmantes")
+        .select("estado, firmado_at")
+        .eq("firma_documento_id", draft.solicitud_firma_documento_id)
+        .eq("orden", 1)
+        .maybeSingle();
+      if (firmante?.estado === "firmado" && documento?.archivo_firmado_url) {
+        await supabaseAdmin
+          .from("sgcc_solicitudes_draft")
+          .update({
+            solicitud_pdf_firmado_url: documento.archivo_firmado_url,
+            solicitud_firmada_at: firmante.firmado_at ?? new Date().toISOString(),
+          })
+          .eq("id", draft.id);
+        draft.solicitud_pdf_firmado_url = documento.archivo_firmado_url;
+        draft.solicitud_firmada_at = firmante.firmado_at ?? new Date().toISOString();
+      } else {
+        return NextResponse.json(
+          { error: "La solicitud aún no ha sido firmada electrónicamente." },
+          { status: 400 }
+        );
+      }
+    }
+  }
+
   // 2. Cargar adjuntos (para validación de anexos obligatorios)
   const { data: adjuntos } = await supabaseAdmin
     .from("sgcc_documents")

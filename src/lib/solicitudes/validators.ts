@@ -138,11 +138,52 @@ export function validarInsolvencia(
       if (!a.clase_prelacion) {
         errors.push({ step: 5, message: `Acreedor ${i + 1} sin clase de prelación` });
       }
+      if (
+        a.es_garantia_mobiliaria_solidaria &&
+        (!a.monto_aportes_ahorros || a.monto_aportes_ahorros <= 0)
+      ) {
+        errors.push({
+          step: 5,
+          message: `Acreedor ${i + 1}: debes cuantificar aportes/ahorros en economía solidaria`,
+        });
+      }
     });
   }
 
   if (!fd.causa_insolvencia || fd.causa_insolvencia.trim().length < 20) {
     errors.push({ step: 4, message: "Describe las causas de la insolvencia" });
+  }
+
+  // Tipo de fuente de ingresos (Art. 539 #6)
+  if (!fd.tipo_fuente_ingresos) {
+    errors.push({ step: 9, message: "Indica el tipo de fuente de ingresos (Art. 539 #6)" });
+  } else if (fd.tipo_fuente_ingresos === "empleado" && !fd.empleador_nombre) {
+    errors.push({ step: 9, message: "Nombre del empleador obligatorio (Art. 539 #6)" });
+  } else if (fd.tipo_fuente_ingresos === "pensionado" && !fd.fondo_pension) {
+    errors.push({ step: 9, message: "Nombre del fondo de pensiones obligatorio (Art. 539 #6)" });
+  }
+
+  // Sociedad conyugal (Art. 539 #8)
+  if (!fd.sociedad_conyugal_estado) {
+    errors.push({ step: 10, message: "Indica el estado de la sociedad conyugal (Art. 539 #8)" });
+  } else if (fd.sociedad_conyugal_estado === "liquidada_menos_2_anios") {
+    if (!fd.sociedad_conyugal_fecha_liq) {
+      errors.push({ step: 10, message: "Fecha de liquidación de sociedad conyugal obligatoria" });
+    }
+    if (!fd.sociedad_conyugal_valor_bienes || fd.sociedad_conyugal_valor_bienes <= 0) {
+      errors.push({
+        step: 10,
+        message: "Valor comercial de bienes embargables liquidados obligatorio (Art. 539 #8)",
+      });
+    }
+  }
+
+  // Parágrafo 2: fecha de corte debe estar fijada al crear/radicar
+  if (!fd.fecha_corte) {
+    errors.push({
+      step: 5,
+      message: "La solicitud no tiene fecha de corte (Parágrafo 2 Art. 539). Vuelve al paso 1 para generarla.",
+    });
   }
 
   // Propuesta de pago cubre todas las clases con acreedores
@@ -168,6 +209,31 @@ export function validarInsolvencia(
   }
   if (fd.tipo_deudor === "pequeno_comerciante" && !tipos.has("matricula_mercantil")) {
     errors.push({ step: 12, message: "Falta anexo de matrícula mercantil" });
+  }
+  // Certificación de ingresos según tipo de fuente (Art. 539 #6)
+  if (fd.tipo_fuente_ingresos === "empleado" && !tipos.has("certif_laboral")) {
+    errors.push({ step: 12, message: "Falta certificación laboral (Art. 539 #6)" });
+  }
+  if (fd.tipo_fuente_ingresos === "pensionado" && !tipos.has("certif_pension")) {
+    errors.push({ step: 12, message: "Falta certificación del fondo de pensiones (Art. 539 #6)" });
+  }
+  if (fd.tipo_fuente_ingresos === "independiente" && !tipos.has("declaracion_independiente")) {
+    errors.push({ step: 12, message: "Falta declaración de ingresos (Art. 539 #6)" });
+  }
+  if (fd.tipo_fuente_ingresos === "mixto") {
+    if (!tipos.has("certif_laboral") && !tipos.has("certif_pension") && !tipos.has("declaracion_independiente")) {
+      errors.push({ step: 12, message: "Mixto: adjunta al menos una certificación o declaración de ingresos" });
+    }
+  }
+  // Liquidación de sociedad conyugal reciente
+  if (
+    fd.sociedad_conyugal_estado === "liquidada_menos_2_anios" &&
+    !tipos.has("liquidacion_sociedad_conyugal")
+  ) {
+    errors.push({
+      step: 12,
+      message: "Falta escritura/sentencia de liquidación de sociedad conyugal (Art. 539 #8)",
+    });
   }
 
   if (!fd.juramento_aceptado) {
