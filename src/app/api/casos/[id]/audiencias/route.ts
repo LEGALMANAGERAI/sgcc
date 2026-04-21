@@ -38,9 +38,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!caso) return NextResponse.json({ error: "Caso no encontrado" }, { status: 404 });
 
   const body = await req.json();
-  const { conciliador_id, sala_id, fecha_hora, duracion_min, tipo, notas_previas } = body;
+  const {
+    conciliador_id,
+    sala_id,
+    fecha_hora,
+    duracion_min,
+    tipo,
+    modalidad,
+    plataforma_virtual,
+    notas_previas,
+  } = body;
 
   if (!fecha_hora) return NextResponse.json({ error: "Fecha y hora requerida" }, { status: 400 });
+
+  const modalidadFinal: "presencial" | "virtual" | "mixta" = modalidad ?? "presencial";
+  if (!["presencial", "virtual", "mixta"].includes(modalidadFinal)) {
+    return NextResponse.json({ error: "Modalidad inválida" }, { status: 400 });
+  }
 
   // Verificar disponibilidad del conciliador (sin traslapes)
   if (conciliador_id) {
@@ -76,6 +90,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       duracion_min: duracion_min ?? 60,
       estado: "programada",
       tipo: tipo ?? "inicial",
+      modalidad: modalidadFinal,
+      plataforma_virtual: modalidadFinal === "presencial" ? null : plataforma_virtual ?? null,
       notas_previas: notas_previas ?? null,
       created_at: now,
       updated_at: now,

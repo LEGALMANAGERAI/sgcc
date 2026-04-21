@@ -13,6 +13,8 @@ import {
 } from "docx";
 import type { SgccCase, SgccCenter, SgccParty, SgccStaff, SgccActa, ObligacionItem } from "@/types";
 import { partyDisplayName } from "@/types";
+import type { SgccHearing } from "@/types";
+import { fechaEnLetras, horaEnLetras } from "./numero-a-letras";
 
 interface CaseContext {
   caso: SgccCase;
@@ -21,6 +23,7 @@ interface CaseContext {
   convocados: SgccParty[];
   conciliador: SgccStaff | null;
   acta?: SgccActa;
+  audiencia?: SgccHearing | null;
 }
 
 /**
@@ -59,11 +62,31 @@ export function renderTemplate(template: string, ctx: CaseContext): string {
     "convocante.telefono": ctx.convocante.telefono ?? "",
     "convocante.direccion": ctx.convocante.direccion ?? "",
     "convocados.lista": ctx.convocados.map(partyDisplayName).join(", "),
+    // Alias para acuerdos de apoyo (el convocante es el Titular del acto jurídico)
+    "titular.nombre": partyDisplayName(ctx.convocante),
+    "titular.doc": ctx.convocante.numero_doc ?? ctx.convocante.nit_empresa ?? "",
+    "titular.email": ctx.convocante.email,
+    "titular.direccion": ctx.convocante.direccion ?? "",
+    "apoyo.nombre": ctx.convocados[0] ? partyDisplayName(ctx.convocados[0]) : "",
+    "apoyo.doc": ctx.convocados[0]?.numero_doc ?? "",
     "conciliador.nombre": ctx.conciliador?.nombre ?? "",
+    "conciliador.doc": "",
     "conciliador.tarjeta": ctx.conciliador?.tarjeta_profesional ?? "",
+    "conciliador.codigo_interno": ctx.conciliador?.codigo_interno ?? "",
+    "audiencia.modalidad": ctx.audiencia?.modalidad ?? "",
+    "audiencia.plataforma": ctx.audiencia?.plataforma_virtual ?? "",
+    "audiencia.fecha_hora_letras": ctx.audiencia?.fecha_hora
+      ? fechaEnLetras(ctx.audiencia.fecha_hora)
+      : "",
+    "audiencia.hora_letras": ctx.audiencia?.fecha_hora
+      ? horaEnLetras(ctx.audiencia.fecha_hora)
+      : "",
     "fecha.hoy": new Date().toLocaleDateString("es-CO", { dateStyle: "long" }),
+    "fecha.hoy_letras": fechaEnLetras(new Date()),
     "acta.numero": ctx.acta?.numero_acta ?? "",
     "acta.tipo": ctx.acta?.tipo ?? "",
+    "acta.hechos": ctx.acta?.hechos ?? "",
+    "acta.consideraciones": ctx.acta?.consideraciones ?? "",
     "acta.acuerdo": ctx.acta?.acuerdo_texto ?? "",
   };
 

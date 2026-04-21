@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   // Staff del centro
   const { data: staff, error } = await supabaseAdmin
     .from("sgcc_staff")
-    .select("id, nombre, email, telefono, tarjeta_profesional, rol, activo, supervisor_id, created_at")
+    .select("id, nombre, email, telefono, tarjeta_profesional, codigo_interno, rol, activo, supervisor_id, created_at")
     .eq("center_id", centerId)
     .order("nombre", { ascending: true });
 
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   if (!centerId) return NextResponse.json({ error: "Sin centro asignado" }, { status: 400 });
 
   const body = await req.json();
-  const { nombre, email, telefono, rol, tarjeta_profesional, supervisor_id } = body;
+  const { nombre, email, telefono, rol, tarjeta_profesional, codigo_interno, supervisor_id } = body;
 
   if (!nombre || !email || !rol) {
     return NextResponse.json({ error: "Nombre, email y rol son obligatorios" }, { status: 400 });
@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
       telefono: telefono || null,
       rol,
       tarjeta_profesional: tarjeta_profesional || null,
+      codigo_interno: codigo_interno || null,
       supervisor_id: supervisor_id || null,
       password_hash,
       activo: true,

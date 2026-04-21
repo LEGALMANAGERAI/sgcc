@@ -56,6 +56,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const {
     hearing_id,
     tipo,
+    hechos,
     consideraciones,
     acuerdo_texto,
     obligaciones,
@@ -139,6 +140,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     hearing_id: hearing_id ?? null,
     numero_acta,
     tipo,
+    hechos: hechos ?? null,
     consideraciones: consideraciones ?? null,
     acuerdo_texto: acuerdo_texto ?? null,
     obligaciones: obligaciones ?? null,
@@ -152,19 +154,31 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     updated_at: now.toISOString(),
   };
 
+  // Si hay hearing_id, cargar la audiencia para exponer modalidad/plataforma al renderer.
+  let audiencia: any = null;
+  if (hearing_id) {
+    const { data: h } = await supabaseAdmin
+      .from("sgcc_hearings")
+      .select("id, fecha_hora, modalidad, plataforma_virtual, duracion_min")
+      .eq("id", hearing_id)
+      .single();
+    audiencia = h;
+  }
+
   const ctx = {
     caso,
     centro: center,
     convocante: convocante?.party,
     convocados: convocados.map((c: any) => c.party),
     conciliador: caso.conciliador,
-    acta: { ...actaData, acuerdo_texto, obligaciones },
+    acta: { ...actaData, hechos, acuerdo_texto, obligaciones },
+    audiencia,
   };
 
   // Generar contenido del acta
   const contenidoFinal = templateContent
     ? renderTemplate(templateContent, ctx)
-    : buildDefaultActaContent(tipo, consideraciones, acuerdo_texto, ctx);
+    : buildDefaultActaContent(tipo, hechos, consideraciones, acuerdo_texto, ctx);
 
   const tipoTituloMap: Record<string, string> = {
     acuerdo_total: "ACTA DE CONCILIACIÓN — ACUERDO TOTAL",
@@ -341,22 +355,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 // Genera contenido de acta cuando no hay plantilla configurada
-function buildDefaultActaContent(tipo: string, consideraciones: string, acuerdo: string, ctx: any): string {
+function buildDefaultActaContent(
+  tipo: string,
+  hechos: string | null,
+  consideraciones: string,
+  acuerdo: string,
+  ctx: any
+): string {
   const partes = [ctx.convocante, ...ctx.convocados]
     .map((p: any) => `${[p.nombres, p.apellidos, p.razon_social].filter(Boolean).join(" ")} (${p.email})`)
     .join(", ");
 
-  return `En {{centro.ciudad}}, siendo las ${new Date().toLocaleTimeString("es-CO", { timeStyle: "short" })} del día {{fecha.hoy}}, se celebró audiencia de conciliación entre las partes:
+  const seccionHechos = hechos?.trim() ? `\nHECHOS:\n${hechos}\n` : "";
+
+  return `En {{centro.ciudad}}, siendo las ${new Date().toLocaleTimeString("es-CO", { timeStyle: "short" })} del día {{fecha.hoy}}, se celebró audiencia entre las partes:
 
 PARTES: ${partes}
 
 CONCILIADOR: {{conciliador.nombre}} — T.P. {{conciliador.tarjeta}}
 
 ASUNTO: Solicitud No. {{caso.radicado}} — Materia: {{caso.materia}}
-
+${seccionHechos}
 CONSIDERACIONES:
 ${consideraciones ?? ""}
 
-${tipo.includes("acuerdo") ? `ACUERDO:\n${acuerdo ?? ""}` : tipo === "inasistencia" ? "INASISTENCIA:\nLas partes o alguna de ellas no se presentó a la audiencia." : "NO ACUERDO:\nLas partes no lograron llegar a un acuerdo."}
+${tipo.includes("acuerdo") || tipo === "suscripcion_apoyo" ? `ACUERDO:\n${acuerdo ?? ""}` : tipo === "inasistencia" ? "INASISTENCIA:\nLas partes o alguna de ellas no se presentó a la audiencia." : tipo === "no_suscripcion_apoyo" ? "CONSTANCIA DE NO SUSCRIPCIÓN:\nNo es procedente la suscripción del acuerdo de apoyo." : "NO ACUERDO:\nLas partes no lograron llegar a un acuerdo."}
 `;
 }
