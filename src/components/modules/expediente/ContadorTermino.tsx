@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Clock, Play, AlertTriangle } from "lucide-react";
 import { ClientDate } from "@/components/ui/ClientDate";
 
@@ -23,6 +23,8 @@ export function ContadorTermino({
   fechaLimite,
   prorrogado,
 }: Props) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -117,6 +119,14 @@ export function ContadorTermino({
     : esUrgente
     ? "bg-amber-50 border-amber-200"
     : "bg-white border-gray-100";
+
+  if (!mounted) {
+    return (
+      <div className="rounded-xl shadow-sm border bg-gray-50 border-gray-200 p-5 text-sm text-gray-400">
+        Cargando término...
+      </div>
+    );
+  }
 
   return (
     <div className={`rounded-xl shadow-sm border p-5 ${bgColor}`}>

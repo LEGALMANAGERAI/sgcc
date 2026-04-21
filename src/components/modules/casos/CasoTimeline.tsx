@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import { Check, FileText, Users, Bell, Mic, ClipboardCheck, Archive, Pencil, Settings2 } from "lucide-react";
@@ -38,6 +38,8 @@ function toInputValue(iso: string | null | undefined) {
 
 export function CasoTimeline({ caseId, estado, events, caso, partes, audiencias, actas, conciliadores, secretarios, salas }: Props) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const eventMap = Object.fromEntries(events.map((e) => [e.etapa, e]));
   const [editingFecha, setEditingFecha] = useState<TimelineEtapa | null>(null);
   const [editingEtapa, setEditingEtapa] = useState<TimelineEtapa | null>(null);
@@ -71,6 +73,14 @@ export function CasoTimeline({ caseId, estado, events, caso, partes, audiencias,
     } finally {
       setSaving(false);
     }
+  }
+
+  if (!mounted) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6 text-sm text-gray-400">
+        Cargando flujo del caso...
+      </div>
+    );
   }
 
   return (

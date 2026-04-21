@@ -36,6 +36,17 @@ function formatFecha(iso: string): string {
 }
 
 export function HistorialObservacionesAudiencias({ caseId, audiencias }: Props) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400 text-center">
+        Cargando observaciones...
+      </div>
+    );
+  }
+
   if (audiencias.length === 0) {
     return (
       <div className="bg-white rounded-xl border border-gray-100 p-6 text-center text-sm text-gray-400">
