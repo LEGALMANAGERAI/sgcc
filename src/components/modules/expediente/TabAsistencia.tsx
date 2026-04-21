@@ -530,20 +530,30 @@ function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any 
     setErrorFin("");
 
     try {
+      const payload = {
+        hearing_id: hearing.id,
+        estado: resultado === "suspendida" ? "suspendida" : "finalizada",
+        resultado,
+        fecha_continuacion: resultado === "suspendida" ? fechaCont : null,
+      };
+
       const res = await fetch(`/api/casos/${caseId}/audiencias`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          hearing_id: hearing.id,
-          estado: resultado === "suspendida" ? "suspendida" : "finalizada",
-          resultado,
-          fecha_continuacion: resultado === "suspendida" ? fechaCont : null,
-        }),
+        body: JSON.stringify(payload),
       });
 
+      const responseText = await res.text();
+      let responseBody: any = null;
+      try {
+        responseBody = JSON.parse(responseText);
+      } catch {
+        responseBody = { raw: responseText };
+      }
+
       if (!res.ok) {
-        const err = await res.json();
-        setErrorFin(err.error ?? "Error al finalizar");
+        const detalle = responseBody?.error ?? responseBody?.raw ?? "Respuesta vacía";
+        setErrorFin(`[HTTP ${res.status}] ${detalle}`);
         return;
       }
 
@@ -554,8 +564,8 @@ function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any 
       } else {
         window.location.href = `/expediente/${caseId}?tab=acta`;
       }
-    } catch {
-      setErrorFin("Error de conexión");
+    } catch (e: any) {
+      setErrorFin(`Error de red: ${e?.message ?? "desconocido"}`);
     } finally {
       setSavingFin(false);
     }
