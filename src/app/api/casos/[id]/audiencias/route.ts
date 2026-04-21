@@ -173,6 +173,12 @@ export async function PATCH(
   if (estado !== undefined) updates.estado = estado;
   if (notas_previas !== undefined) updates.notas_previas = notas_previas;
 
+  // Si está suspendida y hay fecha de continuación, actualizar fecha_hora
+  // a la nueva fecha (reprogramación in-place). Se asume hora 09:00 local.
+  if (estado === "suspendida" && fecha_continuacion) {
+    updates.fecha_hora = `${fecha_continuacion}T09:00:00-05:00`;
+  }
+
   const { error: hearingError } = await supabaseAdmin
     .from("sgcc_hearings")
     .update(updates)
