@@ -2,20 +2,11 @@
 
 import { FileText, Hash, Calendar, Scale, Coins, Users } from "lucide-react";
 import { partyDisplayName } from "@/types";
+import { ClientDate } from "@/components/ui/ClientDate";
 
 interface DatosHeredadosBannerProps {
   caso: any;
   partes: any[];
-}
-
-function fmtFecha(iso: string | null | undefined) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("es-CO", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    timeZone: "America/Bogota",
-  });
 }
 
 function fmtDinero(v: number | null | undefined, indet: boolean) {
@@ -69,7 +60,7 @@ export function DatosHeredadosBanner({ caso, partes }: DatosHeredadosBannerProps
           <Calendar className="w-3.5 h-3.5 text-blue-400 mt-0.5" />
           <div>
             <p className="text-[11px] text-blue-600 font-medium uppercase">Solicitud</p>
-            <p className="text-sm text-[#0D2340]">{fmtFecha(caso.fecha_solicitud)}</p>
+            <ClientDate iso={caso.fecha_solicitud} mode="dateLong" className="text-sm text-[#0D2340]" />
           </div>
         </div>
 
@@ -78,7 +69,7 @@ export function DatosHeredadosBanner({ caso, partes }: DatosHeredadosBannerProps
             <Calendar className="w-3.5 h-3.5 text-blue-400 mt-0.5" />
             <div>
               <p className="text-[11px] text-blue-600 font-medium uppercase">Admisión</p>
-              <p className="text-sm text-[#0D2340]">{fmtFecha(caso.fecha_admision)}</p>
+              <ClientDate iso={caso.fecha_admision} mode="dateLong" className="text-sm text-[#0D2340]" />
             </div>
           </div>
         )}

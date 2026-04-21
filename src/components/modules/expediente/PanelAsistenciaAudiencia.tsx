@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { partyDisplayName } from "@/types";
 import { CambiarApoderadoModal } from "./CambiarApoderadoModal";
+import { ClientDate } from "@/components/ui/ClientDate";
 
 interface PanelAsistenciaAudienciaProps {
   caseId: string;
@@ -35,16 +36,6 @@ const MOTIVO_CAMBIO_LABEL: Record<string, string> = {
   revocatoria: "Revocatoria",
   sustitucion: "Sustitución",
 };
-
-function fmtFechaCorta(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("es-CO", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "America/Bogota",
-  });
-}
 
 interface AsistenciaLocal {
   party_id: string;
@@ -433,11 +424,10 @@ function HistorialApoderadosParte({ registros }: { registros: any[] }) {
                     <span>T.P. {r.attorney.tarjeta_profesional}</span>
                   )}
                   <span>
-                    Desde:{" "}
-                    {fmtFechaCorta(r.poder_vigente_desde ?? r.created_at)}
+                    Desde: <ClientDate iso={r.poder_vigente_desde ?? r.created_at} mode="date" />
                   </span>
                   {r.poder_vigente_hasta && (
-                    <span>Hasta: {fmtFechaCorta(r.poder_vigente_hasta)}</span>
+                    <span>Hasta: <ClientDate iso={r.poder_vigente_hasta} mode="date" /></span>
                   )}
                 </div>
               </div>

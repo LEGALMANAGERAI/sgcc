@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { partyDisplayName } from "@/types";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { ClientDate } from "@/components/ui/ClientDate";
 import { sumarDiasHabiles, siguienteDiaHabil } from "@/lib/dias-habiles-colombia";
 import {
   Calendar,
@@ -241,13 +242,11 @@ export function TabAsistencia({
                 <span className="text-sm text-gray-500 capitalize">
                   {hearing.tipo?.replace(/_/g, " ")}
                 </span>
-                <span className="text-sm text-gray-400">
-                  {new Date(hearing.fecha_hora).toLocaleString("es-CO", {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                    timeZone: "America/Bogota",
-                  })}
-                </span>
+                <ClientDate
+                  iso={hearing.fecha_hora}
+                  mode="datetime"
+                  className="text-sm text-gray-400"
+                />
               </div>
               <div className="flex items-center gap-3">
                 <StatusChip value={hearing.estado} type="hearing" />
