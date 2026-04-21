@@ -3,6 +3,9 @@ import { ImageResponse } from "next/og";
 export const size = { width: 128, height: 128 };
 export const contentType = "image/png";
 
+const NAVY = "#0D2340";
+const BLUE = "#1B4F9B";
+
 const cellStyle = (bg: string): React.CSSProperties => ({
   width: "50%",
   height: "50%",
@@ -30,10 +33,10 @@ export default function Icon() {
           overflow: "hidden",
         }}
       >
-        <div style={cellStyle("#0D2340")}>S</div>
-        <div style={cellStyle("#2563EB")}>G</div>
-        <div style={cellStyle("#9333EA")}>C</div>
-        <div style={cellStyle("#16A34A")}>C</div>
+        <div style={cellStyle(NAVY)}>S</div>
+        <div style={cellStyle(BLUE)}>G</div>
+        <div style={cellStyle(BLUE)}>C</div>
+        <div style={cellStyle(NAVY)}>C</div>
       </div>
     ),
     { ...size }
