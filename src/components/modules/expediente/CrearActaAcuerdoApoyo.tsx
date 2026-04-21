@@ -22,46 +22,48 @@ interface CrearActaAcuerdoApoyoProps {
 }
 
 type TipoActaApoyo =
-  | "apoyo_formalizado"
-  | "apoyo_modificado"
-  | "apoyo_terminado"
-  | "no_acuerdo"
-  | "desistimiento";
+  | "suscripcion_apoyo"
+  | "suscripcion_apoyo_modificacion"
+  | "suscripcion_apoyo_terminacion"
+  | "no_suscripcion_apoyo"
+  | "inasistencia";
 
 const TIPOS_ACTA: { value: TipoActaApoyo; label: string; descripcion: string }[] = [
   {
-    value: "apoyo_formalizado",
-    label: "Acuerdo de apoyo formalizado",
-    descripcion: "Se formaliza el acuerdo de apoyo entre el titular y la persona de apoyo",
+    value: "suscripcion_apoyo",
+    label: "Suscripción del acuerdo de apoyo",
+    descripcion: "Se formaliza el acuerdo entre el(la) Titular y la Persona de apoyo (Ley 1996/2019)",
   },
   {
-    value: "apoyo_modificado",
+    value: "suscripcion_apoyo_modificacion",
     label: "Modificación del acuerdo de apoyo",
-    descripcion: "Ajuste al acuerdo de apoyo ya existente",
+    descripcion: "Ajuste a un acuerdo de apoyo ya existente",
   },
   {
-    value: "apoyo_terminado",
-    label: "Terminación del acuerdo",
-    descripcion: "Se termina el acuerdo de apoyo (por voluntad, fin del objeto, etc.)",
+    value: "suscripcion_apoyo_terminacion",
+    label: "Terminación / revocación del acuerdo",
+    descripcion: "El(la) Titular revoca o se termina el acuerdo de apoyo",
   },
   {
-    value: "no_acuerdo",
-    label: "No acuerdo",
-    descripcion: "No se logró acuerdo entre el titular y la persona de apoyo",
+    value: "no_suscripcion_apoyo",
+    label: "Constancia de NO suscripción",
+    descripcion: "El conciliador deja constancia de no ser procedente la suscripción",
   },
   {
-    value: "desistimiento",
-    label: "Desistimiento",
-    descripcion: "Desistimiento expreso de alguna de las partes",
+    value: "inasistencia",
+    label: "Inasistencia",
+    descripcion: "El(la) Titular o Persona de apoyo no comparecieron a la audiencia",
   },
 ];
 
+// Los 3 primeros tipos se mapean a suscripcion_apoyo (mismo tipo en BD, diferentes etiquetas en UI).
+// Los tipos *_modificacion y *_terminacion se marcan con un prefijo en consideraciones para distinguirlos.
 const TIPO_APOYO_A_ACTA: Record<TipoActaApoyo, ActaTipo> = {
-  apoyo_formalizado: "acuerdo_total",
-  apoyo_modificado: "acuerdo_parcial",
-  apoyo_terminado: "desistimiento",
-  no_acuerdo: "no_acuerdo",
-  desistimiento: "desistimiento",
+  suscripcion_apoyo: "suscripcion_apoyo",
+  suscripcion_apoyo_modificacion: "suscripcion_apoyo",
+  suscripcion_apoyo_terminacion: "suscripcion_apoyo",
+  no_suscripcion_apoyo: "no_suscripcion_apoyo",
+  inasistencia: "inasistencia",
 };
 
 export function CrearActaAcuerdoApoyo({ caseId, hearingId }: CrearActaAcuerdoApoyoProps) {
@@ -70,7 +72,8 @@ export function CrearActaAcuerdoApoyo({ caseId, hearingId }: CrearActaAcuerdoApo
     hearingId
   );
 
-  const [tipo, setTipo] = useState<TipoActaApoyo>("apoyo_formalizado");
+  const [tipo, setTipo] = useState<TipoActaApoyo>("suscripcion_apoyo");
+  const [autonomia, setAutonomia] = useState("");
   const [consideraciones, setConsideraciones] = useState("");
   const [decisionApoyo, setDecisionApoyo] = useState("");
   const [salvaguardias, setSalvaguardias] = useState("");
@@ -84,6 +87,7 @@ export function CrearActaAcuerdoApoyo({ caseId, hearingId }: CrearActaAcuerdoApo
     if (!contexto || actaCreada) return;
     const ultima = contexto.ultimaActa;
     if (ultima) {
+      setAutonomia(ultima.hechos ?? "");
       setConsideraciones(ultima.consideraciones ?? "");
       setDecisionApoyo(ultima.acuerdo_texto ?? "");
     }
@@ -97,7 +101,7 @@ export function CrearActaAcuerdoApoyo({ caseId, hearingId }: CrearActaAcuerdoApo
       const tipoLabel = TIPOS_ACTA.find((t) => t.value === tipo)?.label ?? tipo;
       const consideracionesFull = `ACUERDO DE APOYO — LEY 1996 DE 2019 — ${tipoLabel.toUpperCase()}\n\n${consideraciones}`;
       const acuerdoFull = salvaguardias
-        ? `${decisionApoyo}\n\nSALVAGUARDIAS:\n${salvaguardias}`
+        ? `${decisionApoyo}\n\nSALVAGUARDIAS Y REVOCABILIDAD:\n${salvaguardias}`
         : decisionApoyo;
 
       const res = await fetch(`/api/casos/${caseId}/acta`, {
@@ -106,10 +110,11 @@ export function CrearActaAcuerdoApoyo({ caseId, hearingId }: CrearActaAcuerdoApo
         body: JSON.stringify({
           hearing_id: hearingId,
           tipo: TIPO_APOYO_A_ACTA[tipo],
+          hechos: autonomia || null,
           consideraciones: consideracionesFull,
           acuerdo_texto: acuerdoFull || null,
           obligaciones: null,
-          es_constancia: tipo === "no_acuerdo" || tipo === "desistimiento",
+          es_constancia: tipo === "no_suscripcion_apoyo" || tipo === "inasistencia",
         }),
       });
 
@@ -262,20 +267,29 @@ export function CrearActaAcuerdoApoyo({ caseId, hearingId }: CrearActaAcuerdoApo
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-sm font-medium text-gray-700">
-                Consideraciones
+                Autonomía del titular y relación de confianza
+                {tipo === "no_suscripcion_apoyo" && (
+                  <span className="ml-2 text-xs text-gray-400 font-normal">
+                    (observaciones del conciliador sobre imposibilidad)
+                  </span>
+                )}
               </label>
               <InsertarClausulaButton
                 tipoTramite="acuerdo_apoyo"
                 resultado={TIPO_APOYO_A_ACTA[tipo]}
-                categoriasPreferidas={["consideraciones", "preambulo", "identificacion_partes"]}
-                onInsert={(c) => setConsideraciones((p) => (p ? p + "\n\n" + c : c))}
+                categoriasPreferidas={["apoyo_decision"]}
+                onInsert={(c) => setAutonomia((p) => (p ? p + "\n\n" + c : c))}
               />
             </div>
             <textarea
-              value={consideraciones}
-              onChange={(e) => setConsideraciones(e.target.value)}
+              value={autonomia}
+              onChange={(e) => setAutonomia(e.target.value)}
               rows={4}
-              placeholder="Situación del titular, voluntad y preferencias expresadas, identificación de la persona de apoyo..."
+              placeholder={
+                tipo === "no_suscripcion_apoyo"
+                  ? "No fue posible establecer el canal de comunicación necesario para concluir la autonomía y comprensión del titular..."
+                  : "El(la) Titular participó de forma autónoma, sin vicios del consentimiento (error, fuerza o dolo). Entre el(la) Titular y el(la) Apoyo existe relación de confianza por [vínculo]..."
+              }
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F9B] resize-y"
             />
           </div>
@@ -283,38 +297,69 @@ export function CrearActaAcuerdoApoyo({ caseId, hearingId }: CrearActaAcuerdoApo
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-sm font-medium text-gray-700">
-                Decisión de apoyo
+                Preámbulo e identificación
               </label>
               <InsertarClausulaButton
                 tipoTramite="acuerdo_apoyo"
                 resultado={TIPO_APOYO_A_ACTA[tipo]}
-                categoriasPreferidas={["apoyo_decision", "obligacion_hacer", "cierre"]}
-                onInsert={(c) => setDecisionApoyo((p) => (p ? p + "\n\n" + c : c))}
+                categoriasPreferidas={["preambulo", "identificacion_partes", "consideraciones"]}
+                onInsert={(c) => setConsideraciones((p) => (p ? p + "\n\n" + c : c))}
               />
             </div>
             <textarea
-              value={decisionApoyo}
-              onChange={(e) => setDecisionApoyo(e.target.value)}
-              rows={5}
-              placeholder="Alcance del apoyo, actos jurídicos específicos sobre los que recae, duración, condiciones..."
+              value={consideraciones}
+              onChange={(e) => setConsideraciones(e.target.value)}
+              rows={4}
+              placeholder="Fecha, modalidad (presencial/virtual), identificación del(la) Titular y Persona(s) de apoyo designada(s)..."
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F9B] resize-y"
             />
           </div>
 
-          {(tipo === "apoyo_formalizado" || tipo === "apoyo_modificado") && (
+          {tipo !== "no_suscripcion_apoyo" && tipo !== "inasistencia" && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Salvaguardias
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-gray-700">
+                  Alcance del apoyo + obligaciones (Art. 46 Ley 1996)
+                </label>
+                <InsertarClausulaButton
+                  tipoTramite="acuerdo_apoyo"
+                  resultado={TIPO_APOYO_A_ACTA[tipo]}
+                  categoriasPreferidas={["apoyo_decision", "obligacion_hacer"]}
+                  onInsert={(c) => setDecisionApoyo((p) => (p ? p + "\n\n" + c : c))}
+                />
+              </div>
+              <textarea
+                value={decisionApoyo}
+                onChange={(e) => setDecisionApoyo(e.target.value)}
+                rows={6}
+                placeholder="Lista de actos asistidos (EPS, FOMAG, bienes, contratos, productos financieros...) + obligaciones del apoyo según Art. 46 Ley 1996/2019."
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F9B] resize-y"
+              />
+            </div>
+          )}
+
+          {(tipo === "suscripcion_apoyo" || tipo === "suscripcion_apoyo_modificacion") && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-gray-700">
+                  Salvaguardas, vigencia y revocabilidad
+                </label>
+                <InsertarClausulaButton
+                  tipoTramite="acuerdo_apoyo"
+                  resultado={TIPO_APOYO_A_ACTA[tipo]}
+                  categoriasPreferidas={["apoyo_decision", "otro"]}
+                  onInsert={(c) => setSalvaguardias((p) => (p ? p + "\n\n" + c : c))}
+                />
+              </div>
               <textarea
                 value={salvaguardias}
                 onChange={(e) => setSalvaguardias(e.target.value)}
-                rows={3}
-                placeholder="Medidas de protección para evitar abusos, conflictos de interés, obligación de rendir cuentas..."
+                rows={4}
+                placeholder="Rendición semestral, vigencia (máx 5 años Ley 1996), revocabilidad por WhatsApp o correo electrónico..."
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F9B] resize-y"
               />
               <p className="text-[11px] text-gray-500 mt-1">
-                Ley 1996/2019 arts. 32-35: salvaguardias deben ser proporcionales y revisables.
+                Ley 1996/2019 arts. 11, 32-35: salvaguardias proporcionales y revisables · vigencia máx 5 años · revocable por el(la) Titular en cualquier momento.
               </p>
             </div>
           )}

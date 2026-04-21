@@ -45,6 +45,7 @@ export function CrearActaConciliacion({ caseId, hearingId }: CrearActaConciliaci
   );
 
   const [tipo, setTipo] = useState<ActaTipo>("acuerdo_total");
+  const [hechos, setHechos] = useState("");
   const [consideraciones, setConsideraciones] = useState("");
   const [acuerdoTexto, setAcuerdoTexto] = useState("");
   const [obligaciones, setObligaciones] = useState<Obligacion[]>([
@@ -63,6 +64,7 @@ export function CrearActaConciliacion({ caseId, hearingId }: CrearActaConciliaci
     const ultima = contexto.ultimaActa;
     if (ultima) {
       setTipo(ultima.tipo ?? "acuerdo_total");
+      setHechos(ultima.hechos ?? "");
       setConsideraciones(ultima.consideraciones ?? "");
       setAcuerdoTexto(ultima.acuerdo_texto ?? "");
       if (Array.isArray(ultima.obligaciones) && ultima.obligaciones.length > 0) {
@@ -138,6 +140,7 @@ export function CrearActaConciliacion({ caseId, hearingId }: CrearActaConciliaci
         body: JSON.stringify({
           hearing_id: hearingId,
           tipo,
+          hechos: hechos || null,
           consideraciones: consideraciones || null,
           acuerdo_texto: acuerdoTexto || null,
           obligaciones: obligacionesPayload.length ? obligacionesPayload : null,
@@ -287,6 +290,28 @@ export function CrearActaConciliacion({ caseId, hearingId }: CrearActaConciliaci
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-gray-700">
+                Hechos (pretensiones del convocante)
+              </label>
+              <InsertarClausulaButton
+                tipoTramite="conciliacion"
+                resultado={tipo}
+                categoriasPreferidas={["consideraciones"]}
+                label="Insertar estructura"
+                onInsert={(c) => setHechos((p) => (p ? p + "\n\n" + c : c))}
+              />
+            </div>
+            <textarea
+              value={hechos}
+              onChange={(e) => setHechos(e.target.value)}
+              rows={5}
+              placeholder="PRIMERO: ... SEGUNDO: ... TERCERO: ... (enumera las pretensiones del convocante con ordinales)"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F9B] resize-y"
+            />
           </div>
 
           <div>
