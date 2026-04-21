@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const size = { width: 32, height: 32 };
+export const size = { width: 64, height: 64 };
 export const contentType = "image/png";
 
 export default function Icon() {
@@ -14,12 +14,12 @@ export default function Icon() {
           width: "100%",
           height: "100%",
           background: "white",
-          fontSize: 13,
+          fontSize: 26,
           fontWeight: 900,
-          letterSpacing: -1.2,
-          borderRadius: 6,
+          letterSpacing: -2,
+          borderRadius: 12,
           fontFamily: "system-ui, -apple-system, sans-serif",
-          border: "1px solid #E5E7EB",
+          border: "2px solid #E5E7EB",
         }}
       >
         <span style={{ color: "#0D2340" }}>S</span>
