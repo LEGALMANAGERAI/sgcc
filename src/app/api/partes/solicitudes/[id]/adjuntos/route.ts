@@ -15,6 +15,11 @@ const TIPOS_VALIDOS = new Set([
   "soporte_acreencia",
   "ingresos_contador",
   "matricula_mercantil",
+  "certif_laboral",
+  "certif_pension",
+  "declaracion_independiente",
+  "liquidacion_sociedad_conyugal",
+  "documento_bien",
   "otro",
 ]);
 const MIME_PERMITIDOS = new Set([

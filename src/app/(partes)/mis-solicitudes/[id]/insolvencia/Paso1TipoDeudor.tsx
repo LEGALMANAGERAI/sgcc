@@ -1,13 +1,25 @@
 "use client";
+import { useEffect } from "react";
 import type { WizardProps } from "../WizardShell";
 import type { FormDataInsolvencia, TipoDeudor } from "@/types/solicitudes";
 import {
   TIPO_DEUDOR_LABEL,
   TOPE_PEQUENO_COMERCIANTE_COP,
 } from "@/lib/solicitudes/constants";
+import { fechaCorteISO, formatearFechaCorteLarga } from "@/lib/solicitudes/fecha-corte";
 
 export function Paso1TipoDeudor({ formData, updateFormData }: WizardProps) {
   const fd = formData as Partial<FormDataInsolvencia>;
+
+  // Parágrafo 2 Art. 539 Ley 2445/2025: fijar fecha de corte = último día del
+  // mes anterior, si aún no está. Se captura al entrar al paso 1 para que
+  // quede constante durante toda la edición del draft.
+  useEffect(() => {
+    if (!fd.fecha_corte) {
+      updateFormData({ fecha_corte: fechaCorteISO() });
+    }
+  }, [fd.fecha_corte, updateFormData]);
+
   return (
     <section className="space-y-4">
       <h2 className="font-semibold text-lg">Tipo de deudor</h2>
@@ -15,6 +27,15 @@ export function Paso1TipoDeudor({ formData, updateFormData }: WizardProps) {
         Indica si eres persona natural no comerciante o pequeño comerciante
         conforme a la Ley 2445 de 2025.
       </p>
+
+      {fd.fecha_corte && (
+        <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-900">
+          <strong>Fecha de corte:</strong>{" "}
+          {formatearFechaCorteLarga(fd.fecha_corte)}. Toda la información de
+          acreedores y bienes debe estar actualizada a esta fecha (Parágrafo 2
+          Art. 539 Ley 2445/2025).
+        </div>
+      )}
 
       <div className="space-y-2">
         {(["pnnc", "pequeno_comerciante"] as TipoDeudor[]).map((t) => (
