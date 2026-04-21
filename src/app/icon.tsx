@@ -13,16 +13,19 @@ export default function Icon() {
           justifyContent: "center",
           width: "100%",
           height: "100%",
-          background: "linear-gradient(135deg, #0D2340 0%, #1B4F9B 100%)",
-          color: "white",
-          fontSize: 11,
-          fontWeight: 800,
-          letterSpacing: -1,
+          background: "white",
+          fontSize: 13,
+          fontWeight: 900,
+          letterSpacing: -1.2,
           borderRadius: 6,
           fontFamily: "system-ui, -apple-system, sans-serif",
+          border: "1px solid #E5E7EB",
         }}
       >
-        SGCC
+        <span style={{ color: "#0D2340" }}>S</span>
+        <span style={{ color: "#2563EB" }}>G</span>
+        <span style={{ color: "#9333EA" }}>C</span>
+        <span style={{ color: "#16A34A" }}>C</span>
       </div>
     ),
     { ...size }
