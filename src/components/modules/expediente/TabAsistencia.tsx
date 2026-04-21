@@ -489,6 +489,12 @@ function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any 
   const [sugerida, setSugerida] = useState("");
   const [savingFin, setSavingFin] = useState(false);
   const [errorFin, setErrorFin] = useState("");
+  const [debugLog, setDebugLog] = useState<string[]>([]);
+
+  function log(msg: string) {
+    const time = new Date().toISOString().slice(11, 19);
+    setDebugLog((prev) => [...prev, `[${time}] ${msg}`]);
+  }
 
   function handleResultadoChange(val: string) {
     setResultado(val);
@@ -528,6 +534,8 @@ function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any 
 
     setSavingFin(true);
     setErrorFin("");
+    setDebugLog([]);
+    log("Click en botón detectado");
 
     try {
       const payload = {
@@ -536,14 +544,18 @@ function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any 
         resultado,
         fecha_continuacion: resultado === "suspendida" ? fechaCont : null,
       };
+      log(`Enviando PATCH a /api/casos/${caseId}/audiencias`);
 
       const res = await fetch(`/api/casos/${caseId}/audiencias`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      log(`Respuesta recibida. Status: ${res.status}`);
 
       const responseText = await res.text();
+      log(`Cuerpo: ${responseText.slice(0, 200)}`);
+
       let responseBody: any = null;
       try {
         responseBody = JSON.parse(responseText);
@@ -554,18 +566,22 @@ function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any 
       if (!res.ok) {
         const detalle = responseBody?.error ?? responseBody?.raw ?? "Respuesta vacía";
         setErrorFin(`[HTTP ${res.status}] ${detalle}`);
+        log(`ERROR: ${detalle}`);
         return;
       }
 
-      // Si es suspendida, solo recargar; si es finalizada, redirigir al tab Acta
-      // para que el conciliador genere/complete el acta de inmediato.
+      log("OK, recargando en 2 segundos...");
+      await new Promise((r) => setTimeout(r, 2000));
+
       if (resultado === "suspendida") {
         window.location.reload();
       } else {
         window.location.href = `/expediente/${caseId}?tab=acta`;
       }
     } catch (e: any) {
-      setErrorFin(`Error de red: ${e?.message ?? "desconocido"}`);
+      const msg = e?.message ?? "desconocido";
+      setErrorFin(`Error de red: ${msg}`);
+      log(`EXCEPCIÓN: ${msg}`);
     } finally {
       setSavingFin(false);
     }
@@ -635,6 +651,15 @@ function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any 
       >
         {savingFin ? "Guardando..." : titulo}
       </button>
+
+      {debugLog.length > 0 && (
+        <div className="mt-4 bg-black text-green-400 font-mono text-[11px] p-3 rounded-lg border border-gray-700">
+          <p className="text-yellow-400 mb-1 font-bold">🛠️ Diagnóstico (copia y envía esto):</p>
+          {debugLog.map((line, i) => (
+            <div key={i}>{line}</div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
