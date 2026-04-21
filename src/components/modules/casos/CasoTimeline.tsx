@@ -6,6 +6,7 @@ import { clsx } from "clsx";
 import { Check, FileText, Users, Bell, Mic, ClipboardCheck, Archive, Pencil, Settings2 } from "lucide-react";
 import type { CaseEstado, TimelineEtapa } from "@/types";
 import { EditarEtapaModal } from "./EditarEtapaModal";
+import { ClientDate } from "@/components/ui/ClientDate";
 
 const STEPS: { etapa: TimelineEtapa; label: string; icon: React.ElementType; activatesAt: CaseEstado[] }[] = [
   { etapa: "solicitud", label: "Solicitud", icon: FileText, activatesAt: ["solicitud", "admitido", "citado", "audiencia", "cerrado"] },
@@ -122,9 +123,11 @@ export function CasoTimeline({ caseId, estado, events, caso, partes, audiencias,
                 {step.label}
               </p>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <p className="text-[10px] text-gray-400">
-                  {fecha ? new Date(fecha).toLocaleDateString("es-CO", { day: "numeric", month: "short" }) : "—"}
-                </p>
+                {fecha ? (
+                  <ClientDate iso={fecha} mode="date" className="text-[10px] text-gray-400" />
+                ) : (
+                  <p className="text-[10px] text-gray-400">—</p>
+                )}
                 <button type="button" onClick={() => startEditFecha(step.etapa)} className="text-gray-300 hover:text-[#1B4F9B]" title="Editar solo fecha">
                   <Pencil className="w-3 h-3" />
                 </button>

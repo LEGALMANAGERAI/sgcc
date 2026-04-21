@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Clock, Play, AlertTriangle } from "lucide-react";
+import { ClientDate } from "@/components/ui/ClientDate";
 
 interface Props {
   caseId: string;
@@ -135,8 +136,12 @@ export function ContadorTermino({
               {esVencido && <span className="text-red-600 ml-2">— VENCIDO</span>}
             </p>
             <p className="text-xs text-gray-500">
-              Inicio: {new Date(fechaInicioTermino + "T12:00:00").toLocaleDateString("es-CO")}
-              {fechaLimite && ` · Límite: ${new Date(fechaLimite + "T12:00:00").toLocaleDateString("es-CO")}`}
+              Inicio: <ClientDate iso={fechaInicioTermino + "T12:00:00"} mode="date" />
+              {fechaLimite && (
+                <>
+                  {" · "}Límite: <ClientDate iso={fechaLimite + "T12:00:00"} mode="date" />
+                </>
+              )}
             </p>
           </div>
         </div>
