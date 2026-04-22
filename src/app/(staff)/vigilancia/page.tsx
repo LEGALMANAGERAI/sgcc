@@ -6,9 +6,10 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
-import { Eye, Activity, BellRing } from "lucide-react";
+import { Eye, Activity, BellRing, Scale } from "lucide-react";
 import { VigilanciaClient } from "./VigilanciaClient";
 import { BuscadorRama } from "./BuscadorRama";
+import { ProcesosImportadosPanel } from "./ProcesosImportadosPanel";
 
 interface Props {
   searchParams: Promise<{ estado?: string }>;
@@ -51,7 +52,7 @@ export default async function VigilanciaPage({ searchParams }: Props) {
   // Calcular stats sobre TODOS los procesos (sin filtro)
   const { data: allProcesos } = await supabaseAdmin
     .from("sgcc_watched_processes")
-    .select("id, estado, updates:sgcc_process_updates(id, leida)")
+    .select("id, estado, rama_id_proceso, updates:sgcc_process_updates(id, leida)")
     .eq("center_id", centerId);
 
   const total = allProcesos?.length ?? 0;
@@ -59,6 +60,7 @@ export default async function VigilanciaPage({ searchParams }: Props) {
   const conNuevas = allProcesos?.filter(
     (p: any) => (p.updates ?? []).some((u: any) => !u.leida)
   ).length ?? 0;
+  const importados = allProcesos?.filter((p: any) => p.rama_id_proceso != null).length ?? 0;
 
   // Preparar datos para el client
   const procesosConConteo = (procesos ?? []).map((p: any) => {
@@ -66,6 +68,11 @@ export default async function VigilanciaPage({ searchParams }: Props) {
     const { updates, ...rest } = p;
     return { ...rest, actuaciones_no_leidas: unreadCount };
   });
+
+  // Filtrar sólo importados de la Rama Judicial para el panel
+  const procesosImportados = procesosConConteo.filter(
+    (p: any) => p.rama_id_proceso != null
+  );
 
   return (
     <div>
@@ -75,7 +82,7 @@ export default async function VigilanciaPage({ searchParams }: Props) {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
           label="Total procesos"
           value={total}
@@ -87,6 +94,12 @@ export default async function VigilanciaPage({ searchParams }: Props) {
           value={activos}
           icon={Activity}
           color="green"
+        />
+        <StatCard
+          label="Importados de Rama"
+          value={importados}
+          icon={Scale}
+          color="blue"
         />
         <StatCard
           label="Con actuaciones nuevas"
@@ -101,7 +114,12 @@ export default async function VigilanciaPage({ searchParams }: Props) {
         <BuscadorRama />
       </div>
 
-      {/* Client component con toda la interactividad */}
+      {/* Panel de procesos importados */}
+      <div className="mb-6">
+        <ProcesosImportadosPanel procesos={procesosImportados} />
+      </div>
+
+      {/* Tabla principal (todos los procesos, importados + manuales) */}
       <VigilanciaClient
         procesos={procesosConConteo}
         casos={casosDelCentro ?? []}
