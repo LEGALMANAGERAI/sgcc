@@ -234,13 +234,23 @@ export function BuscadorRama() {
           fecha_proceso: proc.fechaProceso,
           es_privado: proc.esPrivado,
           rama_ultima_actuacion_fecha: proc.fechaUltimaActuacion,
+          // Si ya las cargamos en el expand, las mandamos para que el server
+          // no vuelva a pegar a la Rama (evita doble fetch + doble chance
+          // de timeout).
+          actuaciones_prefetch:
+            Array.isArray(proc.actuaciones) && proc.actuaciones.length > 0
+              ? proc.actuaciones
+              : undefined,
         }),
       });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Error al importar");
-      }
-      setImportMsg(`✓ Proceso ${proc.llaveProceso} importado correctamente`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al importar");
+      const n = data.actuaciones_insertadas ?? 0;
+      setImportMsg(
+        n > 0
+          ? `✓ Proceso ${proc.llaveProceso} importado con ${n} actuacion${n === 1 ? "" : "es"}`
+          : `✓ Proceso ${proc.llaveProceso} importado (sin actuaciones por ahora)`
+      );
       router.refresh();
     } catch (err: any) {
       setImportMsg(`Error: ${err.message}`);
