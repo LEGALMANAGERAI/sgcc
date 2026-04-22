@@ -1,13 +1,30 @@
 import { clsx } from "clsx";
 import type { CaseEstado, ActaEstadoFirma, HearingEstado } from "@/types";
 
+/**
+ * StatusChip — mapper de estados de dominio SGCC (case / hearing / firma)
+ * a la paleta FlowCase (§4.4 del brand brief).
+ *
+ * Para badges genéricos usar <Badge>.
+ */
+
+// Tokens FlowCase reutilizables por familia de estado.
+const T = {
+  radicado: "bg-[rgba(27,49,82,0.1)] text-[color:var(--color-ink-soft)]",
+  activo: "bg-[rgba(20,184,166,0.12)] text-[color:var(--color-flow-deep)]",
+  audiencia: "bg-[rgba(245,158,11,0.12)] text-[#B45309]",
+  acuerdo: "bg-[color:var(--color-ink)] text-[color:var(--color-flow)]",
+  archivado: "bg-[color:var(--color-paper-warm)] text-[color:var(--color-ink-soft)]",
+  vencido: "bg-[rgba(198,88,64,0.12)] text-[color:var(--color-terracotta)]",
+} as const;
+
 const caseColors: Record<CaseEstado, string> = {
-  solicitud: "bg-yellow-100 text-yellow-800",
-  admitido: "bg-blue-100 text-blue-800",
-  citado: "bg-indigo-100 text-indigo-800",
-  audiencia: "bg-purple-100 text-purple-800",
-  cerrado: "bg-green-100 text-green-800",
-  rechazado: "bg-red-100 text-red-800",
+  solicitud: T.radicado,
+  admitido: T.activo,
+  citado: T.activo,
+  audiencia: T.audiencia,
+  cerrado: T.acuerdo,
+  rechazado: T.vencido,
 };
 
 const caseLabels: Record<CaseEstado, string> = {
@@ -20,18 +37,18 @@ const caseLabels: Record<CaseEstado, string> = {
 };
 
 const firmaColors: Record<ActaEstadoFirma, string> = {
-  pendiente: "bg-yellow-100 text-yellow-800",
-  firmado_parcial: "bg-orange-100 text-orange-800",
-  firmado_completo: "bg-green-100 text-green-800",
-  archivado: "bg-gray-100 text-gray-600",
+  pendiente: T.radicado,
+  firmado_parcial: T.audiencia,
+  firmado_completo: T.activo,
+  archivado: T.archivado,
 };
 
 const hearingColors: Record<HearingEstado, string> = {
-  programada: "bg-blue-100 text-blue-800",
-  en_curso: "bg-purple-100 text-purple-800",
-  suspendida: "bg-orange-100 text-orange-800",
-  finalizada: "bg-green-100 text-green-800",
-  cancelada: "bg-red-100 text-red-800",
+  programada: T.radicado,
+  en_curso: T.audiencia,
+  suspendida: T.audiencia,
+  finalizada: T.activo,
+  cancelada: T.vencido,
 };
 
 interface Props {
@@ -41,7 +58,7 @@ interface Props {
 }
 
 export function StatusChip({ value, type, size = "sm" }: Props) {
-  let color = "bg-gray-100 text-gray-600";
+  let color: string = T.archivado;
   let label: string = value;
 
   if (type === "case") {
