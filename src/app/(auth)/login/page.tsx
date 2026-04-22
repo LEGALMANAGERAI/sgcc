@@ -4,7 +4,7 @@ import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Building2, Users, Sparkles } from "lucide-react";
-import { SgccLogo } from "@/components/ui/SgccLogo";
+import { FlowcaseLogo } from "@/components/ui/FlowcaseLogo";
 
 type Tab = "staff" | "party";
 
@@ -86,8 +86,8 @@ function LoginContent() {
     <div className="min-h-screen bg-[#0D2340] flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="bg-[#0D2340] px-8 py-8 flex justify-center">
-          <SgccLogo size="lg" showText darkBg />
+        <div className="bg-[color:var(--color-ink)] px-8 py-8 flex justify-center">
+          <FlowcaseLogo variant="full" size="lg" darkBg />
         </div>
 
         {/* Tabs */}

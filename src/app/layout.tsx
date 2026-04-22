@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Archivo, IBM_Plex_Mono } from "next/font/google";
+import { ToastProvider } from "@/components/ui/Toast";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -35,7 +36,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="es"
       className={`${spaceGrotesk.variable} ${archivo.variable} ${ibmPlexMono.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <ToastProvider>{children}</ToastProvider>
+      </body>
     </html>
   );
 }
