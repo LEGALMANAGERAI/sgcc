@@ -1,5 +1,5 @@
 /**
- * Button — FlowCase primitiva (§4.1 del brand brief).
+ * Button — primitiva SGCC.
  *
  * Variants:
  *   primary     — ink bg / paper text / flow-deep hover (default)

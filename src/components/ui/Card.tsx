@@ -1,5 +1,5 @@
 /**
- * Card — FlowCase primitiva (§4.3 del brand brief).
+ * Card — primitiva SGCC.
  *
  * Variants:
  *   default   — #FFF bg / 1px rule border / radius-xl / padding 24px

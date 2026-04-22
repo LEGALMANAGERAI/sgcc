@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Toast — FlowCase primitiva (§4.9 del brand brief).
+ * Toast — primitiva SGCC.
  *
  * - Posición: top-right, 24px del borde
  * - Width 360px, radius lg, shadow-lg

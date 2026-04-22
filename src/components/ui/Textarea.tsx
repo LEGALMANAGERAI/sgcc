@@ -1,6 +1,5 @@
 /**
- * Textarea — FlowCase primitiva (§4.2 del brand brief).
- * Comparte tokens visuales con Input.
+ * Textarea — primitiva SGCC. Comparte tokens visuales con Input.
  */
 
 import { clsx } from "clsx";

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Modal — FlowCase primitiva (§4.8 del brand brief).
+ * Modal — primitiva SGCC.
  *
  * - Overlay rgba(10,22,40,0.4) + backdrop-blur 4px
  * - Dialog max-width 560px, radius 2xl, #FFF bg, shadow-xl

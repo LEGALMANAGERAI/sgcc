@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
  * StatCard — KPI card alineado con "Card emphasis" del brief (§4.3).
  *
  * Mantengo la API pública (prop `color`) pero mapeo los nombres legacy
- * (navy/gold/green/red/blue/purple) a la paleta FlowCase para no romper
+ * (navy/gold/green/red/blue/purple) a la paleta SGCC para no romper
  * llamadores existentes.
  */
 

@@ -1,5 +1,5 @@
 /**
- * Input — FlowCase primitiva (§4.2 del brand brief).
+ * Input — primitiva SGCC.
  *
  * - Border 1.5px rule; focus border flow
  * - Radius md (8px), padding 12px 16px

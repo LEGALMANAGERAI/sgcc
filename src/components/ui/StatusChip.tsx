@@ -3,12 +3,12 @@ import type { CaseEstado, ActaEstadoFirma, HearingEstado } from "@/types";
 
 /**
  * StatusChip — mapper de estados de dominio SGCC (case / hearing / firma)
- * a la paleta FlowCase (§4.4 del brand brief).
+ * a la paleta SGCC (§4.4 del brand brief).
  *
  * Para badges genéricos usar <Badge>.
  */
 
-// Tokens FlowCase reutilizables por familia de estado.
+// Tokens SGCC reutilizables por familia de estado.
 const T = {
   radicado: "bg-[rgba(27,49,82,0.1)] text-[color:var(--color-ink-soft)]",
   activo: "bg-[rgba(20,184,166,0.12)] text-[color:var(--color-flow-deep)]",

@@ -22,13 +22,13 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
-import { FlowcaseLogo } from "@/components/ui/FlowcaseLogo";
+import { SgccLogo } from "@/components/ui/SgccLogo";
 
 /**
- * StaffSidebar — shell FlowCase (§4.6 del brand brief).
+ * StaffSidebar — shell del producto.
  *
- * - Background #FDFCFA, width 240px
- * - Logo: lockup size md
+ * - Background paper claro #FDFCFA, width 240px
+ * - Logo: símbolo SGCC compacto
  * - Nav: Space Grotesk 13px, padding 8px 10px, radius md
  * - Active: ink bg + paper text + dot flow a la izquierda
  * - Badges: mono 10px, pill paper-warm
@@ -107,7 +107,7 @@ export function StaffSidebar({ centerName, vigilanciaNoLeidas = 0 }: Props) {
     >
       {/* Logo */}
       <div className="px-4 py-5 border-b border-[color:var(--color-rule)]">
-        <FlowcaseLogo size="sm" variant="lockup" />
+        <SgccLogo size="sm" showDescriptor={false} />
         <p
           className="text-[11px] uppercase tracking-[0.12em] truncate mt-2 font-medium"
           style={{ color: "rgba(10,22,40,0.6)" }}

@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/lib/auth";
 import Link from "next/link";
-import { FlowcaseLogo } from "@/components/ui/FlowcaseLogo";
+import { SgccLogo } from "@/components/ui/SgccLogo";
 import { NotificacionesBell } from "@/components/modules/partes/NotificacionesBell";
 
 export default async function PartesLayout({
@@ -28,7 +28,7 @@ export default async function PartesLayout({
             {/* Logo y navegación */}
             <div className="flex items-center gap-8">
               <Link href="/mis-casos" className="flex items-center gap-2">
-                <FlowcaseLogo variant="lockup" size="sm" darkBg />
+                <SgccLogo variant="dark" size="sm" symbolOnly />
               </Link>
               <nav className="hidden sm:flex items-center gap-6">
                 <Link
