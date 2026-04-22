@@ -66,9 +66,12 @@ export function RamaJudicialModal({
   const [resultados, setResultados] = useState<ProcesoRama[] | null>(null);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<{ nuevas: number; total: number } | null>(
-    null
-  );
+  const [syncResult, setSyncResult] = useState<{
+    nuevas: number;
+    total: number;
+    errorActuaciones?: boolean;
+    mensaje?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -112,14 +115,20 @@ export function RamaJudicialModal({
     if (!watchedProcessId) return;
     setSyncing(true);
     setError(null);
+    setSyncResult(null);
     try {
       const res = await fetch(`/api/vigilancia/${watchedProcessId}/sync-rama`, {
         method: "POST",
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al sincronizar");
-      setSyncResult({ nuevas: data.nuevas ?? 0, total: data.total ?? 0 });
-      router.refresh();
+      setSyncResult({
+        nuevas: data.nuevas ?? 0,
+        total: data.total ?? 0,
+        errorActuaciones: data.errorActuaciones,
+        mensaje: data.mensaje,
+      });
+      if (!data.errorActuaciones) router.refresh();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -267,16 +276,29 @@ export function RamaJudicialModal({
             </div>
 
             {syncResult && (
-              <div className="flex items-center gap-2 text-sm font-semibold text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                <CheckCircle2 className="w-4 h-4" />
-                {syncResult.nuevas > 0
-                  ? `Proceso sincronizado — ${syncResult.nuevas} ${
-                      syncResult.nuevas === 1
-                        ? "nueva actuación registrada"
-                        : "nuevas actuaciones registradas"
-                    }`
-                  : "Proceso sincronizado — sin actuaciones nuevas"}
-              </div>
+              syncResult.errorActuaciones ? (
+                <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-semibold">No se pudieron traer las actuaciones</p>
+                    <p className="text-xs mt-0.5">
+                      {syncResult.mensaje ??
+                        "El servicio de actuaciones de la Rama Judicial no respondió. Intentá de nuevo en unos minutos."}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-sm font-semibold text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  {syncResult.nuevas > 0
+                    ? `Proceso sincronizado — ${syncResult.nuevas} ${
+                        syncResult.nuevas === 1
+                          ? "nueva actuación registrada"
+                          : "nuevas actuaciones registradas"
+                      }`
+                    : "Proceso sincronizado — sin actuaciones nuevas"}
+                </div>
+              )
             )}
           </div>
         )}
@@ -286,19 +308,22 @@ export function RamaJudicialModal({
         <Button variant="secondary" onClick={onClose}>
           Cerrar
         </Button>
-        {watchedProcessId && resultados && !syncResult && (
-          <Button onClick={handleSincronizar} disabled={syncing}>
-            {syncing ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Sincronizando...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-4 h-4 mr-1.5" /> Sincronizar proceso
-              </>
-            )}
-          </Button>
-        )}
+        {watchedProcessId &&
+          resultados &&
+          (!syncResult || syncResult.errorActuaciones) && (
+            <Button onClick={handleSincronizar} disabled={syncing}>
+              {syncing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Sincronizando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-1.5" />
+                  {syncResult?.errorActuaciones ? "Reintentar" : "Sincronizar proceso"}
+                </>
+              )}
+            </Button>
+          )}
       </ModalFooter>
     </Modal>
   );

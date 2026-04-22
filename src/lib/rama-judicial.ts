@@ -37,9 +37,9 @@ export interface ActuacionRama {
   fechaRegistro?: string;
 }
 
-async function fetchRamaInterno(url: string): Promise<any> {
+async function fetchRamaInterno(url: string, timeoutMs: number): Promise<any> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       signal: controller.signal,
@@ -61,18 +61,25 @@ async function fetchRamaInterno(url: string): Promise<any> {
   }
 }
 
-export async function fetchRama(url: string): Promise<any> {
-  for (let intento = 0; intento <= MAX_REINTENTOS; intento++) {
+export async function fetchRama(
+  url: string,
+  opts?: { reintentos?: number; timeoutMs?: number }
+): Promise<any> {
+  const maxReintentos = opts?.reintentos ?? MAX_REINTENTOS;
+  const timeoutMs = opts?.timeoutMs ?? TIMEOUT_MS;
+  let lastError: unknown;
+  for (let intento = 0; intento <= maxReintentos; intento++) {
     try {
-      return await fetchRamaInterno(url);
+      return await fetchRamaInterno(url, timeoutMs);
     } catch (err) {
-      if (intento < MAX_REINTENTOS) {
+      lastError = err;
+      if (intento < maxReintentos) {
         await new Promise((r) => setTimeout(r, PAUSA_REINTENTO_MS));
         continue;
       }
-      throw err;
     }
   }
+  throw lastError;
 }
 
 /** Busca procesos por número de radicación (número completo o corto). */
@@ -128,13 +135,19 @@ export async function buscarPorNombreConFallback(
   return Array.from(mapa.values());
 }
 
-/** Obtiene las últimas actuaciones de un proceso por su idProceso. */
+/**
+ * Obtiene las últimas actuaciones de un proceso por su idProceso.
+ *
+ * Este endpoint de la Rama es especialmente inestable desde serverless
+ * (Vercel), por lo que usamos hasta 3 reintentos con 2s de pausa.
+ */
 export async function obtenerActuaciones(
   idProceso: number,
   cantidad: number = 50
 ): Promise<ActuacionRama[]> {
   const data = await fetchRama(
-    `${BASE}/Proceso/Actuaciones/${idProceso}?pagina=1&cantidadActuaciones=${cantidad}`
+    `${BASE}/Proceso/Actuaciones/${idProceso}?pagina=1&cantidadActuaciones=${cantidad}`,
+    { reintentos: 3 }
   );
   return (data?.actuaciones ?? []) as ActuacionRama[];
 }
