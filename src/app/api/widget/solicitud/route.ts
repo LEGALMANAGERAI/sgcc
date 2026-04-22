@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { generateRadicado } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
 import { asignarConciliador } from "@/lib/asignacion-conciliador";
+import { normalizeEmail } from "@/lib/normalize-email";
 
 interface PersonaPayload {
   tipo_persona: "natural" | "juridica";
@@ -38,12 +39,14 @@ async function findOrCreateParty(
   centerId: string,
   persona: PersonaPayload
 ): Promise<string> {
-  // Buscar por email
+  const email = normalizeEmail(persona.email);
+
+  // Buscar por email (case-insensitive)
   const { data: byEmail } = await supabaseAdmin
     .from("sgcc_parties")
     .select("id")
     .eq("center_id", centerId)
-    .eq("email", persona.email)
+    .ilike("email", email)
     .limit(1)
     .maybeSingle();
 
@@ -89,7 +92,7 @@ async function findOrCreateParty(
     numero_doc: isNatural ? persona.numero_doc : persona.nit_empresa,
     razon_social: !isNatural ? persona.razon_social : null,
     representante_legal: !isNatural ? persona.representante_legal : null,
-    email: persona.email,
+    email,
     telefono: persona.telefono ?? null,
     ciudad: persona.ciudad ?? null,
     created_at: new Date().toISOString(),

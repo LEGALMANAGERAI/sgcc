@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
+import { normalizeEmail } from "@/lib/normalize-email";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -56,8 +57,9 @@ export async function POST(req: NextRequest) {
   if (!centerId) return NextResponse.json({ error: "Sin centro asignado" }, { status: 400 });
 
   const body = await req.json();
-  const { nombre, email, telefono, rol, tarjeta_profesional, codigo_interno, supervisor_id } = body;
+  const { nombre, email: rawEmail, telefono, rol, tarjeta_profesional, codigo_interno, supervisor_id } = body;
 
+  const email = normalizeEmail(rawEmail);
   if (!nombre || !email || !rol) {
     return NextResponse.json({ error: "Nombre, email y rol son obligatorios" }, { status: 400 });
   }
@@ -67,13 +69,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Rol no valido. Use: admin, conciliador o secretario" }, { status: 400 });
   }
 
-  // Verificar email unico en el centro
+  // Verificar email unico en el centro (case-insensitive)
   const { data: existing } = await supabaseAdmin
     .from("sgcc_staff")
     .select("id")
-    .eq("email", email)
+    .ilike("email", email)
     .eq("center_id", centerId)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     return NextResponse.json({ error: "Ya existe un miembro con ese email en este centro" }, { status: 409 });

@@ -6,6 +6,7 @@ import { notify } from "@/lib/notifications";
 import { randomUUID } from "crypto";
 import { asignarConciliador } from "@/lib/asignacion-conciliador";
 import bcrypt from "bcryptjs";
+import { normalizeEmail } from "@/lib/normalize-email";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -119,12 +120,14 @@ export async function POST(req: NextRequest) {
   const casePartyRecords: any[] = [];
 
   for (const p of partes) {
-    // Buscar parte existente por email
+    const partyEmail = normalizeEmail(p.email);
+
+    // Buscar parte existente por email (case-insensitive)
     let { data: party } = await supabaseAdmin
       .from("sgcc_parties")
       .select("id")
-      .eq("email", p.email)
-      .single();
+      .ilike("email", partyEmail)
+      .maybeSingle();
 
     if (!party) {
       // Crear la parte (sin contraseña — será invitada)
@@ -142,7 +145,7 @@ export async function POST(req: NextRequest) {
         nit_empresa: p.tipo_persona === "juridica" ? p.numero_doc : null,
         tipo_doc: p.tipo_persona === "natural" ? p.tipo_doc : null,
         numero_doc: p.tipo_persona === "natural" ? p.numero_doc : null,
-        email: p.email,
+        email: partyEmail,
         telefono: p.telefono || null,
         invite_token: inviteToken,
         invite_expires: inviteExpires,
