@@ -90,12 +90,17 @@ export async function POST(
   let actuacionesRama: ActuacionRama[] = [];
   try {
     actuacionesRama = await obtenerActuaciones(ramaProc.idProceso, 50);
-  } catch {
+  } catch (err: any) {
+    console.error(
+      `[sync-rama] Error obtenerActuaciones idProceso=${ramaProc.idProceso} radicado=${proceso.numero_proceso}:`,
+      err?.message
+    );
     return NextResponse.json({
       nuevas: 0,
       errorActuaciones: true,
       mensaje:
         "El servicio de actuaciones de la Rama Judicial no está disponible en este momento. Intenta sincronizar más tarde.",
+      detail: err?.message,
     });
   }
 
