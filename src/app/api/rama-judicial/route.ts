@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import {
-  buscarPorNombre,
+  buscarPorNombreConFallback,
   buscarPorRadicado,
   obtenerActuaciones,
   type ProcesoRama,
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
   let procesos: ProcesoRama[] = [];
   try {
     if (tipoBusqueda === "nombre" && nombre) {
-      procesos = await buscarPorNombre(nombre);
+      procesos = await buscarPorNombreConFallback(nombre);
     } else if (radicado) {
       procesos = await buscarPorRadicado(radicado);
     }
