@@ -3,13 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Gavel } from "lucide-react";
+import { Users, Gavel, Briefcase } from "lucide-react";
 
-export default function RegistroConciliadorPage() {
+type Rol = "conciliador" | "secretario";
+
+export default function RegistroStaffPage() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [rol, setRol] = useState<Rol>("conciliador");
   const [form, setForm] = useState({
     nombre: "",
     email: "",
@@ -38,15 +41,15 @@ export default function RegistroConciliadorPage() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/registro/conciliador", {
+      const res = await fetch("/api/auth/registro/staff", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, rol }),
       });
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error ?? "Error al registrar el conciliador");
+        setError(data.error ?? "Error al registrar el staff");
         return;
       }
 
@@ -63,6 +66,21 @@ export default function RegistroConciliadorPage() {
   const labelCls =
     "block text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-1.5";
 
+  const roles: { value: Rol; title: string; desc: string; icon: typeof Gavel }[] = [
+    {
+      value: "conciliador",
+      title: "Conciliador",
+      desc: "Lleva casos, dirige audiencias y firma actas",
+      icon: Gavel,
+    },
+    {
+      value: "secretario",
+      title: "Funcionario",
+      desc: "Personal administrativo, secretaria o auxiliar del centro",
+      icon: Briefcase,
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-[#0D2340] flex items-center justify-center p-4">
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
@@ -70,11 +88,11 @@ export default function RegistroConciliadorPage() {
         <div className="bg-[#0D2340] px-8 py-6 text-center">
           <div className="flex justify-center mb-2">
             <div className="bg-[#1B4F9B] p-2.5 rounded-full">
-              <Gavel className="w-6 h-6 text-white" />
+              <Users className="w-6 h-6 text-white" />
             </div>
           </div>
           <h1 className="text-white text-xl font-bold">
-            Registro de Conciliador
+            Registro de Staff
           </h1>
           <p className="text-white/60 text-xs mt-1">
             Unete a un centro de conciliacion existente
@@ -87,6 +105,46 @@ export default function RegistroConciliadorPage() {
               {error}
             </div>
           )}
+
+          {/* ── Selector de rol ── */}
+          <div>
+            <label className={labelCls}>Tu rol en el centro *</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {roles.map((r) => {
+                const active = rol === r.value;
+                return (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => setRol(r.value)}
+                    className={`text-left border rounded-xl p-3 transition-all ${
+                      active
+                        ? "border-[#1B4F9B] bg-[#1B4F9B]/5 ring-2 ring-[#1B4F9B]/20"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <r.icon
+                        className={`w-4 h-4 ${
+                          active ? "text-[#1B4F9B]" : "text-gray-500"
+                        }`}
+                      />
+                      <span
+                        className={`text-sm font-semibold ${
+                          active ? "text-[#0D2340]" : "text-gray-700"
+                        }`}
+                      >
+                        {r.title}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 leading-snug">
+                      {r.desc}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
@@ -112,15 +170,17 @@ export default function RegistroConciliadorPage() {
               />
             </div>
 
-            <div>
-              <label className={labelCls}>Tarjeta profesional</label>
-              <input
-                value={form.tarjeta_profesional}
-                onChange={(e) => set("tarjeta_profesional", e.target.value)}
-                placeholder="No. tarjeta"
-                className={inputCls}
-              />
-            </div>
+            {rol === "conciliador" && (
+              <div className="sm:col-span-2">
+                <label className={labelCls}>Tarjeta profesional</label>
+                <input
+                  value={form.tarjeta_profesional}
+                  onChange={(e) => set("tarjeta_profesional", e.target.value)}
+                  placeholder="No. tarjeta"
+                  className={inputCls}
+                />
+              </div>
+            )}
 
             <div>
               <label className={labelCls}>Telefono</label>
@@ -142,7 +202,7 @@ export default function RegistroConciliadorPage() {
               />
             </div>
 
-            <div>
+            <div className="sm:col-span-2">
               <label className={labelCls}>Codigo del centro *</label>
               <input
                 required
@@ -200,7 +260,7 @@ export default function RegistroConciliadorPage() {
             disabled={loading}
             className="w-full bg-[#0D2340] text-white rounded-lg py-3 text-sm font-medium hover:bg-[#0d2340dd] transition-colors disabled:opacity-60 mt-2"
           >
-            {loading ? "Registrando..." : "Registrar conciliador"}
+            {loading ? "Registrando..." : "Registrar staff"}
           </button>
 
           <p className="text-center text-xs text-gray-500">
