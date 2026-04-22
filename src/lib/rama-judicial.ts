@@ -83,12 +83,49 @@ export async function buscarPorRadicado(radicado: string): Promise<ProcesoRama[]
   return (data?.procesos ?? []) as ProcesoRama[];
 }
 
-/** Busca procesos por nombre de persona natural o razón social. */
-export async function buscarPorNombre(nombre: string): Promise<ProcesoRama[]> {
+export type TipoPersona = "nat" | "jur";
+
+/**
+ * Busca procesos por nombre de persona natural o razón social.
+ *
+ * La API de la Rama filtra distinto dependiendo de si el sujeto es persona
+ * natural o jurídica. Sin `tipoPersona` a veces devuelve 0 cuando con el
+ * filtro sí hay resultados. Por eso exponemos el parámetro y en el handler
+ * de API hacemos fallback automático.
+ */
+export async function buscarPorNombre(
+  nombre: string,
+  tipoPersona?: TipoPersona
+): Promise<ProcesoRama[]> {
+  const tpParam = tipoPersona ? `&tipoPersona=${tipoPersona}` : "";
   const data = await fetchRama(
-    `${BASE}/Procesos/Consulta/NombreRazonSocial?nombre=${encodeURIComponent(nombre)}&SoloActivos=false&pagina=1`
+    `${BASE}/Procesos/Consulta/NombreRazonSocial?nombre=${encodeURIComponent(nombre)}&SoloActivos=false&pagina=1${tpParam}`
   );
   return (data?.procesos ?? []) as ProcesoRama[];
+}
+
+/**
+ * Busca por nombre con fallback automático. Si la búsqueda sin filtro
+ * devuelve 0 resultados, reintenta como persona natural y luego como
+ * jurídica, y deduplica por idProceso. Esto maximiza el recall sin
+ * costo extra cuando la primera llamada ya trae resultados.
+ */
+export async function buscarPorNombreConFallback(
+  nombre: string
+): Promise<ProcesoRama[]> {
+  const directos = await buscarPorNombre(nombre);
+  if (directos.length > 0) return directos;
+
+  const [naturales, juridicas] = await Promise.all([
+    buscarPorNombre(nombre, "nat").catch(() => [] as ProcesoRama[]),
+    buscarPorNombre(nombre, "jur").catch(() => [] as ProcesoRama[]),
+  ]);
+
+  const mapa = new Map<number, ProcesoRama>();
+  for (const p of [...naturales, ...juridicas]) {
+    if (!mapa.has(p.idProceso)) mapa.set(p.idProceso, p);
+  }
+  return Array.from(mapa.values());
 }
 
 /** Obtiene las últimas actuaciones de un proceso por su idProceso. */
