@@ -1,17 +1,88 @@
 @import "tailwindcss";
 
+/* ============================================================================
+   FlowCase Design Tokens
+   Single source of truth: ./docs/flowcase-brand-brief.md
+   ============================================================================ */
+
+@theme {
+  /* Brand colors */
+  --color-ink: #0a1628;
+  --color-ink-soft: #1b3152;
+  --color-flow: #14b8a6;
+  --color-flow-deep: #0e8f80;
+  --color-amber: #f59e0b;
+  --color-terracotta: #c65840;
+
+  /* Neutrals */
+  --color-paper: #faf7f2;
+  --color-paper-warm: #f4ede0;
+  --color-paper-deep: #efede8;
+  --color-rule: rgba(10, 22, 40, 0.12);
+
+  /* Semantic */
+  --color-success: #14b8a6;
+  --color-warning: #f59e0b;
+  --color-danger: #c65840;
+  --color-info: #1b3152;
+
+  /* Typography */
+  --font-display: var(--font-display), system-ui, sans-serif;
+  --font-sans: var(--font-display), system-ui, sans-serif;
+  --font-archivo: var(--font-archivo), system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+
+  /* Spacing (8pt grid) */
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 24px;
+  --spacing-6: 32px;
+  --spacing-7: 48px;
+  --spacing-8: 64px;
+  --spacing-9: 96px;
+  --spacing-10: 128px;
+
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+
+  /* Shadows (editorial restrained) */
+  --shadow-sm: 0 1px 2px rgba(10, 22, 40, 0.04);
+  --shadow-md: 0 4px 12px -2px rgba(10, 22, 40, 0.08);
+  --shadow-lg: 0 20px 40px -12px rgba(10, 22, 40, 0.12);
+  --shadow-xl: 0 40px 80px -20px rgba(10, 22, 40, 0.16);
+}
+
+/* ============================================================================
+   Legacy SGCC tokens (mantener hasta migrar todos los componentes)
+   TODO: eliminar al completar el rebrand de la UI interna
+   ============================================================================ */
 :root {
-  --navy: #0D2340;
-  --gold: #B8860B;
-  --sgcc-blue: #1B4F9B;
-  --sgcc-green: #2A9D5C;
-  --sgcc-orange: #E8732A;
-  --sgcc-red: #D42B2B;
+  --navy: #0d2340;
+  --gold: #b8860b;
+  --sgcc-blue: #1b4f9b;
+  --sgcc-green: #2a9d5c;
+  --sgcc-orange: #e8732a;
+  --sgcc-red: #d42b2b;
+}
+
+/* ============================================================================
+   Base styles
+   ============================================================================ */
+html {
+  font-family: var(--font-display), system-ui, sans-serif;
 }
 
 body {
-  background-color: #f3f4f6;
-  color: #111827;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-display), system-ui, sans-serif;
+  line-height: 1.55;
 }
 
 /* Scrollbar personalizado */
@@ -20,12 +91,12 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--color-paper-deep);
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e0;
+  background: var(--color-rule);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #a0aec0;
+  background: rgba(10, 22, 40, 0.24);
 }
