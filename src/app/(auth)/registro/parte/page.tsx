@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Scale } from "lucide-react";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 export default function RegistroPage() {
   const router = useRouter();
@@ -200,8 +201,7 @@ export default function RegistroPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-              <input
-                type="password"
+              <PasswordInput
                 required
                 value={form.password}
                 onChange={(e) => set("password", e.target.value)}
@@ -210,8 +210,7 @@ export default function RegistroPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar</label>
-              <input
-                type="password"
+              <PasswordInput
                 required
                 value={form.confirm}
                 onChange={(e) => set("confirm", e.target.value)}

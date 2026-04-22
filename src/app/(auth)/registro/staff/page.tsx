@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Users, Gavel, Briefcase } from "lucide-react";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 type Rol = "conciliador" | "secretario";
 
@@ -229,8 +230,7 @@ export default function RegistroStaffPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Contrasena *</label>
-              <input
-                type="password"
+              <PasswordInput
                 required
                 minLength={8}
                 value={form.password}
@@ -242,8 +242,7 @@ export default function RegistroStaffPage() {
 
             <div>
               <label className={labelCls}>Confirmar contrasena *</label>
-              <input
-                type="password"
+              <PasswordInput
                 required
                 minLength={8}
                 value={form.confirm}

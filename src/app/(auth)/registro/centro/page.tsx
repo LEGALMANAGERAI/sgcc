@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Scale, Building2 } from "lucide-react";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 const TIPOS_CENTRO = [
   { value: "privado", label: "Privado" },
@@ -289,8 +290,7 @@ export default function RegistroCentroPage() {
 
             <div>
               <label className={labelCls}>Contrasena *</label>
-              <input
-                type="password"
+              <PasswordInput
                 required
                 minLength={8}
                 value={form.admin_password}
@@ -302,8 +302,7 @@ export default function RegistroCentroPage() {
 
             <div>
               <label className={labelCls}>Confirmar contrasena *</label>
-              <input
-                type="password"
+              <PasswordInput
                 required
                 minLength={8}
                 value={form.admin_confirm}
