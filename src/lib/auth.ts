@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
+import { normalizeEmail } from "@/lib/normalize-email";
 
 let _supabase: SupabaseClient | null = null;
 function getSupabase() {
@@ -38,12 +39,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
+        const email = normalizeEmail(credentials.email as string);
+        if (!email) return null;
+
         const { data: staff } = await getSupabase()
           .from("sgcc_staff")
           .select("*, center:sgcc_centers(id, nombre, activo)")
-          .eq("email", credentials.email as string)
+          .ilike("email", email)
           .eq("activo", true)
-          .single();
+          .maybeSingle();
 
         if (!staff || !staff.password_hash) return null;
 
@@ -77,11 +81,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
+        const email = normalizeEmail(credentials.email as string);
+        if (!email) return null;
+
         const { data: party } = await getSupabase()
           .from("sgcc_parties")
           .select("*")
-          .eq("email", credentials.email as string)
-          .single();
+          .ilike("email", email)
+          .maybeSingle();
 
         if (!party || !party.password_hash || !party.email_verified) return null;
 
@@ -108,14 +115,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Google OAuth: verificar que el email exista como staff o party
       if (account?.provider === "google" && user.email) {
         const db = getSupabase();
+        const email = normalizeEmail(user.email);
 
         // Buscar primero en staff
         const { data: staff } = await db
           .from("sgcc_staff")
           .select("id, center_id, rol, nombre, activo, center:sgcc_centers(activo)")
-          .eq("email", user.email)
+          .ilike("email", email)
           .eq("activo", true)
-          .single();
+          .maybeSingle();
 
         const center = Array.isArray(staff?.center) ? staff.center[0] : staff?.center;
         if (staff && center?.activo) return true;
@@ -124,13 +132,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const { data: party } = await db
           .from("sgcc_parties")
           .select("id")
-          .eq("email", user.email)
-          .single();
+          .ilike("email", email)
+          .maybeSingle();
 
         if (party) return true;
 
         // Si no existe en ninguna tabla, redirigir a registro
-        return "/registro?error=google_no_account&email=" + encodeURIComponent(user.email);
+        return "/registro?error=google_no_account&email=" + encodeURIComponent(email);
       }
       return true;
     },
@@ -153,14 +161,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Google OAuth: buscar datos del usuario en DB
       if (account?.provider === "google" && token.email) {
         const db = getSupabase();
+        const email = normalizeEmail(token.email);
 
         // Buscar en staff
         const { data: staff } = await db
           .from("sgcc_staff")
           .select("id, center_id, rol, nombre")
-          .eq("email", token.email)
+          .ilike("email", email)
           .eq("activo", true)
-          .single();
+          .maybeSingle();
 
         if (staff) {
           token.sub = staff.id;
@@ -175,8 +184,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const { data: party } = await db
           .from("sgcc_parties")
           .select("id, nombres, apellidos, razon_social, email")
-          .eq("email", token.email)
-          .single();
+          .ilike("email", email)
+          .maybeSingle();
 
         if (party) {
           token.sub = party.id;

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
+import { normalizeEmail } from "@/lib/normalize-email";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -39,13 +40,14 @@ export async function POST(req: NextRequest) {
     razon_social,
     tipo_doc,
     numero_doc,
-    email,
+    email: rawEmail,
     telefono,
     password,
     invite,
     codigo_centro,
   } = body;
 
+  const email = normalizeEmail(rawEmail);
   if (!email) return NextResponse.json({ error: "Email requerido" }, { status: 400 });
 
   // Resolver center_id desde código corto cuando es auto-registro desde portal
@@ -72,12 +74,12 @@ export async function POST(req: NextRequest) {
     centerId = centro.id;
   }
 
-  // Verificar si ya existe
+  // Verificar si ya existe (case-insensitive)
   const { data: existing } = await supabaseAdmin
     .from("sgcc_parties")
     .select("id, email_verified")
-    .eq("email", email)
-    .single();
+    .ilike("email", email)
+    .maybeSingle();
 
   if (existing && selfRegister) {
     return NextResponse.json({ error: "Ya existe una cuenta con ese correo" }, { status: 409 });
