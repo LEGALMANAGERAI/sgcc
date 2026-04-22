@@ -584,8 +584,28 @@ export interface SgccWatchedProcess {
   estado: WatchedProcessEstado;
   solicitado_por_staff: string | null;
   created_at: string;
+  // Rama Judicial (populated cuando se importa/sincroniza desde la API)
+  rama_id_proceso: number | null;
+  rama_ultima_actuacion_fecha: string | null;
+  departamento: string | null;
+  sujetos_procesales: string | null;
+  fecha_proceso: string | null;
+  es_privado: boolean | null;
   // joined
   updates?: SgccProcessUpdate[];
+}
+
+export interface SgccRamaSearch {
+  id: string;
+  center_id: string;
+  staff_id: string | null;
+  tipo: "nombre" | "radicado";
+  query: string;
+  resultados: any[];
+  total_resultados: number;
+  notas: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface SgccProcessUpdate {

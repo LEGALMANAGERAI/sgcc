@@ -15,8 +15,11 @@ import {
   Archive,
   Loader2,
   FileText,
+  RefreshCw,
+  Scale,
 } from "lucide-react";
 import type { SgccProcessUpdate, WatchedProcessEstado } from "@/types";
+import { RamaJudicialModal } from "./RamaJudicialModal";
 
 /* ─── Tipos ─────────────────────────────────────────────────────────────── */
 
@@ -35,6 +38,13 @@ interface Proceso {
   created_at: string;
   caso?: { id: string; numero_radicado: string } | null;
   actuaciones_no_leidas: number;
+  // Campos Rama Judicial (si el proceso fue importado o sincronizado)
+  rama_id_proceso?: number | null;
+  rama_ultima_actuacion_fecha?: string | null;
+  departamento?: string | null;
+  sujetos_procesales?: string | null;
+  fecha_proceso?: string | null;
+  es_privado?: boolean | null;
 }
 
 interface Caso {
@@ -105,6 +115,25 @@ export function VigilanciaClient({ procesos, casos, estadoFiltro }: Props) {
     detalles: "",
   });
   const [actuacionSubmitting, setActuacionSubmitting] = useState(false);
+
+  // Modal Rama Judicial
+  const [ramaModal, setRamaModal] = useState<{
+    open: boolean;
+    radicado: string;
+    watchedProcessId: string;
+  }>({ open: false, radicado: "", watchedProcessId: "" });
+
+  function openRamaModal(p: Proceso) {
+    setRamaModal({
+      open: true,
+      radicado: p.numero_proceso,
+      watchedProcessId: p.id,
+    });
+  }
+
+  function closeRamaModal() {
+    setRamaModal({ open: false, radicado: "", watchedProcessId: "" });
+  }
 
   /* ─── Filtro por estado ─────────────────────────────────────────────── */
 
@@ -419,6 +448,7 @@ export function VigilanciaClient({ procesos, casos, estadoFiltro }: Props) {
                     onShowActuacionForm={() => setShowActuacionForm(!showActuacionForm)}
                     onActuacionDataChange={setActuacionData}
                     onActuacionSubmit={handleActuacionSubmit}
+                    onRamaOpen={() => openRamaModal(p)}
                   />
                 ))}
               </tbody>
@@ -432,6 +462,13 @@ export function VigilanciaClient({ procesos, casos, estadoFiltro }: Props) {
           <Loader2 className="w-8 h-8 text-[#0D2340] animate-spin" />
         </div>
       )}
+
+      <RamaJudicialModal
+        open={ramaModal.open}
+        onClose={closeRamaModal}
+        radicadoInicial={ramaModal.radicado}
+        watchedProcessId={ramaModal.watchedProcessId}
+      />
     </div>
   );
 }
@@ -453,6 +490,7 @@ interface ProcessRowProps {
   onShowActuacionForm: () => void;
   onActuacionDataChange: (data: any) => void;
   onActuacionSubmit: (e: React.FormEvent) => void;
+  onRamaOpen: () => void;
 }
 
 function ProcessRow({
@@ -470,6 +508,7 @@ function ProcessRow({
   onShowActuacionForm,
   onActuacionDataChange,
   onActuacionSubmit,
+  onRamaOpen,
 }: ProcessRowProps) {
   return (
     <>
@@ -513,6 +552,17 @@ function ProcessRow({
         </td>
         <td className="px-4 py-3">
           <div className="flex items-center justify-end gap-1">
+            <button
+              onClick={onRamaOpen}
+              title="Consultar / sincronizar con Rama Judicial"
+              className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-500 hover:text-[#0D2340] transition-colors"
+            >
+              {p.rama_id_proceso ? (
+                <RefreshCw className="w-4 h-4" />
+              ) : (
+                <Scale className="w-4 h-4" />
+              )}
+            </button>
             <button
               onClick={onToggle}
               title="Ver actuaciones"
