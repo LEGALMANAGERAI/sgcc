@@ -1,6 +1,14 @@
 import { clsx } from "clsx";
 import type { LucideIcon } from "lucide-react";
 
+/**
+ * StatCard — KPI card alineado con "Card emphasis" del brief (§4.3).
+ *
+ * Mantengo la API pública (prop `color`) pero mapeo los nombres legacy
+ * (navy/gold/green/red/blue/purple) a la paleta FlowCase para no romper
+ * llamadores existentes.
+ */
+
 interface Props {
   label: string;
   value: string | number;
@@ -9,26 +17,66 @@ interface Props {
   trend?: string;
 }
 
-const colors = {
-  navy: { bg: "bg-[#0D2340]", text: "text-white", icon: "text-white/80" },
-  gold: { bg: "bg-orange-50", text: "text-orange-900", icon: "text-orange-600" },
-  green: { bg: "bg-green-50", text: "text-green-900", icon: "text-green-600" },
-  red: { bg: "bg-red-50", text: "text-red-900", icon: "text-red-600" },
-  blue: { bg: "bg-blue-50", text: "text-blue-900", icon: "text-blue-600" },
-  purple: { bg: "bg-purple-50", text: "text-purple-900", icon: "text-purple-600" },
+type Tone = { bg: string; text: string; icon: string; iconBg: string };
+
+const tones: Record<NonNullable<Props["color"]>, Tone> = {
+  // Emphasis (ink) — default KPI principal
+  navy: {
+    bg: "bg-[color:var(--color-ink)]",
+    text: "text-[color:var(--color-paper)]",
+    icon: "text-[color:var(--color-flow)]",
+    iconBg: "bg-white/10",
+  },
+  // Amber — warnings / plazos próximos
+  gold: {
+    bg: "bg-[rgba(245,158,11,0.08)]",
+    text: "text-[color:var(--color-ink)]",
+    icon: "text-[color:var(--color-amber)]",
+    iconBg: "bg-[rgba(245,158,11,0.18)]",
+  },
+  // Flow — success / KPIs positivos
+  green: {
+    bg: "bg-[rgba(20,184,166,0.08)]",
+    text: "text-[color:var(--color-ink)]",
+    icon: "text-[color:var(--color-flow-deep)]",
+    iconBg: "bg-[rgba(20,184,166,0.18)]",
+  },
+  // Terracotta — danger / vencidos
+  red: {
+    bg: "bg-[rgba(198,88,64,0.08)]",
+    text: "text-[color:var(--color-ink)]",
+    icon: "text-[color:var(--color-terracotta)]",
+    iconBg: "bg-[rgba(198,88,64,0.18)]",
+  },
+  // Ink-soft — info secundario
+  blue: {
+    bg: "bg-[rgba(27,49,82,0.06)]",
+    text: "text-[color:var(--color-ink)]",
+    icon: "text-[color:var(--color-ink-soft)]",
+    iconBg: "bg-[rgba(27,49,82,0.12)]",
+  },
+  // Activo intermedio (reutiliza flow-deep)
+  purple: {
+    bg: "bg-[rgba(20,184,166,0.06)]",
+    text: "text-[color:var(--color-ink)]",
+    icon: "text-[color:var(--color-flow-deep)]",
+    iconBg: "bg-[rgba(20,184,166,0.14)]",
+  },
 };
 
 export function StatCard({ label, value, icon: Icon, color = "navy", trend }: Props) {
-  const c = colors[color];
+  const c = tones[color];
   return (
-    <div className={clsx("rounded-xl p-5 shadow-sm", c.bg)}>
+    <div className={clsx("rounded-[16px] p-5", c.bg)} style={{ boxShadow: "var(--shadow-sm)" }}>
       <div className="flex items-start justify-between">
         <div>
-          <p className={clsx("text-sm font-medium", c.text, "opacity-70")}>{label}</p>
-          <p className={clsx("text-3xl font-bold mt-1", c.text)}>{value}</p>
-          {trend && <p className={clsx("text-xs mt-1", c.text, "opacity-60")}>{trend}</p>}
+          <p className={clsx("text-sm font-medium opacity-70", c.text)}>{label}</p>
+          <p className={clsx("text-3xl font-bold mt-1 tracking-[-0.02em]", c.text)}>
+            {value}
+          </p>
+          {trend && <p className={clsx("text-xs mt-1 opacity-60", c.text)}>{trend}</p>}
         </div>
-        <div className={clsx("p-2 rounded-lg bg-white/10")}>
+        <div className={clsx("p-2 rounded-[10px]", c.iconBg)}>
           <Icon className={clsx("w-6 h-6", c.icon)} />
         </div>
       </div>

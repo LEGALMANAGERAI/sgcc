@@ -2,23 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { randomUUID } from "crypto";
 import { notify } from "@/lib/notifications";
+import {
+  buscarPorRadicado,
+  obtenerActuaciones,
+  type ActuacionRama,
+} from "@/lib/rama-judicial";
+
+export const maxDuration = 300;
 
 /**
  * GET /api/cron/vigilancia-judicial
  *
- * Cron job que consulta procesos judiciales vigilados y registra
- * actuaciones nuevas automáticamente.
+ * Cron que recorre todos los procesos vigilados activos y sincroniza sus
+ * actuaciones contra la Rama Judicial. Portado desde Legados.
  *
- * Diseñado para ejecutarse via Vercel Cron cada 6 horas.
- *
- * Flujo:
- * 1. Obtener todos los procesos activos
- * 2. Consultar la API de la Rama Judicial por cada proceso
- * 3. Comparar última actuación conocida vs la nueva
- * 4. Si hay novedad → insertar en sgcc_process_updates + notificar
+ * Schedule: diario 12:00 UTC (vercel.json).
  */
 export async function GET(req: NextRequest) {
-  // Verificar CRON_SECRET
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
     const authHeader = req.headers.get("authorization");
@@ -28,7 +28,6 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // 1. Obtener procesos activos con datos del centro
     const { data: procesos, error: fetchError } = await supabaseAdmin
       .from("sgcc_watched_processes")
       .select(`
@@ -36,6 +35,8 @@ export async function GET(req: NextRequest) {
         center_id,
         case_id,
         numero_proceso,
+        rama_id_proceso,
+        rama_ultima_actuacion_fecha,
         ultima_actuacion,
         ultima_actuacion_fecha,
         solicitado_por_staff,
@@ -60,47 +61,110 @@ export async function GET(req: NextRequest) {
     let actualizados = 0;
     const errores: string[] = [];
 
-    // 2. Consultar cada proceso
-    for (const proc of procesos) {
+    for (const proc of procesos as any[]) {
       consultados++;
 
       try {
-        const resultado = await consultarRamaJudicial(proc.numero_proceso);
+        const procesosRama = await buscarPorRadicado(proc.numero_proceso);
+        if (procesosRama.length === 0) continue;
 
-        if (!resultado) continue;
+        const ramaProc = proc.rama_id_proceso
+          ? procesosRama.find((p: any) => p.idProceso === proc.rama_id_proceso) ??
+            procesosRama[0]
+          : procesosRama[0];
 
-        // 3. Comparar con última actuación conocida
-        const esNueva =
-          !proc.ultima_actuacion_fecha ||
-          resultado.fecha > proc.ultima_actuacion_fecha ||
-          (resultado.fecha === proc.ultima_actuacion_fecha &&
-            resultado.anotacion !== proc.ultima_actuacion);
+        // Short-circuit: si la fecha de última actuación de la Rama no cambió,
+        // no consultamos actuaciones (ahorra llamados a la API inestable).
+        const ramaFecha = ramaProc.fechaUltimaActuacion ?? null;
+        if (
+          ramaFecha &&
+          proc.rama_ultima_actuacion_fecha &&
+          new Date(ramaFecha).getTime() ===
+            new Date(proc.rama_ultima_actuacion_fecha).getTime()
+        ) {
+          continue;
+        }
 
-        if (!esNueva) continue;
+        let actuacionesRama: ActuacionRama[] = [];
+        try {
+          actuacionesRama = await obtenerActuaciones(ramaProc.idProceso, 10);
+        } catch {
+          errores.push(`Proceso ${proc.numero_proceso}: actuaciones no disponibles`);
+          continue;
+        }
 
-        // 4. Insertar actuación nueva
+        if (actuacionesRama.length === 0) continue;
+
+        // Dedup contra las existentes
+        const { data: existentes } = await supabaseAdmin
+          .from("sgcc_process_updates")
+          .select("anotacion, tipo_actuacion, fecha_actuacion")
+          .eq("watched_process_id", proc.id);
+
+        const existentesSet = new Set(
+          (existentes ?? []).map((a: any) => {
+            const f = a.fecha_actuacion
+              ? String(a.fecha_actuacion).split("T")[0]
+              : "";
+            return `${a.tipo_actuacion ?? ""}|${a.anotacion ?? ""}|${f}`;
+          })
+        );
+
         const now = new Date().toISOString();
-        await supabaseAdmin.from("sgcc_process_updates").insert({
+        const nuevas = actuacionesRama
+          .filter((act) => act.actuacion)
+          .map((act) => {
+            const tipo = act.actuacion;
+            const anotacion = act.anotacion || act.actuacion;
+            const fecha = act.fechaActuacion
+              ? new Date(act.fechaActuacion).toISOString().split("T")[0]
+              : now.split("T")[0];
+            const detalles = act.fechaFinal
+              ? `Término vence: ${String(act.fechaFinal).split("T")[0]}`
+              : act.fechaRegistro
+                ? `Registrada: ${String(act.fechaRegistro).split("T")[0]}`
+                : null;
+            return { tipo, anotacion, fecha, detalles, raw: act };
+          })
+          .filter(
+            ({ tipo, anotacion, fecha }) =>
+              !existentesSet.has(`${tipo}|${anotacion}|${fecha}`)
+          );
+
+        if (nuevas.length === 0) continue;
+
+        const inserts = nuevas.map(({ tipo, anotacion, fecha, detalles }) => ({
           id: randomUUID(),
           watched_process_id: proc.id,
-          fecha_actuacion: resultado.fecha,
-          tipo_actuacion: resultado.tipo,
-          anotacion: resultado.anotacion,
-          detalles: resultado.detalles ?? null,
+          tipo_actuacion: tipo,
+          anotacion,
+          fecha_actuacion: fecha,
+          detalles,
           leida: false,
           created_at: now,
-        });
+        }));
 
-        // Actualizar última actuación en el proceso padre
+        await supabaseAdmin.from("sgcc_process_updates").insert(inserts);
+
+        const primera = actuacionesRama[0];
         await supabaseAdmin
           .from("sgcc_watched_processes")
           .update({
-            ultima_actuacion: resultado.anotacion,
-            ultima_actuacion_fecha: resultado.fecha,
+            rama_id_proceso: ramaProc.idProceso,
+            rama_ultima_actuacion_fecha: ramaProc.fechaUltimaActuacion ?? null,
+            despacho: ramaProc.despacho ?? undefined,
+            departamento: ramaProc.departamento ?? undefined,
+            sujetos_procesales: ramaProc.sujetosProcesales ?? undefined,
+            fecha_proceso: ramaProc.fechaProceso ?? undefined,
+            es_privado: ramaProc.esPrivado ?? undefined,
+            ultima_actuacion: primera?.anotacion || primera?.actuacion,
+            ultima_actuacion_fecha: primera?.fechaActuacion
+              ? new Date(primera.fechaActuacion).toISOString().split("T")[0]
+              : undefined,
           })
           .eq("id", proc.id);
 
-        // 5. Notificar al staff que solicitó la vigilancia
+        // Notificar al staff solicitante
         if (proc.solicitado_por_staff) {
           const { data: staff } = await supabaseAdmin
             .from("sgcc_staff")
@@ -109,12 +173,17 @@ export async function GET(req: NextRequest) {
             .single();
 
           if (staff) {
+            const titulo =
+              nuevas.length === 1
+                ? `Nueva actuación en proceso ${proc.numero_proceso}`
+                : `${nuevas.length} nuevas actuaciones en proceso ${proc.numero_proceso}`;
+
             await notify({
               centerId: proc.center_id,
               caseId: proc.case_id ?? undefined,
               tipo: "vigilancia",
-              titulo: `Nueva actuación en proceso ${proc.numero_proceso}`,
-              mensaje: `Se detectó una nueva actuación:\n\n${resultado.tipo ? `Tipo: ${resultado.tipo}\n` : ""}Anotación: ${resultado.anotacion}\nFecha: ${resultado.fecha}`,
+              titulo,
+              mensaje: `Última: ${nuevas[0].tipo}\n${nuevas[0].anotacion}\nFecha: ${nuevas[0].fecha}`,
               recipients: [{ staffId: staff.id, email: staff.email }],
               canal: "both",
             });
@@ -122,6 +191,9 @@ export async function GET(req: NextRequest) {
         }
 
         actualizados++;
+
+        // Pausa 1s entre procesos para no saturar la API pública
+        await new Promise((r) => setTimeout(r, 1000));
       } catch (err: any) {
         errores.push(`Proceso ${proc.numero_proceso}: ${err.message}`);
       }
@@ -139,89 +211,5 @@ export async function GET(req: NextRequest) {
       { error: `Error en cron vigilancia: ${err.message}` },
       { status: 500 }
     );
-  }
-}
-
-/* ─── Consulta a la Rama Judicial ──────────────────────────────────────── */
-
-interface ActuacionResultado {
-  fecha: string;
-  tipo: string;
-  anotacion: string;
-  detalles?: string;
-}
-
-/**
- * Consulta la API de consulta de procesos de la Rama Judicial.
- *
- * La Rama Judicial expone un servicio web SOAP/REST en:
- * https://consultaprocesos.ramajudicial.gov.co:448/api/v2/Procesos/Consulta/NumeroRadicacion
- *
- * Retorna la última actuación del proceso, o null si no hay resultados.
- */
-async function consultarRamaJudicial(
-  numeroProceso: string
-): Promise<ActuacionResultado | null> {
-  const baseUrl =
-    "https://consultaprocesos.ramajudicial.gov.co:448/api/v2/Procesos/Consulta/NumeroRadicacion";
-
-  try {
-    // Consultar proceso
-    const res = await fetch(`${baseUrl}?numero=${encodeURIComponent(numeroProceso)}&SoloActivos=false`, {
-      headers: {
-        Accept: "application/json",
-        "User-Agent": "SGCC-VigilanciaJudicial/1.0",
-      },
-      signal: AbortSignal.timeout(15000),
-    });
-
-    if (!res.ok) {
-      // La API puede devolver 404 si el proceso no existe
-      if (res.status === 404) return null;
-      return null;
-    }
-
-    const data = await res.json();
-
-    // La API retorna { procesos: [{ idProceso, actuaciones: [...] }] }
-    const procesos = data?.procesos;
-    if (!procesos || procesos.length === 0) return null;
-
-    // Buscar actuaciones del primer proceso que coincida
-    const proceso = procesos[0];
-
-    // Consultar actuaciones del proceso
-    const actRes = await fetch(
-      `https://consultaprocesos.ramajudicial.gov.co:448/api/v2/Proceso/Actuaciones/${proceso.idProceso}`,
-      {
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "SGCC-VigilanciaJudicial/1.0",
-        },
-        signal: AbortSignal.timeout(15000),
-      }
-    );
-
-    if (!actRes.ok) return null;
-
-    const actData = await actRes.json();
-    const actuaciones = actData?.actuaciones;
-    if (!actuaciones || actuaciones.length === 0) return null;
-
-    // Tomar la más reciente (la primera, ya vienen ordenadas DESC)
-    const ultima = actuaciones[0];
-
-    return {
-      fecha: ultima.fechaActuacion?.split("T")[0] ?? new Date().toISOString().split("T")[0],
-      tipo: ultima.actuacion ?? "Actuación",
-      anotacion: ultima.anotacion ?? ultima.actuacion ?? "Nueva actuación detectada",
-      detalles: ultima.fechaRegistro
-        ? `Registrada: ${ultima.fechaRegistro.split("T")[0]}`
-        : undefined,
-    };
-  } catch (err: any) {
-    // Timeout o error de red — no es crítico, se reintenta en el próximo ciclo
-    console.error(`Error consultando Rama Judicial para ${numeroProceso}:`, err.message);
-    return null;
   }
 }

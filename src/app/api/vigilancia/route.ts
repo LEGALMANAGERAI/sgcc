@@ -22,6 +22,12 @@ export async function GET(req: NextRequest) {
     .from("sgcc_watched_processes")
     .select(`
       *,
+      rama_id_proceso,
+      rama_ultima_actuacion_fecha,
+      departamento,
+      sujetos_procesales,
+      fecha_proceso,
+      es_privado,
       caso:sgcc_cases!sgcc_watched_processes_case_id_fkey(id, numero_radicado),
       updates:sgcc_process_updates(id, leida)
     `)
@@ -56,22 +62,51 @@ export async function POST(req: NextRequest) {
   if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
 
   const body = await req.json();
-  const { numero_proceso, despacho, ciudad, case_id, partes_texto } = body;
+  const {
+    numero_proceso,
+    despacho,
+    ciudad,
+    case_id,
+    partes_texto,
+    // Campos opcionales cuando se importa desde Rama Judicial
+    rama_id_proceso,
+    departamento,
+    sujetos_procesales,
+    fecha_proceso,
+    es_privado,
+    rama_ultima_actuacion_fecha,
+  } = body;
 
   if (!numero_proceso?.trim()) {
     return NextResponse.json({ error: "El número de proceso es requerido" }, { status: 400 });
   }
 
-  // Verificar que no exista ya este proceso en el centro
-  const { data: existing } = await supabaseAdmin
+  // Verificar que no exista ya este proceso en el centro (por número o por rama_id)
+  const { data: existingPorNumero } = await supabaseAdmin
     .from("sgcc_watched_processes")
     .select("id")
     .eq("center_id", centerId)
     .eq("numero_proceso", numero_proceso.trim())
-    .single();
+    .maybeSingle();
 
-  if (existing) {
+  if (existingPorNumero) {
     return NextResponse.json({ error: "Este proceso ya está siendo vigilado" }, { status: 409 });
+  }
+
+  if (rama_id_proceso) {
+    const { data: existingPorRama } = await supabaseAdmin
+      .from("sgcc_watched_processes")
+      .select("id")
+      .eq("center_id", centerId)
+      .eq("rama_id_proceso", rama_id_proceso)
+      .maybeSingle();
+
+    if (existingPorRama) {
+      return NextResponse.json(
+        { error: "Este proceso de la Rama Judicial ya está siendo vigilado" },
+        { status: 409 }
+      );
+    }
   }
 
   // Validar case_id si se proporcionó
@@ -100,6 +135,12 @@ export async function POST(req: NextRequest) {
       partes_texto: partes_texto?.trim() || null,
       estado: "activo",
       solicitado_por_staff: (session.user as any).id,
+      rama_id_proceso: rama_id_proceso ?? null,
+      departamento: departamento?.trim?.() || departamento || null,
+      sujetos_procesales: sujetos_procesales?.trim?.() || sujetos_procesales || null,
+      fecha_proceso: fecha_proceso || null,
+      es_privado: typeof es_privado === "boolean" ? es_privado : null,
+      rama_ultima_actuacion_fecha: rama_ultima_actuacion_fecha || null,
       created_at: now,
     })
     .select()

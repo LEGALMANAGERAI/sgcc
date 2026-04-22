@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { Eye, Activity, BellRing } from "lucide-react";
 import { VigilanciaClient } from "./VigilanciaClient";
+import { BuscadorRama } from "./BuscadorRama";
 
 interface Props {
   searchParams: Promise<{ estado?: string }>;
@@ -93,6 +94,11 @@ export default async function VigilanciaPage({ searchParams }: Props) {
           icon={BellRing}
           color="red"
         />
+      </div>
+
+      {/* Buscador Rama Judicial */}
+      <div className="mb-6">
+        <BuscadorRama />
       </div>
 
       {/* Client component con toda la interactividad */}
