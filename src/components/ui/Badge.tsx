@@ -1,5 +1,5 @@
 /**
- * Badge — FlowCase primitiva (§4.4 del brand brief).
+ * Badge — primitiva SGCC.
  *
  * Estados semánticos de expediente: Radicado, Activo, Audiencia, Acuerdo, Archivado, Vencido.
  * Forma pill, monospace, uppercase, letter-spacing 0.12em, font-size 10px, padding 4px 10px.

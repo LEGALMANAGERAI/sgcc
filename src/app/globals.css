@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /* ============================================================================
-   FlowCase Design Tokens
-   Single source of truth: ./docs/flowcase-brand-brief.md
+   SGCC Design Tokens — sistema de diseño del producto.
+   Paleta ink / flow / amber / terracotta / paper.
    ============================================================================ */
 
 @theme {

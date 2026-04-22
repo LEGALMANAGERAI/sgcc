@@ -25,9 +25,9 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FlowCase — Sistema de Gestión para Centros de Conciliación",
+  title: "SGCC — Sistema de Gestión para Centros de Conciliación",
   description:
-    "Expedientes que fluyen. Acuerdos que avanzan. Plataforma en la nube para centros de conciliación y notarías: conciliación, insolvencia PNNC y acuerdos de apoyo.",
+    "Plataforma en la nube para centros de conciliación y notarías: conciliación, insolvencia PNNC y acuerdos de apoyo.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

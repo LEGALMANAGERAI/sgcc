@@ -1,24 +1,24 @@
 import { ImageResponse } from "next/og";
 
+/**
+ * Favicon dinámico — símbolo SGCC (grid 2×2 sin letras, para favicons pequeños).
+ */
+
 export const size = { width: 128, height: 128 };
 export const contentType = "image/png";
 
-const NAVY = "#0D2340";
-const BLUE = "#1B4F9B";
+const INK = "#0A1628";
+const FLOW = "#14B8A6";
+const AMBER = "#F59E0B";
+const TERRACOTTA = "#C65840";
+const PAPER = "#FAF7F2";
 
-const cellStyle = (bg: string): React.CSSProperties => ({
-  width: "50%",
-  height: "50%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  background: bg,
-  color: "white",
-  fontSize: 56,
-  fontWeight: 900,
-  fontFamily: "system-ui, -apple-system, sans-serif",
-  letterSpacing: -2,
-});
+const baseCell: React.CSSProperties = {
+  flex: 1,
+  border: `5px solid ${INK}`,
+  borderRadius: 10,
+  boxSizing: "border-box",
+};
 
 export default function Icon() {
   return new ImageResponse(
@@ -26,17 +26,22 @@ export default function Icon() {
       <div
         style={{
           display: "flex",
-          flexWrap: "wrap",
+          flexDirection: "column",
           width: "100%",
           height: "100%",
-          borderRadius: 16,
-          overflow: "hidden",
+          background: PAPER,
+          padding: 8,
+          gap: 6,
         }}
       >
-        <div style={cellStyle(NAVY)}>S</div>
-        <div style={cellStyle(BLUE)}>G</div>
-        <div style={cellStyle(BLUE)}>C</div>
-        <div style={cellStyle(NAVY)}>C</div>
+        <div style={{ display: "flex", flex: 1, gap: 6 }}>
+          <div style={{ ...baseCell, background: "transparent" }} />
+          <div style={{ ...baseCell, background: FLOW }} />
+        </div>
+        <div style={{ display: "flex", flex: 1, gap: 6 }}>
+          <div style={{ ...baseCell, background: AMBER }} />
+          <div style={{ ...baseCell, background: TERRACOTTA }} />
+        </div>
       </div>
     ),
     { ...size }
