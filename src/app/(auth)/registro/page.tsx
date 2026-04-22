@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Scale, Building2, Gavel, User } from "lucide-react";
+import { Scale, Building2, Users, User } from "lucide-react";
 
 const options = [
   {
@@ -14,13 +14,13 @@ const options = [
     cta: "Registrar centro",
   },
   {
-    icon: Gavel,
-    title: "Conciliador",
-    emoji: "\u2696\ufe0f",
+    icon: Users,
+    title: "Staff del centro",
+    emoji: "\ud83d\udc65",
     description:
-      "Registrate como conciliador para unirte a un centro existente",
-    href: "/registro/conciliador",
-    cta: "Registrar conciliador",
+      "Conciliadores, funcionarios y personal administrativo que se une a un centro existente",
+    href: "/registro/staff",
+    cta: "Registrar staff",
   },
   {
     icon: User,

@@ -3,10 +3,21 @@ import { supabaseAdmin } from "@/lib/supabase";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 
+const ROLES_PERMITIDOS = ["conciliador", "secretario"] as const;
+type RolPermitido = (typeof ROLES_PERMITIDOS)[number];
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { nombre, email, tarjeta_profesional, telefono, ciudad, codigo_centro, password } = body;
+    const {
+      nombre,
+      email,
+      rol,
+      tarjeta_profesional,
+      telefono,
+      codigo_centro,
+      password,
+    } = body;
 
     // ── Validaciones ──────────────────────────────────────────────────────
     const camposRequeridos: { valor: unknown; label: string }[] = [
@@ -23,6 +34,16 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
+    }
+
+    if (!ROLES_PERMITIDOS.includes(rol as RolPermitido)) {
+      return NextResponse.json(
+        {
+          error:
+            "Rol inválido. El auto-registro solo permite conciliador o funcionario. Los administradores deben ser invitados desde el centro.",
+        },
+        { status: 400 }
+      );
     }
 
     if (password.length < 6) {
@@ -66,7 +87,7 @@ export async function POST(req: NextRequest) {
 
     if (staffExistente) {
       return NextResponse.json(
-        { error: "Ya existe un conciliador registrado con este email en este centro" },
+        { error: "Ya existe un usuario registrado con este email en este centro" },
         { status: 409 }
       );
     }
@@ -74,7 +95,7 @@ export async function POST(req: NextRequest) {
     // ── Hash de la contraseña ─────────────────────────────────────────────
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // ── Insertar conciliador ──────────────────────────────────────────────
+    // ── Insertar staff ────────────────────────────────────────────────────
     const { error: insertError } = await supabaseAdmin
       .from("sgcc_staff")
       .insert({
@@ -83,27 +104,24 @@ export async function POST(req: NextRequest) {
         nombre: nombre.trim(),
         email: email.trim().toLowerCase(),
         password_hash: passwordHash,
-        rol: "conciliador",
-        tarjeta_profesional: tarjeta_profesional?.trim() || null,
+        rol,
+        tarjeta_profesional:
+          rol === "conciliador" ? tarjeta_profesional?.trim() || null : null,
         telefono: telefono?.trim() || null,
         activo: true,
       });
 
     if (insertError) {
-      console.error("Error al registrar conciliador:", insertError);
+      console.error("Error al registrar staff:", insertError);
       return NextResponse.json(
-        { error: "Error al registrar el conciliador" },
+        { error: "Error al registrar el usuario" },
         { status: 500 }
       );
     }
 
-    // ── Respuesta exitosa ─────────────────────────────────────────────────
-    return NextResponse.json(
-      { success: true },
-      { status: 201 }
-    );
+    return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
-    console.error("Error en registro de conciliador:", error);
+    console.error("Error en registro de staff:", error);
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }
