@@ -312,6 +312,7 @@ export async function generateRelacionAcreenciasDocx(
     "#",
     "Acreedor",
     "Documento",
+    "Identificación del crédito",
     "Clase",
     "Capital",
     "Int. corr.",
@@ -361,6 +362,7 @@ export async function generateRelacionAcreenciasDocx(
           bodyCell(String(idx + 1), AlignmentType.CENTER),
           bodyCell(f.a.acreedor_nombre),
           bodyCell(f.a.acreedor_documento ?? "—"),
+          bodyCell(f.a.identificacion_credito ?? "—"),
           bodyCell(CLASE_LABEL[f.a.clase_credito], AlignmentType.CENTER),
           bodyCell(money(Number(f.a.con_capital)), AlignmentType.RIGHT),
           bodyCell(money(Number(f.a.con_intereses_corrientes)), AlignmentType.RIGHT),
@@ -393,6 +395,7 @@ export async function generateRelacionAcreenciasDocx(
       children: [
         totalCell("", AlignmentType.CENTER),
         totalCell("TOTALES", AlignmentType.LEFT),
+        totalCell("", AlignmentType.LEFT),
         totalCell("", AlignmentType.LEFT),
         totalCell("", AlignmentType.CENTER),
         totalCell(money(totalCapital)),

@@ -50,23 +50,24 @@ export async function generarRelacionAcreenciasPdf(
   const RIGHT = PAGE_W - MARGIN;
   const USABLE_W = PAGE_W - 2 * MARGIN; // 468 pt
 
-  // Distribución de 12 columnas sobre 468 pt de ancho útil.
+  // Distribución de 13 columnas sobre 468 pt de ancho útil.
   const COLS = [
-    { key: "n", label: "#", w: 18, align: "center" as const },
-    { key: "acreedor", label: "Acreedor", w: 86, align: "left" as const },
-    { key: "doc", label: "Doc.", w: 50, align: "left" as const },
-    { key: "clase", label: "Clase", w: 24, align: "center" as const },
-    { key: "capital", label: "Capital", w: 48, align: "right" as const },
-    { key: "intCorr", label: "Int. corr.", w: 42, align: "right" as const },
-    { key: "intMora", label: "Int. mora", w: 42, align: "right" as const },
-    { key: "seguros", label: "Seguros", w: 34, align: "right" as const },
-    { key: "otros", label: "Otros", w: 34, align: "right" as const },
-    { key: "total", label: "Total", w: 52, align: "right" as const },
-    { key: "pctVoto", label: "% Voto", w: 28, align: "center" as const },
-    { key: "peq", label: "Peq.", w: 20, align: "center" as const },
+    { key: "n", label: "#", w: 16, align: "center" as const },
+    { key: "acreedor", label: "Acreedor", w: 72, align: "left" as const },
+    { key: "doc", label: "Doc.", w: 44, align: "left" as const },
+    { key: "ident", label: "Identif.", w: 52, align: "left" as const },
+    { key: "clase", label: "Clase", w: 22, align: "center" as const },
+    { key: "capital", label: "Capital", w: 44, align: "right" as const },
+    { key: "intCorr", label: "Int. corr.", w: 40, align: "right" as const },
+    { key: "intMora", label: "Int. mora", w: 40, align: "right" as const },
+    { key: "seguros", label: "Seguros", w: 30, align: "right" as const },
+    { key: "otros", label: "Otros", w: 30, align: "right" as const },
+    { key: "total", label: "Total", w: 48, align: "right" as const },
+    { key: "pctVoto", label: "% Voto", w: 26, align: "center" as const },
+    { key: "peq", label: "Peq.", w: 18, align: "center" as const },
   ];
   // Sanity: suma de w debe ser ≤ USABLE_W (468)
-  const SUM_W = COLS.reduce((s, c) => s + c.w, 0); // 478 — ajustamos al ancho real
+  const SUM_W = COLS.reduce((s, c) => s + c.w, 0); // 482 — ajustamos al ancho real
   const SCALE = USABLE_W / SUM_W;
   COLS.forEach((c) => (c.w = c.w * SCALE));
 
@@ -280,6 +281,7 @@ export async function generarRelacionAcreenciasPdf(
       n: String(idx + 1),
       acreedor: f.a.acreedor_nombre,
       doc: f.a.acreedor_documento ?? "-",
+      ident: f.a.identificacion_credito ?? "-",
       clase: CLASE_LABEL[f.a.clase_credito],
       capital: money(capital),
       intCorr: money(intCorr),
@@ -323,6 +325,7 @@ export async function generarRelacionAcreenciasPdf(
     n: { text: "", align: "center" },
     acreedor: { text: "TOTALES", align: "left" },
     doc: { text: "", align: "left" },
+    ident: { text: "", align: "left" },
     clase: { text: "", align: "center" },
     capital: { text: money(totalCapital), align: "right" },
     intCorr: { text: money(totalIntCorr), align: "right" },
