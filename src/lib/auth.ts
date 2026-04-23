@@ -35,6 +35,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Correo", type: "email" },
         password: { label: "Contraseña", type: "password" },
+        centerId: { label: "Centro", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
@@ -42,14 +43,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = normalizeEmail(credentials.email as string);
         if (!email) return null;
 
-        const { data: staff } = await getSupabase()
+        const centerId = (credentials.centerId as string | undefined)?.trim() || null;
+
+        // Cuando el staff trabaja en varios centros, la UI envía centerId para
+        // desambiguar. Si no viene, aceptamos login siempre que exista una
+        // sola fila activa con ese email (retrocompat para el 99% de cuentas).
+        const query = getSupabase()
           .from("sgcc_staff")
           .select("*, center:sgcc_centers(id, nombre, activo)")
           .ilike("email", email)
-          .eq("activo", true)
-          .maybeSingle();
+          .eq("activo", true);
 
-        if (!staff || !staff.password_hash) return null;
+        if (centerId) query.eq("center_id", centerId);
+
+        const { data: rows } = await query;
+
+        if (!rows || rows.length === 0) return null;
+        // Si vinieron múltiples y la UI no pasó centerId, no podemos
+        // autenticar a ciegas: la UI debe ofrecer selector primero.
+        if (rows.length > 1) return null;
+
+        const staff = rows[0];
+        if (!staff.password_hash) return null;
 
         const ok = await bcrypt.compare(
           credentials.password as string,
@@ -57,7 +72,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         );
         if (!ok) return null;
 
-        if (!staff.center?.activo) return null;
+        const center = Array.isArray(staff.center) ? staff.center[0] : staff.center;
+        if (!center?.activo) return null;
 
         return {
           id: staff.id,
