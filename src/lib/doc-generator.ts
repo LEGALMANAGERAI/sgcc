@@ -10,8 +10,9 @@ import {
   TableRow,
   TableCell,
   WidthType,
+  PageOrientation,
 } from "docx";
-import type { SgccCase, SgccCenter, SgccParty, SgccStaff, SgccActa, ObligacionItem } from "@/types";
+import type { SgccCase, SgccCenter, SgccParty, SgccStaff, SgccActa, ObligacionItem, SgccAcreencia, ClaseCredito } from "@/types";
 import { partyDisplayName } from "@/types";
 import type { SgccHearing } from "@/types";
 import { fechaEnLetras, horaEnLetras } from "./numero-a-letras";
@@ -237,6 +238,276 @@ export async function generateDocx(
 
   const doc = new Document({
     sections: [{ properties: {}, children: paragraphs }],
+  });
+
+  return Packer.toBuffer(doc);
+}
+
+/* ─── Relación definitiva de acreencias ──────────────────────────────── */
+
+export interface RelacionAcreenciasContext {
+  caso: Pick<SgccCase, "numero_radicado" | "materia">;
+  centro: Pick<SgccCenter, "nombre" | "ciudad" | "direccion" | "resolucion_habilitacion">;
+  convocante?: SgccParty | null;
+  acreencias: SgccAcreencia[];
+}
+
+const CLASE_LABEL: Record<ClaseCredito, string> = {
+  primera: "1ra",
+  segunda: "2da",
+  tercera: "3ra",
+  cuarta: "4ta",
+  quinta: "5ta",
+};
+
+const ORDEN_CLASES: ClaseCredito[] = ["primera", "segunda", "tercera", "cuarta", "quinta"];
+
+interface FilaAcreencia {
+  a: SgccAcreencia;
+  totalConciliado: number;
+}
+
+export function prepararFilasRelacion(acreencias: SgccAcreencia[]): FilaAcreencia[] {
+  const filas = acreencias.map((a) => ({
+    a,
+    totalConciliado:
+      Number(a.con_capital) +
+      Number(a.con_intereses_corrientes) +
+      Number(a.con_intereses_moratorios) +
+      Number(a.con_seguros) +
+      Number(a.con_otros),
+  }));
+
+  filas.sort((x, y) => {
+    const ox = ORDEN_CLASES.indexOf(x.a.clase_credito);
+    const oy = ORDEN_CLASES.indexOf(y.a.clase_credito);
+    if (ox !== oy) return ox - oy;
+    return x.a.acreedor_nombre.localeCompare(y.a.acreedor_nombre, "es");
+  });
+
+  return filas;
+}
+
+const money = (n: number) =>
+  new Intl.NumberFormat("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
+const pctFmt = (n: number) => `${(n * 100).toFixed(2)}%`;
+
+/**
+ * Genera un Word (.docx) con la relación definitiva de acreencias como tabla,
+ * con los mismos márgenes del acta (carta, 2.54cm) para que pueda incrustarse.
+ */
+export async function generateRelacionAcreenciasDocx(
+  ctx: RelacionAcreenciasContext
+): Promise<Buffer> {
+  const filas = prepararFilasRelacion(ctx.acreencias);
+
+  const totalCapital = filas.reduce((s, f) => s + Number(f.a.con_capital), 0);
+  const totalIntCorr = filas.reduce((s, f) => s + Number(f.a.con_intereses_corrientes), 0);
+  const totalIntMora = filas.reduce((s, f) => s + Number(f.a.con_intereses_moratorios), 0);
+  const totalSeguros = filas.reduce((s, f) => s + Number(f.a.con_seguros), 0);
+  const totalOtros = filas.reduce((s, f) => s + Number(f.a.con_otros), 0);
+  const totalGeneral = totalCapital + totalIntCorr + totalIntMora + totalSeguros + totalOtros;
+
+  const headers = [
+    "#",
+    "Acreedor",
+    "Documento",
+    "Clase",
+    "Capital",
+    "Int. corr.",
+    "Int. mora",
+    "Seguros",
+    "Otros",
+    "Total conciliado",
+    "% Voto",
+    "Peq.",
+  ];
+
+  const headerCell = (text: string) =>
+    new TableCell({
+      children: [
+        new Paragraph({
+          children: [new TextRun({ text, bold: true, size: 16, color: "FFFFFF" })],
+          alignment: AlignmentType.CENTER,
+        }),
+      ],
+      shading: { fill: "0D2340" },
+      margins: { top: 80, bottom: 80, left: 60, right: 60 },
+    });
+
+  type AlignValue = (typeof AlignmentType)[keyof typeof AlignmentType];
+  const bodyCell = (text: string, align: AlignValue = AlignmentType.LEFT, bold = false) =>
+    new TableCell({
+      children: [
+        new Paragraph({
+          children: [new TextRun({ text, size: 16, bold })],
+          alignment: align,
+        }),
+      ],
+      margins: { top: 60, bottom: 60, left: 60, right: 60 },
+    });
+
+  const rows: TableRow[] = [
+    new TableRow({
+      tableHeader: true,
+      children: headers.map(headerCell),
+    }),
+  ];
+
+  filas.forEach((f, idx) => {
+    rows.push(
+      new TableRow({
+        children: [
+          bodyCell(String(idx + 1), AlignmentType.CENTER),
+          bodyCell(f.a.acreedor_nombre),
+          bodyCell(f.a.acreedor_documento ?? "—"),
+          bodyCell(CLASE_LABEL[f.a.clase_credito], AlignmentType.CENTER),
+          bodyCell(money(Number(f.a.con_capital)), AlignmentType.RIGHT),
+          bodyCell(money(Number(f.a.con_intereses_corrientes)), AlignmentType.RIGHT),
+          bodyCell(money(Number(f.a.con_intereses_moratorios)), AlignmentType.RIGHT),
+          bodyCell(money(Number(f.a.con_seguros)), AlignmentType.RIGHT),
+          bodyCell(money(Number(f.a.con_otros)), AlignmentType.RIGHT),
+          bodyCell(money(f.totalConciliado), AlignmentType.RIGHT, true),
+          bodyCell(pctFmt(Number(f.a.porcentaje_voto)), AlignmentType.CENTER),
+          bodyCell(f.a.es_pequeno_acreedor ? "Sí" : "—", AlignmentType.CENTER),
+        ],
+      })
+    );
+  });
+
+  // Fila de totales
+  const totalCell = (text: string, align: AlignValue = AlignmentType.RIGHT) =>
+    new TableCell({
+      children: [
+        new Paragraph({
+          children: [new TextRun({ text, size: 16, bold: true })],
+          alignment: align,
+        }),
+      ],
+      shading: { fill: "E8EEF7" },
+      margins: { top: 80, bottom: 80, left: 60, right: 60 },
+    });
+
+  rows.push(
+    new TableRow({
+      children: [
+        totalCell("", AlignmentType.CENTER),
+        totalCell("TOTALES", AlignmentType.LEFT),
+        totalCell("", AlignmentType.LEFT),
+        totalCell("", AlignmentType.CENTER),
+        totalCell(money(totalCapital)),
+        totalCell(money(totalIntCorr)),
+        totalCell(money(totalIntMora)),
+        totalCell(money(totalSeguros)),
+        totalCell(money(totalOtros)),
+        totalCell(money(totalGeneral)),
+        totalCell("100.00%", AlignmentType.CENTER),
+        totalCell("", AlignmentType.CENTER),
+      ],
+    })
+  );
+
+  const table = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows,
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 4, color: "8A9DB8" },
+      bottom: { style: BorderStyle.SINGLE, size: 4, color: "8A9DB8" },
+      left: { style: BorderStyle.SINGLE, size: 4, color: "8A9DB8" },
+      right: { style: BorderStyle.SINGLE, size: 4, color: "8A9DB8" },
+      insideHorizontal: { style: BorderStyle.SINGLE, size: 2, color: "C4CEDE" },
+      insideVertical: { style: BorderStyle.SINGLE, size: 2, color: "C4CEDE" },
+    },
+  });
+
+  const fechaHoy = new Date().toLocaleDateString("es-CO", { dateStyle: "long" });
+
+  const children: (Paragraph | Table)[] = [
+    new Paragraph({
+      children: [
+        new TextRun({ text: ctx.centro.nombre.toUpperCase(), bold: true, size: 24, color: "0D2340" }),
+      ],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 120 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: `${ctx.centro.ciudad}${ctx.centro.resolucion_habilitacion ? " — " + ctx.centro.resolucion_habilitacion : ""}`,
+          size: 18,
+          color: "4C5B73",
+        }),
+      ],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 320 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: "RELACIÓN DEFINITIVA DE ACREENCIAS", bold: true, size: 22, color: "1B4F9B" }),
+      ],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 240 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: "Radicado: ", bold: true, size: 20 }),
+        new TextRun({ text: ctx.caso.numero_radicado, size: 20 }),
+      ],
+      spacing: { after: 80 },
+    }),
+  ];
+
+  if (ctx.convocante) {
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({ text: "Deudor: ", bold: true, size: 20 }),
+          new TextRun({ text: partyDisplayName(ctx.convocante), size: 20 }),
+          new TextRun({
+            text: `  (${ctx.convocante.numero_doc ?? ctx.convocante.nit_empresa ?? "sin doc."})`,
+            size: 20,
+            color: "4C5B73",
+          }),
+        ],
+        spacing: { after: 80 },
+      })
+    );
+  }
+
+  children.push(
+    new Paragraph({
+      children: [
+        new TextRun({ text: "Fecha de expedición: ", bold: true, size: 20 }),
+        new TextRun({ text: fechaHoy, size: 20 }),
+      ],
+      spacing: { after: 280 },
+    }),
+    table,
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: "Cifras en pesos colombianos (COP). «Peq.» indica pequeño acreedor (suma acumulada ≤ 5% del total). El % de voto se calcula sobre el capital conciliado.",
+          size: 16,
+          italics: true,
+          color: "4C5B73",
+        }),
+      ],
+      spacing: { before: 240 },
+    })
+  );
+
+  const doc = new Document({
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
+            size: { orientation: PageOrientation.PORTRAIT },
+          },
+        },
+        children: children as unknown as Paragraph[],
+      },
+    ],
   });
 
   return Packer.toBuffer(doc);

@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Vote,
   FileText,
+  FileDown,
   Users,
   Calculator,
   ChevronDown,
@@ -94,12 +95,46 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
 
   const [seccion, setSeccion] = useState<"acreencias" | "definitiva" | "propuesta" | "votacion" | "acuerdo">("acreencias");
   const [fullscreen, setFullscreen] = useState(false);
+  const [downloading, setDownloading] = useState<"docx" | "pdf" | null>(null);
 
   const flash = useCallback((type: "ok" | "error", msg: string) => {
     if (type === "ok") { setSuccess(msg); setError(""); }
     else { setError(msg); setSuccess(""); }
     setTimeout(() => { setSuccess(""); setError(""); }, 4000);
   }, []);
+
+  async function descargarRelacion(format: "docx" | "pdf") {
+    if (acreencias.length === 0) {
+      flash("error", "No hay acreencias registradas para exportar");
+      return;
+    }
+    setDownloading(format);
+    try {
+      const res = await fetch(`/api/expediente/${caseId}/acreencias/export?format=${format}`);
+      if (!res.ok) {
+        const msg = await res.json().catch(() => ({ error: "Error al generar el documento" }));
+        flash("error", msg.error ?? "Error al generar el documento");
+        return;
+      }
+      const blob = await res.blob();
+      const dispo = res.headers.get("Content-Disposition") ?? "";
+      const match = dispo.match(/filename="?([^";]+)"?/i);
+      const filename = match?.[1] ?? `relacion-acreencias.${format}`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      flash("ok", `Relación descargada como ${format.toUpperCase()}`);
+    } catch {
+      flash("error", "No se pudo descargar el documento");
+    } finally {
+      setDownloading(null);
+    }
+  }
 
   // Cargar propuestas y acuerdo
   useEffect(() => {
@@ -651,6 +686,41 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
 
       {seccion === "definitiva" && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50/60">
+            <div className="text-xs text-gray-600">
+              Descarga la relación como tabla con los mismos márgenes del acta (carta · 2,54 cm) para incrustarla en el escrito.
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => descargarRelacion("docx")}
+                disabled={downloading !== null || acreencias.length === 0}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#0D2340] bg-[#0D2340] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#1B4F9B] disabled:cursor-not-allowed disabled:opacity-50"
+                title="Descargar relación definitiva en Word (.docx)"
+              >
+                {downloading === "docx" ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <FileDown className="w-3.5 h-3.5" />
+                )}
+                Word
+              </button>
+              <button
+                type="button"
+                onClick={() => descargarRelacion("pdf")}
+                disabled={downloading !== null || acreencias.length === 0}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D2340] shadow-sm transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                title="Descargar relación definitiva en PDF"
+              >
+                {downloading === "pdf" ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <FileDown className="w-3.5 h-3.5" />
+                )}
+                PDF
+              </button>
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
