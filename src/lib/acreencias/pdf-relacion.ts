@@ -92,7 +92,7 @@ export async function generarRelacionAcreenciasPdf(
     y -= 15;
 
     const subtitulo = `${input.centro.ciudad}${
-      input.centro.resolucion_habilitacion ? " — " + input.centro.resolucion_habilitacion : ""
+      input.centro.resolucion_habilitacion ? " - " + input.centro.resolucion_habilitacion : ""
     }`;
     const sw = fontRegular.widthOfTextAtSize(subtitulo, 9);
     page.drawText(subtitulo, {
@@ -141,7 +141,7 @@ export async function generarRelacionAcreenciasPdf(
 
   function truncate(text: string, maxWidth: number, size: number, font: typeof fontRegular): string {
     if (font.widthOfTextAtSize(text, size) <= maxWidth) return text;
-    const ellipsis = "…";
+    const ellipsis = "...";
     let lo = 0;
     let hi = text.length;
     while (lo < hi) {
@@ -279,7 +279,7 @@ export async function generarRelacionAcreenciasPdf(
     const values: Record<string, string> = {
       n: String(idx + 1),
       acreedor: f.a.acreedor_nombre,
-      doc: f.a.acreedor_documento ?? "—",
+      doc: f.a.acreedor_documento ?? "-",
       clase: CLASE_LABEL[f.a.clase_credito],
       capital: money(capital),
       intCorr: money(intCorr),
@@ -288,7 +288,7 @@ export async function generarRelacionAcreenciasPdf(
       otros: money(otros),
       total: money(f.totalConciliado),
       pctVoto: pctFmt(Number(f.a.porcentaje_voto)),
-      peq: f.a.es_pequeno_acreedor ? "Sí" : "—",
+      peq: f.a.es_pequeno_acreedor ? "Sí" : "-",
     };
 
     for (const col of COLS) {
@@ -343,7 +343,7 @@ export async function generarRelacionAcreenciasPdf(
   // Leyenda
   y -= 16;
   const leyenda =
-    "Cifras en pesos colombianos (COP). «Peq.» indica pequeño acreedor (suma acumulada ≤ 5% del total). El % de voto se calcula sobre el capital conciliado.";
+    'Cifras en pesos colombianos (COP). "Peq." indica pequeño acreedor (suma acumulada <= 5% del total). El % de voto se calcula sobre el capital conciliado.';
   const leyendaWrapped = wrapText(leyenda, USABLE_W, 8, fontItalic);
   for (const line of leyendaWrapped) {
     if (y < MARGIN) {
