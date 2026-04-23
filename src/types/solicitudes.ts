@@ -96,21 +96,46 @@ export interface ProcesoJudicialFormData {
   tiene_embargo_remate: boolean;
 }
 
+export type TipoAmortizacion = "francesa" | "lineal";
+
 export interface CuotaCronograma {
   cuota: number;
-  capital: number;
-  intereses_espera: number;
-  intereses_futuros: number;
+  mes_relativo: number; // mes 1 = primer pago tras la gracia, contado desde suscripción del acuerdo
+  cuota_total: number;
+  intereses: number;
+  amortizacion: number;
   saldo: number;
-  fecha_pago: string;
+}
+
+export interface CondonacionesConfig {
+  intereses_corrientes: boolean;
+  intereses_moratorios: boolean;
+  otros_conceptos_distintos_capital: boolean;
+  detalle_adicional?: string;
+}
+
+export interface PropuestaPagoCredito {
+  acreedor_index: number;
+  capital: number;
+  tasa_interes_mensual_pct: number;
+  numero_cuotas: number;
+  meses_gracia: number;
+  tipo_amortizacion: TipoAmortizacion;
+  porcentaje_prorrata?: number; // solo 5ª clase en modo a prorrata
+  cronograma: CuotaCronograma[];
+  redaccion_narrativa: string;
+  condonaciones_override?: CondonacionesConfig;
 }
 
 export interface PropuestaPagoClase {
   clase_prelacion: ClasePrelacion;
-  tasa_interes_futura_mensual: number;
-  tasa_interes_espera_mensual: number;
-  numero_cuotas: number;
-  cronograma: CuotaCronograma[];
+  // Campos compartidos (aplican solo cuando la clase es 5ª)
+  numero_cuotas_compartido?: number;
+  meses_gracia_compartido?: number;
+  tipo_amortizacion_compartido?: TipoAmortizacion;
+  prioridad_pequenos?: boolean;
+  m_cuotas_pequenos?: number;
+  creditos: PropuestaPagoCredito[];
 }
 
 export interface FormDataConciliacion {
@@ -158,6 +183,7 @@ export interface FormDataInsolvencia {
   sociedad_conyugal_valor_bienes?: number;
   fecha_corte?: string; // ISO date — Parágrafo 2 Art. 539
   propuesta_pago: PropuestaPagoClase[];
+  condonaciones_globales?: CondonacionesConfig;
   solicita_tarifa_especial: boolean;
   juramento_aceptado: boolean;
 }
