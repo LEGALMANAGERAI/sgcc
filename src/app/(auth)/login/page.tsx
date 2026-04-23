@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff, Building2, Users, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Building2, Users, Sparkles, ArrowLeft } from "lucide-react";
 import { SgccLogo } from "@/components/ui/SgccLogo";
 
 type Tab = "staff" | "party";
@@ -33,33 +33,92 @@ function LoginContent() {
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  // Cuando el staff trabaja en varios centros, mostramos un selector tras
+  // validar credenciales en el endpoint check-centers.
+  const [centerOptions, setCenterOptions] = useState<Array<{ id: string; nombre: string }> | null>(null);
 
   const placeholder =
     tab === "staff" ? "correo@centroconciliacion.com" : "correo@ejemplo.com";
+
+  async function doStaffSignIn(centerId?: string) {
+    const res = await signIn("staff", {
+      email,
+      password,
+      ...(centerId ? { centerId } : {}),
+      redirect: false,
+    });
+
+    if (res?.error) {
+      setError("Correo o contrasena incorrectos");
+      return false;
+    }
+
+    router.push(params.get("callbackUrl") ?? "/dashboard");
+    return true;
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const res = await signIn(tab, {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      if (tab === "party") {
+        const res = await signIn("party", { email, password, redirect: false });
+        if (res?.error) {
+          setError("Correo o contrasena incorrectos");
+          return;
+        }
+        router.push("/mis-casos");
+        return;
+      }
 
-    setLoading(false);
+      // Staff: primero preguntamos a qué centros tiene acceso esta credencial.
+      const resp = await fetch("/api/auth/staff/check-centers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (res?.error) {
-      setError("Correo o contrasena incorrectos");
-      return;
+      if (!resp.ok) {
+        setError("Correo o contrasena incorrectos");
+        return;
+      }
+
+      const { centers } = (await resp.json()) as {
+        centers: Array<{ id: string; nombre: string }>;
+      };
+
+      if (!centers || centers.length === 0) {
+        setError("Correo o contrasena incorrectos");
+        return;
+      }
+
+      if (centers.length === 1) {
+        await doStaffSignIn(centers[0].id);
+        return;
+      }
+
+      // Más de un centro: mostrar selector al usuario.
+      setCenterOptions(centers);
+    } finally {
+      setLoading(false);
     }
+  }
 
-    if (tab === "party") {
-      router.push("/mis-casos");
-    } else {
-      router.push(params.get("callbackUrl") ?? "/dashboard");
+  async function handleCenterSelected(centerId: string) {
+    setError("");
+    setLoading(true);
+    try {
+      await doStaffSignIn(centerId);
+    } finally {
+      setLoading(false);
     }
+  }
+
+  function handleBackToLogin() {
+    setCenterOptions(null);
+    setError("");
   }
 
   async function handleDemo(demoEmail: string, demoPassword: string) {
@@ -90,6 +149,51 @@ function LoginContent() {
           <SgccLogo variant="dark" size="lg" showDescriptor />
         </div>
 
+        {/* Selector de centros cuando el staff trabaja en varios */}
+        {centerOptions && centerOptions.length > 1 ? (
+          <div className="px-8 py-6 space-y-4">
+            <button
+              type="button"
+              onClick={handleBackToLogin}
+              className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-[#0D2340] transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Volver
+            </button>
+            <div>
+              <h2 className="text-base font-semibold text-[#0D2340]">
+                Selecciona el centro
+              </h2>
+              <p className="text-xs text-gray-500 mt-1">
+                Tu cuenta está asociada a varios centros. Elige a cuál quieres ingresar.
+              </p>
+            </div>
+            {error && (
+              <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg border border-red-200">
+                {error}
+              </div>
+            )}
+            <div className="space-y-2">
+              {centerOptions.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleCenterSelected(c.id)}
+                  className="w-full flex items-center gap-3 border border-gray-200 rounded-lg px-4 py-3 text-left hover:border-[#1B4F9B] hover:bg-[#1B4F9B]/5 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-[#1B4F9B]/10 text-[#1B4F9B] flex items-center justify-center shrink-0">
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  <span className="text-sm font-medium text-[#0D2340] leading-snug">
+                    {c.nombre}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+        <>
         {/* Tabs */}
         <div className="flex border-b border-gray-200">
           <button
@@ -271,6 +375,8 @@ function LoginContent() {
             ))}
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );
