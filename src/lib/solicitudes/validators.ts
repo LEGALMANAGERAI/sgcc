@@ -138,6 +138,12 @@ export function validarInsolvencia(
       if (!a.clase_prelacion) {
         errors.push({ step: 5, message: `Acreedor ${i + 1} sin clase de prelación` });
       }
+      if (a.clase_prelacion && (!a.tasa_interes_mensual || a.tasa_interes_mensual <= 0)) {
+        errors.push({
+          step: 5,
+          message: `Acreedor ${i + 1}: falta tasa de interés mensual (requerida para calcular la propuesta)`,
+        });
+      }
       if (
         a.es_garantia_mobiliaria_solidaria &&
         (!a.monto_aportes_ahorros || a.monto_aportes_ahorros <= 0)
@@ -190,12 +196,48 @@ export function validarInsolvencia(
   const clasesConAcreedores = new Set(
     acreedores.map((a) => a.clase_prelacion).filter(Boolean)
   );
-  const clasesPropuestas = new Set(
-    (fd.propuesta_pago ?? []).map((p) => p.clase_prelacion)
+  const propuestasByClase = new Map(
+    (fd.propuesta_pago ?? []).map((p) => [p.clase_prelacion, p])
   );
   for (const c of clasesConAcreedores) {
-    if (!clasesPropuestas.has(c!)) {
+    if (!c) continue;
+    const prop = propuestasByClase.get(c);
+    if (!prop) {
       errors.push({ step: 11, message: `Falta propuesta de pago para clase ${c}` });
+      continue;
+    }
+    const acreedoresDeClase = acreedores.filter((a) => a.clase_prelacion === c).length;
+    if ((prop.creditos?.length ?? 0) < acreedoresDeClase) {
+      errors.push({
+        step: 11,
+        message: `Propuesta de clase ${c}: faltan cronogramas para ${acreedoresDeClase - (prop.creditos?.length ?? 0)} acreedor(es)`,
+      });
+    }
+    (prop.creditos ?? []).forEach((cr, idx) => {
+      if (!cr.numero_cuotas || cr.numero_cuotas <= 0) {
+        errors.push({ step: 11, message: `Clase ${c}, crédito ${idx + 1}: número de cuotas inválido` });
+      }
+      if (cr.meses_gracia < 0) {
+        errors.push({ step: 11, message: `Clase ${c}, crédito ${idx + 1}: meses de gracia no puede ser negativo` });
+      }
+      if (!cr.cronograma || cr.cronograma.length === 0) {
+        errors.push({ step: 11, message: `Clase ${c}, crédito ${idx + 1}: cronograma vacío` });
+      }
+    });
+    if (c === "quinta") {
+      if (!prop.numero_cuotas_compartido || prop.numero_cuotas_compartido <= 0) {
+        errors.push({ step: 11, message: "Quinta clase: número de cuotas compartido obligatorio" });
+      }
+      if (prop.prioridad_pequenos) {
+        const m = prop.m_cuotas_pequenos ?? 0;
+        const n = prop.numero_cuotas_compartido ?? 0;
+        if (m <= 0 || m >= n) {
+          errors.push({
+            step: 11,
+            message: "Quinta clase con prioridad: las cuotas del tramo pequeños deben ser > 0 y < N total",
+          });
+        }
+      }
     }
   }
 

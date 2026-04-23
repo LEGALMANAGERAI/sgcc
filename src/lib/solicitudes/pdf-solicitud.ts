@@ -19,6 +19,10 @@ import {
   TIPO_FUENTE_INGRESOS_LABEL,
 } from "./constants";
 import { formatearFechaCorteLarga } from "./fecha-corte";
+import {
+  generarRedaccionCondonaciones,
+  totalesDeCronograma,
+} from "./payment-plan";
 
 export interface GenerarPdfSolicitudInput {
   fd: Partial<FormDataInsolvencia>;
@@ -251,20 +255,31 @@ export async function generarPdfSolicitud(input: GenerarPdfSolicitudInput): Prom
   // ── 2. Propuesta de negociación ───────────────────────────────────────
   titulo("2. Propuesta de negociación (Art. 539 #2)");
   const propuestas = fd.propuesta_pago ?? [];
+  if (fd.condonaciones_globales) {
+    const redCond = generarRedaccionCondonaciones(fd.condonaciones_globales);
+    if (redCond) parrafo(redCond, { italic: true });
+  }
   if (propuestas.length === 0) {
     parrafo("No se registró propuesta de pago.", { italic: true });
   } else {
     for (const p of propuestas as PropuestaPagoClase[]) {
       subtitulo(`Clase ${CLASE_PRELACION_LABEL[p.clase_prelacion] ?? p.clase_prelacion}`);
-      campoLinea("Número de cuotas:", String(p.numero_cuotas ?? "—"));
-      campoLinea("Tasa futura mensual:", `${p.tasa_interes_futura_mensual ?? 0}%`);
-      campoLinea("Tasa de espera mensual:", `${p.tasa_interes_espera_mensual ?? 0}%`);
-      if (p.cronograma && p.cronograma.length > 0) {
-        const total = p.cronograma.reduce(
-          (s, c) => s + (c.capital ?? 0) + (c.intereses_espera ?? 0) + (c.intereses_futuros ?? 0),
-          0
+      if (p.clase_prelacion === "quinta") {
+        campoLinea("Número de cuotas (compartido):", String(p.numero_cuotas_compartido ?? "—"));
+        campoLinea("Meses de gracia (compartido):", String(p.meses_gracia_compartido ?? 0));
+        if (p.prioridad_pequenos) {
+          campoLinea("Modalidad:", `Prioridad pequeños acreedores (${p.m_cuotas_pequenos ?? 0} cuotas iniciales)`);
+        } else {
+          campoLinea("Modalidad:", "A prorrata uniforme");
+        }
+      }
+      for (const c of p.creditos ?? []) {
+        parrafo(c.redaccion_narrativa);
+        const totales = totalesDeCronograma(c.cronograma);
+        campoLinea(
+          "Total a pagar proyectado:",
+          `${COP(totales.amortizacion + totales.intereses)} (capital ${COP(totales.amortizacion)} + intereses ${COP(totales.intereses)})`,
         );
-        campoLinea("Total a pagar proyectado:", COP(total));
       }
       separador();
     }
