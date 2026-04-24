@@ -199,7 +199,9 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
       .select("*")
       .eq("case_id", id)
       .eq("center_id", centerId)
-      .order("created_at", { ascending: true });
+      .order("display_order", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true });
     acreencias = rawAcreencias ?? [];
   }
 

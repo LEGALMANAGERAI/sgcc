@@ -19,9 +19,27 @@ import {
   ChevronRight,
   Maximize2,
   Minimize2,
+  GripVertical,
 } from "lucide-react";
 import type { SgccAcreencia, VotoInsolvencia, ClaseCredito } from "@/types";
 import { Handshake } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 /* ─── Props ─────────────────────────────────────────────────────────── */
 
@@ -204,6 +222,8 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
   }
 
   async function updateAcreencia(acreenciaId: string, campos: Record<string, any>) {
+    // Update optimista: pintar cambio inmediatamente en la fila editada
+    setAcreencias((prev) => prev.map((a) => (a.id === acreenciaId ? { ...a, ...campos } : a)));
     setSaving(acreenciaId);
     try {
       const res = await fetch(`/api/expediente/${caseId}/acreencias`, {
@@ -212,8 +232,15 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
         body: JSON.stringify({ acreencia_id: acreenciaId, ...campos }),
       });
       if (!res.ok) { flash("error", "Error al guardar"); return; }
-      const data = await res.json();
-      setAcreencias(data);
+      const data: SgccAcreencia[] = await res.json();
+      // Merge por id preservando el orden visual actual — evita saltos de fila
+      // y evita que una respuesta tardía pise cambios locales más recientes de otra fila.
+      const byId = new Map(data.map((a) => [a.id, a]));
+      setAcreencias((prev) => {
+        const merged = prev.map((a) => byId.get(a.id) ?? a);
+        for (const a of data) if (!prev.some((p) => p.id === a.id)) merged.push(a);
+        return merged;
+      });
     } finally { setSaving(null); }
   }
 
@@ -253,6 +280,47 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
       });
       if (res.ok) setAcreencias((prev) => prev.filter((a) => a.id !== acreenciaId));
     } finally { setSaving(null); }
+  }
+
+  /* ─── Drag & Drop ────────────────────────────────────────────────── */
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = acreencias.findIndex((a) => a.id === active.id);
+    const newIndex = acreencias.findIndex((a) => a.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const nuevoOrden = arrayMove(acreencias, oldIndex, newIndex);
+    const ordenIds = nuevoOrden.map((a) => a.id);
+    // Optimista: reordenar ya en pantalla
+    setAcreencias(nuevoOrden);
+
+    setSaving("reorder");
+    try {
+      const res = await fetch(`/api/expediente/${caseId}/acreencias/reorder`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: ordenIds }),
+      });
+      if (!res.ok) {
+        flash("error", "No se pudo guardar el nuevo orden");
+        // Revertir si falla
+        setAcreencias(acreencias);
+        return;
+      }
+      const data: SgccAcreencia[] = await res.json();
+      // El server reordena correctamente; tomamos su versión autoritativa
+      setAcreencias(data);
+    } finally {
+      setSaving(null);
+    }
   }
 
   /* ─── Propuesta ──────────────────────────────────────────────────── */
@@ -449,9 +517,11 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
       {seccion === "acreencias" && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="w-8"></th>
                   <th className="px-3 py-2 text-left font-semibold text-gray-600 min-w-[180px]">Acreedor</th>
                   <th className="px-2 py-2 text-left font-semibold text-gray-600 min-w-[90px]">Tipo</th>
                   <th className="px-2 py-2 text-left font-semibold text-gray-600 min-w-[100px]">Documento</th>
@@ -467,7 +537,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                   <th className="px-2 py-2 text-center font-semibold text-gray-600 border-l border-gray-200">Acciones</th>
                 </tr>
                 <tr className="bg-gray-50/50 border-b border-gray-100">
-                  <th colSpan={6}></th>
+                  <th colSpan={7}></th>
                   {conceptos.map((c) => (
                     <Fragment key={c.key}>
                       <th className="px-2 py-1 text-center text-[10px] text-blue-600 font-medium border-l border-gray-200">Solicitud</th>
@@ -479,8 +549,16 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
+                <SortableContext items={acreencias.map((a) => a.id)} strategy={verticalListSortingStrategy}>
                 {acreencias.map((a) => (
-                  <tr key={a.id} className="hover:bg-gray-50/50">
+                  <SortableAcreenciaRow
+                    key={a.id}
+                    a={a}
+                    saving={saving}
+                    updateAcreencia={updateAcreencia}
+                    capitalizarSeguros={capitalizarSeguros}
+                    deleteAcreencia={deleteAcreencia}
+                  >
                     <td className="px-3 py-2">
                       <input
                         type="text"
@@ -628,13 +706,14 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                         </button>
                       </div>
                     </td>
-                  </tr>
+                  </SortableAcreenciaRow>
                 ))}
+                </SortableContext>
               </tbody>
               {acreencias.length > 0 && (
                 <tfoot>
                   <tr className="bg-gray-50 border-t-2 border-[#0D2340] font-bold text-xs">
-                    <td colSpan={6} className="px-3 py-2 text-right text-gray-900">TOTALES</td>
+                    <td colSpan={7} className="px-3 py-2 text-right text-gray-900">TOTALES</td>
                     {conceptos.map((c) => {
                       const totalSol = acreencias.reduce((s, a) => s + (Number((a as any)[`sol_${c.key}`]) || 0), 0);
                       const totalAcr = acreencias.reduce((s, a) => s + (Number((a as any)[`acr_${c.key}`]) || 0), 0);
@@ -651,6 +730,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                 </tfoot>
               )}
             </table>
+            </DndContext>
           </div>
           <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-4">
             <button
@@ -1362,6 +1442,45 @@ function SectionHeader({ icon, title, subtitle, active, onClick }: {
       </div>
       {active ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
     </button>
+  );
+}
+
+function SortableAcreenciaRow({
+  a,
+  saving,
+  children,
+}: {
+  a: SgccAcreencia;
+  saving: string | null;
+  updateAcreencia: (id: string, campos: Record<string, any>) => void;
+  capitalizarSeguros: (id: string) => void;
+  deleteAcreencia: (id: string) => void;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: a.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    backgroundColor: isDragging ? "#eff6ff" : undefined,
+  };
+  return (
+    <tr ref={setNodeRef} style={style} className="hover:bg-gray-50/50">
+      <td className="w-8 px-1 py-2 text-center align-middle">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          disabled={saving === "reorder"}
+          className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-[#1B4F9B] disabled:opacity-50 touch-none"
+          title="Arrastrar para reordenar"
+          aria-label="Arrastrar para reordenar acreedor"
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
+      </td>
+      {children}
+    </tr>
   );
 }
 

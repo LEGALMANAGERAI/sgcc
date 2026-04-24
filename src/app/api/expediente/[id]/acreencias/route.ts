@@ -24,7 +24,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
     .select("*")
     .eq("case_id", caseId)
     .eq("center_id", centerId)
-    .order("created_at", { ascending: true });
+    .order("display_order", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -45,6 +47,17 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { id: caseId } = await params;
   const body = await req.json();
 
+  // Calcular siguiente display_order para este caso
+  const { data: maxRow } = await supabaseAdmin
+    .from("sgcc_acreencias")
+    .select("display_order")
+    .eq("case_id", caseId)
+    .eq("center_id", centerId)
+    .order("display_order", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+  const nextOrder = (maxRow?.display_order ?? 0) + 1;
+
   const now = new Date().toISOString();
   const { data, error } = await supabaseAdmin
     .from("sgcc_acreencias")
@@ -53,6 +66,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       case_id: caseId,
       center_id: centerId,
       party_id: body.party_id || null,
+      display_order: nextOrder,
       acreedor_tipo: body.acreedor_tipo === "juridica" ? "juridica" : "natural",
       acreedor_nombre: body.acreedor_nombre?.trim() || "",
       identificacion_credito: body.identificacion_credito || null,
@@ -139,7 +153,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .select("*")
     .eq("case_id", caseId)
     .eq("center_id", centerId)
-    .order("created_at", { ascending: true });
+    .order("display_order", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
 
   return NextResponse.json(all ?? []);
 }
