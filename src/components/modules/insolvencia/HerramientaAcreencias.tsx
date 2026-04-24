@@ -56,6 +56,13 @@ const fmt = (n: number) =>
 
 const pct = (n: number) => `${(n * 100).toFixed(2)}%`;
 
+/** Normaliza un documento (NIT/CC) eliminando puntos, guiones, espacios y pasando a mayúsculas.
+ *  Se usa como clave estable para agrupar al mismo acreedor aunque lo hayan escrito con formatos distintos. */
+function normalizarDocumento(d: string | null | undefined): string {
+  if (!d) return "";
+  return d.replace(/[\s.\-_]/g, "").toUpperCase();
+}
+
 const conceptos = [
   { key: "capital", label: "Capital" },
   { key: "intereses_corrientes", label: "Int. corrientes" },
@@ -442,7 +449,13 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
       acreencias: SgccAcreencia[];
     }>();
     for (const a of acreencias) {
-      const key = a.party_id || a.acreedor_documento || a.acreedor_nombre || `sin-${a.id}`;
+      // Priorizar documento normalizado (NIT/CC sin puntos/guiones/espacios, mayúsculas)
+      // para que el mismo acreedor se agrupe aunque una acreencia venga de un convocado
+      // (party_id) y otra fuera creada manualmente. Si no hay documento, caer a party_id,
+      // luego nombre normalizado, y por último al id como separador único.
+      const docNorm = normalizarDocumento(a.acreedor_documento);
+      const nombreNorm = a.acreedor_nombre?.trim().toUpperCase() || "";
+      const key = docNorm || a.party_id || nombreNorm || `sin-${a.id}`;
       if (!map.has(key)) {
         map.set(key, {
           key,
@@ -454,6 +467,22 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
       map.get(key)!.acreencias.push(a);
     }
     return Array.from(map.values());
+  }, [acreencias]);
+
+  // Sugerencias únicas de acreedores ya capturados en este caso (para autocompletar y prevenir typos)
+  const sugerenciasAcreedores = useMemo(() => {
+    const seen = new Map<string, { nombre: string; documento: string }>();
+    for (const a of acreencias) {
+      const doc = normalizarDocumento(a.acreedor_documento);
+      if (!doc) continue;
+      if (!seen.has(doc)) {
+        seen.set(doc, {
+          nombre: a.acreedor_nombre?.trim() ?? "",
+          documento: a.acreedor_documento?.trim() ?? "",
+        });
+      }
+    }
+    return Array.from(seen.values());
   }, [acreencias]);
 
   const toggleGrupo = useCallback((key: string) => {
@@ -516,6 +545,17 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
 
       {seccion === "acreencias" && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          {/* Listas de autocompletado: al escribir nombre o documento, sugiere acreedores ya capturados. */}
+          <datalist id={`acreedores-nombres-${caseId}`}>
+            {sugerenciasAcreedores.map((s) => (
+              <option key={`n-${s.documento}`} value={s.nombre}>{s.documento}</option>
+            ))}
+          </datalist>
+          <datalist id={`acreedores-documentos-${caseId}`}>
+            {sugerenciasAcreedores.map((s) => (
+              <option key={`d-${s.documento}`} value={s.documento}>{s.nombre}</option>
+            ))}
+          </datalist>
           <div className="overflow-x-auto">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <table className="w-full text-xs">
@@ -562,11 +602,20 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                     <td className="px-3 py-2">
                       <input
                         type="text"
+                        list={`acreedores-nombres-${caseId}`}
                         defaultValue={a.acreedor_nombre}
                         placeholder="Nombre del acreedor"
                         onBlur={(e) => {
-                          if (e.target.value !== a.acreedor_nombre)
-                            updateAcreencia(a.id, { acreedor_nombre: e.target.value });
+                          const valor = e.target.value;
+                          if (valor !== a.acreedor_nombre) {
+                            // Si el usuario eligió un nombre ya existente, autocompletar también el documento
+                            const match = sugerenciasAcreedores.find((s) => s.nombre === valor);
+                            if (match && !a.acreedor_documento) {
+                              updateAcreencia(a.id, { acreedor_nombre: valor, acreedor_documento: match.documento });
+                            } else {
+                              updateAcreencia(a.id, { acreedor_nombre: valor });
+                            }
+                          }
                         }}
                         className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-[#1B4F9B] focus:border-[#1B4F9B] outline-none"
                       />
@@ -584,8 +633,35 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                     <td className="px-2 py-2">
                       <input
                         type="text"
+                        list={`acreedores-documentos-${caseId}`}
                         defaultValue={a.acreedor_documento ?? ""}
-                        onBlur={(e) => updateAcreencia(a.id, { acreedor_documento: e.target.value })}
+                        onBlur={(e) => {
+                          const valor = e.target.value;
+                          if (valor === (a.acreedor_documento ?? "")) return;
+                          // Si existe otro acreedor con documento parecido (mismo normalizado) avisar typo
+                          const valorNorm = normalizarDocumento(valor);
+                          if (valorNorm) {
+                            const coincidencia = sugerenciasAcreedores.find(
+                              (s) => normalizarDocumento(s.documento) === valorNorm && s.documento !== valor,
+                            );
+                            if (coincidencia) {
+                              // Normalizar automáticamente para consolidar con el existente
+                              updateAcreencia(a.id, {
+                                acreedor_documento: coincidencia.documento,
+                                acreedor_nombre: a.acreedor_nombre || coincidencia.nombre,
+                              });
+                              flash("ok", `Documento consolidado con "${coincidencia.nombre}" (${coincidencia.documento})`);
+                              return;
+                            }
+                          }
+                          // Si el valor escrito coincide exactamente con un acreedor existente, copiar también el nombre
+                          const match = sugerenciasAcreedores.find((s) => s.documento === valor);
+                          if (match && !a.acreedor_nombre) {
+                            updateAcreencia(a.id, { acreedor_documento: valor, acreedor_nombre: match.nombre });
+                          } else {
+                            updateAcreencia(a.id, { acreedor_documento: valor });
+                          }
+                        }}
                         className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-[#1B4F9B] outline-none"
                         placeholder={a.acreedor_tipo === "juridica" ? "NIT" : "CC/CE"}
                       />
