@@ -1145,43 +1145,89 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
 
           {/* Formulario nueva propuesta */}
           {showPropForm ? (
-            <div className="bg-white rounded-xl border border-[#1B4F9B]/30 p-5">
-              <h4 className="text-sm font-semibold text-[#0D2340] mb-3">Nueva propuesta de pago</h4>
-              <div className="space-y-3">
-                <input
-                  type="text" value={propForm.titulo} onChange={(e) => setPropForm({ ...propForm, titulo: e.target.value })}
-                  placeholder="Título de la propuesta" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none"
-                />
-                <textarea
-                  value={propForm.descripcion} onChange={(e) => setPropForm({ ...propForm, descripcion: e.target.value })}
-                  rows={5} placeholder="Describa la propuesta completa de pago..." className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none resize-y"
-                />
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Plazo (meses)</label>
-                    <input type="number" value={propForm.plazo_meses} onChange={(e) => setPropForm({ ...propForm, plazo_meses: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Tasa de interés</label>
-                    <input type="text" value={propForm.tasa_interes} onChange={(e) => setPropForm({ ...propForm, tasa_interes: e.target.value })}
-                      placeholder="Ej: DTF + 2%" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Periodo de gracia (meses)</label>
-                    <input type="number" value={propForm.periodo_gracia_meses} onChange={(e) => setPropForm({ ...propForm, periodo_gracia_meses: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
+            (() => {
+              const tituloVacio = !propForm.titulo.trim();
+              const descripcionVacia = !propForm.descripcion.trim();
+              const puedeCrear = !tituloVacio && !descripcionVacia && !saving;
+              return (
+                <div className="bg-white rounded-xl border border-[#1B4F9B]/30 p-5">
+                  <h4 className="text-sm font-semibold text-[#0D2340] mb-3">Nueva propuesta de pago</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        Título <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        aria-invalid={tituloVacio}
+                        value={propForm.titulo}
+                        onChange={(e) => setPropForm({ ...propForm, titulo: e.target.value })}
+                        placeholder="Título de la propuesta"
+                        className={`w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none ${
+                          tituloVacio ? "border-red-300 bg-red-50/30" : "border-gray-300"
+                        }`}
+                      />
+                      {tituloVacio && <p className="text-[11px] text-red-600 mt-1">El título es obligatorio.</p>}
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        Descripción <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        required
+                        aria-invalid={descripcionVacia}
+                        value={propForm.descripcion}
+                        onChange={(e) => setPropForm({ ...propForm, descripcion: e.target.value })}
+                        rows={5}
+                        placeholder="Describa la propuesta completa de pago..."
+                        className={`w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none resize-y ${
+                          descripcionVacia ? "border-red-300 bg-red-50/30" : "border-gray-300"
+                        }`}
+                      />
+                      {descripcionVacia && (
+                        <p className="text-[11px] text-red-600 mt-1">
+                          La descripción es obligatoria — explica las cláusulas y términos de la propuesta.
+                        </p>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Plazo (meses)</label>
+                        <input type="number" value={propForm.plazo_meses} onChange={(e) => setPropForm({ ...propForm, plazo_meses: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Tasa de interés</label>
+                        <input type="text" value={propForm.tasa_interes} onChange={(e) => setPropForm({ ...propForm, tasa_interes: e.target.value })}
+                          placeholder="Ej: DTF + 2%" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Periodo de gracia (meses)</label>
+                        <input type="number" value={propForm.periodo_gracia_meses} onChange={(e) => setPropForm({ ...propForm, periodo_gracia_meses: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end items-center">
+                      {!puedeCrear && !saving && (
+                        <span className="text-[11px] text-gray-500 mr-auto">
+                          Completa los campos marcados con <span className="text-red-500">*</span> para continuar.
+                        </span>
+                      )}
+                      <button onClick={() => setShowPropForm(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
+                      <button
+                        onClick={crearPropuesta}
+                        disabled={!puedeCrear}
+                        title={puedeCrear ? undefined : "Completa título y descripción"}
+                        className="px-4 py-2 bg-[#0D2340] text-white rounded-lg text-sm font-medium hover:bg-[#0D2340]/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {saving === "prop" ? "Creando..." : "Crear propuesta"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="flex gap-2 justify-end">
-                  <button onClick={() => setShowPropForm(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
-                  <button onClick={crearPropuesta} disabled={!!saving}
-                    className="px-4 py-2 bg-[#0D2340] text-white rounded-lg text-sm font-medium hover:bg-[#0D2340]/90 disabled:opacity-50">
-                    {saving === "prop" ? "Creando..." : "Crear propuesta"}
-                  </button>
-                </div>
-              </div>
-            </div>
+              );
+            })()
           ) : (
             <button onClick={() => setShowPropForm(true)}
               className="flex items-center gap-2 text-sm text-[#1B4F9B] font-medium hover:underline">
