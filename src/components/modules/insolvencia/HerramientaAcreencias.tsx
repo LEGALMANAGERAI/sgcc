@@ -204,6 +204,8 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
   }
 
   async function updateAcreencia(acreenciaId: string, campos: Record<string, any>) {
+    // Update optimista: pintar cambio inmediatamente en la fila editada
+    setAcreencias((prev) => prev.map((a) => (a.id === acreenciaId ? { ...a, ...campos } : a)));
     setSaving(acreenciaId);
     try {
       const res = await fetch(`/api/expediente/${caseId}/acreencias`, {
@@ -212,8 +214,15 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
         body: JSON.stringify({ acreencia_id: acreenciaId, ...campos }),
       });
       if (!res.ok) { flash("error", "Error al guardar"); return; }
-      const data = await res.json();
-      setAcreencias(data);
+      const data: SgccAcreencia[] = await res.json();
+      // Merge por id preservando el orden visual actual — evita saltos de fila
+      // y evita que una respuesta tardía pise cambios locales más recientes de otra fila.
+      const byId = new Map(data.map((a) => [a.id, a]));
+      setAcreencias((prev) => {
+        const merged = prev.map((a) => byId.get(a.id) ?? a);
+        for (const a of data) if (!prev.some((p) => p.id === a.id)) merged.push(a);
+        return merged;
+      });
     } finally { setSaving(null); }
   }
 

@@ -685,6 +685,7 @@ export interface SgccAcreencia {
   dias_mora: number;
   mora_90_dias: boolean;
   notas: string | null;
+  display_order: number | null;
   created_at: string;
   updated_at: string;
 }
