@@ -120,6 +120,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
 
   const [seccion, setSeccion] = useState<"acreencias" | "definitiva" | "propuesta" | "votacion" | "acuerdo">("acreencias");
   const [fullscreen, setFullscreen] = useState(false);
+  const [modalAcreedor, setModalAcreedor] = useState<{ open: boolean; acreencia?: SgccAcreencia }>({ open: false });
   const [downloading, setDownloading] = useState<"docx" | "pdf" | "vot-docx" | "vot-pdf" | null>(null);
 
   const flash = useCallback((type: "ok" | "error", msg: string) => {
@@ -216,13 +217,18 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
 
   /* ─── CRUD Acreencias ────────────────────────────────────────────── */
 
-  async function addAcreencia() {
+  // Crear acreencia "rápida" — sólo el nombre vacío, se completa después (comportamiento histórico).
+  // Marca notas con recordatorio para que el staff sepa que falta registrar al acreedor en Partes.
+  async function addAcreenciaRapida() {
     setSaving("add");
     try {
       const res = await fetch(`/api/expediente/${caseId}/acreencias`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ acreedor_nombre: "" }),
+        body: JSON.stringify({
+          acreedor_nombre: "",
+          notas: "⚠ Pendiente completar información del acreedor (documento, contacto y apoderado).",
+        }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -231,7 +237,64 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
       }
       const data = await res.json();
       setAcreencias((prev) => [...prev, data]);
+      flash("ok", "Acreedor creado — recuerda completar sus datos luego.");
     } finally { setSaving(null); }
+  }
+
+  // Envía la tarjeta completa al endpoint que crea acreedor + convocado + apoderado + poder.
+  // Si viene `acreenciaId` se actualiza la acreencia existente (flujo "completar después").
+  async function guardarAcreedorCompleto(
+    payload: {
+      acreedor: Record<string, any>;
+      apoderado: Record<string, any> | null;
+      poderFile: File | null;
+      acreenciaId?: string;
+    },
+  ) {
+    setSaving(payload.acreenciaId ?? "add-completo");
+    try {
+      let res: Response;
+      const data: any = { acreedor: payload.acreedor, apoderado: payload.apoderado };
+      if (payload.acreenciaId) data.acreencia_id = payload.acreenciaId;
+
+      if (payload.poderFile) {
+        const fd = new FormData();
+        fd.append("data", JSON.stringify(data));
+        fd.append("poderFile", payload.poderFile);
+        res = await fetch(`/api/expediente/${caseId}/acreencias/crear-con-convocado`, { method: "POST", body: fd });
+      } else {
+        res = await fetch(`/api/expediente/${caseId}/acreencias/crear-con-convocado`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+      }
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        flash("error", body?.error || `Error al guardar (${res.status})`);
+        return false;
+      }
+      const { acreencia } = await res.json();
+      setAcreencias((prev) => {
+        const idx = prev.findIndex((a) => a.id === acreencia.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = acreencia;
+          return next;
+        }
+        return [...prev, acreencia];
+      });
+      flash(
+        "ok",
+        payload.acreenciaId
+          ? "Datos del acreedor completados. También quedó registrado en Partes y Apoderados del expediente."
+          : "Acreedor creado y registrado en Partes del expediente.",
+      );
+      return true;
+    } finally {
+      setSaving(null);
+    }
   }
 
   async function importarConvocados() {
@@ -817,6 +880,17 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                     </td>
                     <td className="px-2 py-2 border-l border-gray-100">
                       <div className="flex flex-col items-center gap-1">
+                        {!a.party_id && (
+                          <button
+                            type="button"
+                            onClick={() => setModalAcreedor({ open: true, acreencia: a })}
+                            disabled={saving === a.id}
+                            className="text-[9px] font-medium bg-amber-50 text-amber-700 border border-amber-300 rounded px-1.5 py-0.5 hover:bg-amber-100 disabled:opacity-50 leading-tight"
+                            title="Este acreedor no está registrado en Partes del expediente — completa sus datos"
+                          >
+                            ⚠ Completar<br />datos
+                          </button>
+                        )}
                         {(Number(a.con_seguros) > 0 || Number(a.acr_seguros) > 0 || Number(a.sol_seguros) > 0) && (
                           <button
                             type="button"
@@ -863,14 +937,23 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
             </table>
             </DndContext>
           </div>
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-4">
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-4 flex-wrap">
             <button
-              onClick={addAcreencia}
+              onClick={() => setModalAcreedor({ open: true })}
+              disabled={saving === "add-completo"}
+              className="flex items-center gap-1.5 text-sm text-white bg-[#1B4F9B] font-medium hover:bg-[#0D2340] rounded-lg px-3 py-1.5 disabled:opacity-50"
+            >
+              {saving === "add-completo" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+              Agregar acreedor (con datos completos)
+            </button>
+            <button
+              onClick={addAcreenciaRapida}
               disabled={saving === "add"}
-              className="flex items-center gap-1.5 text-sm text-[#1B4F9B] font-medium hover:underline disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs text-gray-600 font-medium hover:text-[#0D2340] hover:underline disabled:opacity-50"
+              title="Crea solo una fila con el nombre — marca la acreencia como pendiente de completar. Útil durante audiencia."
             >
               {saving === "add" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-              Agregar acreedor
+              Solo nombre (completar después)
             </button>
             {partesConvocados.length > 0 && (
               <button
@@ -1640,6 +1723,21 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
           )}
         </div>
       )}
+
+      {modalAcreedor.open && (
+        <ModalCrearAcreedor
+          acreencia={modalAcreedor.acreencia}
+          onClose={() => setModalAcreedor({ open: false })}
+          onSave={async (payload) => {
+            const ok = await guardarAcreedorCompleto({
+              ...payload,
+              acreenciaId: modalAcreedor.acreencia?.id,
+            });
+            if (ok) setModalAcreedor({ open: false });
+          }}
+          saving={saving === "add-completo" || saving === modalAcreedor.acreencia?.id}
+        />
+      )}
     </div>
   );
 }
@@ -1704,6 +1802,338 @@ function SortableAcreenciaRow({
       </td>
       {children}
     </tr>
+  );
+}
+
+/** Modal tarjeta para crear un acreedor completo (party + case_party + acreencia + apoderado + poder). */
+function ModalCrearAcreedor({
+  acreencia,
+  onClose,
+  onSave,
+  saving,
+}: {
+  acreencia?: SgccAcreencia;
+  onClose: () => void;
+  onSave: (payload: { acreedor: Record<string, any>; apoderado: Record<string, any> | null; poderFile: File | null }) => void | Promise<void>;
+  saving: boolean;
+}) {
+  // Prefill desde la acreencia existente (caso "completar datos")
+  const [tipoPersona, setTipoPersona] = useState<"natural" | "juridica">(acreencia?.acreedor_tipo ?? "natural");
+  const [nombre, setNombre] = useState(acreencia?.acreedor_nombre ?? "");
+  const [apellidos, setApellidos] = useState("");
+  const [tipoDoc, setTipoDoc] = useState<string>("CC");
+  const [numeroDoc, setNumeroDoc] = useState(acreencia?.acreedor_documento ?? "");
+  const [email, setEmail] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [direccion, setDireccion] = useState("");
+  const [ciudad, setCiudad] = useState("");
+
+  const [incluirApoderado, setIncluirApoderado] = useState(false);
+  const [apNombre, setApNombre] = useState("");
+  const [apTipoDoc, setApTipoDoc] = useState<string>("CC");
+  const [apNumeroDoc, setApNumeroDoc] = useState("");
+  const [apTarjeta, setApTarjeta] = useState("");
+  const [apEmail, setApEmail] = useState("");
+  const [apTelefono, setApTelefono] = useState("");
+  const [poderFile, setPoderFile] = useState<File | null>(null);
+
+  const [error, setError] = useState<string | null>(null);
+
+  const nombreTrim = nombre.trim();
+  const requiredFaltantes: string[] = [];
+  if (!nombreTrim) requiredFaltantes.push(tipoPersona === "juridica" ? "Razón social" : "Nombres");
+  if (!numeroDoc.trim()) requiredFaltantes.push(tipoPersona === "juridica" ? "NIT" : "Número de documento");
+  if (!email.trim()) requiredFaltantes.push("Email");
+  if (incluirApoderado) {
+    if (!apNombre.trim()) requiredFaltantes.push("Nombre del apoderado");
+    if (!apNumeroDoc.trim()) requiredFaltantes.push("Documento del apoderado");
+  }
+  const puedeGuardar = requiredFaltantes.length === 0 && !saving;
+
+  async function handleSubmit() {
+    if (!puedeGuardar) {
+      setError(`Campos requeridos: ${requiredFaltantes.join(", ")}.`);
+      return;
+    }
+    setError(null);
+    const acreedor: Record<string, any> = {
+      tipo_persona: tipoPersona,
+      tipo_doc: tipoDoc,
+      numero_doc: numeroDoc.trim(),
+      email: email.trim(),
+      telefono: telefono.trim() || null,
+      direccion: direccion.trim() || null,
+      ciudad: ciudad.trim() || null,
+    };
+    if (tipoPersona === "juridica") {
+      acreedor.razon_social = nombreTrim;
+      acreedor.nombre = nombreTrim;
+    } else {
+      acreedor.nombres = nombreTrim;
+      acreedor.apellidos = apellidos.trim() || null;
+      acreedor.nombre = [nombreTrim, apellidos.trim()].filter(Boolean).join(" ");
+    }
+    const apoderado = incluirApoderado
+      ? {
+          nombre: apNombre.trim(),
+          tipo_doc: apTipoDoc,
+          numero_doc: apNumeroDoc.trim(),
+          tarjeta_profesional: apTarjeta.trim() || null,
+          email: apEmail.trim() || null,
+          telefono: apTelefono.trim() || null,
+          motivo_cambio: "inicial",
+        }
+      : null;
+    await onSave({ acreedor, apoderado, poderFile });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center overflow-y-auto p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8">
+        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+          <h3 className="text-lg font-semibold text-[#0D2340]">
+            {acreencia ? "Completar datos del acreedor" : "Nuevo acreedor"}
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <XCircle className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">{error}</div>
+          )}
+
+          {/* Tipo persona */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Tipo de persona</label>
+            <div className="flex gap-2">
+              {(["natural", "juridica"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTipoPersona(t)}
+                  className={`px-3 py-1.5 rounded-lg text-sm border transition ${
+                    tipoPersona === t ? "bg-[#1B4F9B] text-white border-[#1B4F9B]" : "bg-white text-gray-700 border-gray-300"
+                  }`}
+                >
+                  {t === "natural" ? "Natural" : "Jurídica"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {tipoPersona === "juridica" ? "Razón social" : "Nombres"} <span className="text-red-500">*</span>
+              </label>
+              <input
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none"
+              />
+            </div>
+            {tipoPersona === "natural" && (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Apellidos</label>
+                <input
+                  value={apellidos}
+                  onChange={(e) => setApellidos(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Tipo doc.</label>
+              <select
+                value={tipoDoc}
+                onChange={(e) => setTipoDoc(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+              >
+                {tipoPersona === "juridica" ? (
+                  <option value="NIT">NIT</option>
+                ) : (
+                  <>
+                    <option value="CC">CC</option>
+                    <option value="CE">CE</option>
+                    <option value="Pasaporte">Pasaporte</option>
+                    <option value="PPT">PPT</option>
+                    <option value="otro">Otro</option>
+                  </>
+                )}
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {tipoPersona === "juridica" ? "NIT" : "Número de documento"} <span className="text-red-500">*</span>
+              </label>
+              <input
+                value={numeroDoc}
+                onChange={(e) => setNumeroDoc(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Email <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Teléfono</label>
+              <input
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Dirección</label>
+              <input
+                value={direccion}
+                onChange={(e) => setDireccion(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Ciudad</label>
+              <input
+                value={ciudad}
+                onChange={(e) => setCiudad(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Apoderado */}
+          <div className="pt-4 border-t border-gray-200">
+            <label className="flex items-center gap-2 text-sm font-medium text-[#0D2340] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={incluirApoderado}
+                onChange={(e) => setIncluirApoderado(e.target.checked)}
+              />
+              Registrar apoderado (opcional)
+            </label>
+            {incluirApoderado && (
+              <div className="mt-3 space-y-3 pl-6 border-l-2 border-[#1B4F9B]/30">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Nombre completo <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      value={apNombre}
+                      onChange={(e) => setApNombre(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Tarjeta profesional</label>
+                    <input
+                      value={apTarjeta}
+                      onChange={(e) => setApTarjeta(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Tipo doc.</label>
+                    <select
+                      value={apTipoDoc}
+                      onChange={(e) => setApTipoDoc(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+                    >
+                      <option value="CC">CC</option>
+                      <option value="CE">CE</option>
+                      <option value="Pasaporte">Pasaporte</option>
+                    </select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Número doc. <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      value={apNumeroDoc}
+                      onChange={(e) => setApNumeroDoc(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={apEmail}
+                      onChange={(e) => setApEmail(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Teléfono</label>
+                    <input
+                      value={apTelefono}
+                      onChange={(e) => setApTelefono(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Poder (PDF)</label>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={(e) => setPoderFile(e.target.files?.[0] ?? null)}
+                    className="w-full text-sm"
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">El archivo quedará guardado en la sección Poderes del expediente.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="border-t border-gray-200 px-6 py-4 flex justify-end items-center gap-3">
+          {!puedeGuardar && !saving && requiredFaltantes.length > 0 && (
+            <span className="text-[11px] text-gray-500 mr-auto">
+              Falta: <span className="text-red-500">{requiredFaltantes.join(", ")}</span>
+            </span>
+          )}
+          <button
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!puedeGuardar}
+            className="px-4 py-2 bg-[#0D2340] text-white rounded-lg text-sm font-medium hover:bg-[#0D2340]/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {acreencia ? "Actualizar datos" : "Crear acreedor"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
