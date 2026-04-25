@@ -92,13 +92,23 @@ export async function GET(req: NextRequest) {
       .limit(50);
     dumpCasosCentro = data ?? [];
 
-    // Dump de TODOS los staff del centro para detectar duplicados
+    // Dump de TODOS los staff del centro para detectar duplicados.
+    // Incluye un boolean tiene_password (no el hash) para diagnosticar
+    // cuentas que pueden hacer login vs cuentas sin contraseña configurada.
     const { data: allStaff } = await supabaseAdmin
       .from("sgcc_staff")
-      .select("id, email, nombre, rol, activo, created_at")
+      .select("id, email, nombre, rol, activo, created_at, password_hash")
       .eq("center_id", centerId)
       .order("nombre", { ascending: true });
-    dumpStaffCentro = allStaff ?? [];
+    dumpStaffCentro = (allStaff ?? []).map((s: any) => ({
+      id: s.id,
+      email: s.email,
+      nombre: s.nombre,
+      rol: s.rol,
+      activo: s.activo,
+      created_at: s.created_at,
+      tiene_password: !!s.password_hash,
+    }));
   }
 
   return NextResponse.json({
