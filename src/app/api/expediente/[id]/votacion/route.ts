@@ -90,47 +90,90 @@ export async function POST(req: NextRequest, { params }: Params) {
       });
   }
 
-  // Recalcular resultado de la votación
+  // Recalcular resultado de la votación.
+  // Cada acreedor (no cada acreencia) cuenta como un solo voto: si Davivienda tiene 3
+  // créditos, sus 3 votos positivos cuentan como 1 acreedor positivo y como la SUMA de
+  // sus % de voto. La deduplicación se hace por documento normalizado | party_id | nombre.
   const { data: votos } = await supabaseAdmin
     .from("sgcc_votacion_insolvencia")
-    .select("voto, porcentaje_voto")
+    .select("voto, porcentaje_voto, acreencia:sgcc_acreencias(party_id, acreedor_documento, acreedor_nombre)")
     .eq("propuesta_id", propuesta_id);
 
   const votosArr = votos ?? [];
-  const positivos = votosArr.filter((v) => v.voto === "positivo");
-  const negativos = votosArr.filter((v) => v.voto === "negativo");
 
-  const pctPositivo = positivos.reduce((sum, v) => sum + Number(v.porcentaje_voto), 0);
-  const acreedoresPositivos = positivos.length;
+  // Fallback: cuando una acreencia no tenga documento propio pero apunte a un party,
+  // usar el documento del party para deduplicar correctamente.
+  const partyIdsVotos = Array.from(
+    new Set(votosArr.map((v) => (v as any).acreencia?.party_id).filter(Boolean) as string[]),
+  );
+  const docPorPartyVoto = new Map<string, string>();
+  if (partyIdsVotos.length > 0) {
+    const { data: parties } = await supabaseAdmin
+      .from("sgcc_parties")
+      .select("id, numero_doc, nit_empresa")
+      .in("id", partyIdsVotos);
+    for (const p of parties ?? []) {
+      const doc = (p as any).numero_doc ?? (p as any).nit_empresa ?? null;
+      if (doc) docPorPartyVoto.set(p.id, doc);
+    }
+  }
 
-  // Regla: >50% de votos positivos Y al menos 2 acreedores positivos
+  const claveAcreedor = (a: any): string => {
+    const docDirecto = (a?.acreedor_documento ?? "").replace(/[\s.\-_]/g, "").toUpperCase();
+    const docDelParty = a?.party_id ? (docPorPartyVoto.get(a.party_id) ?? "").replace(/[\s.\-_]/g, "").toUpperCase() : "";
+    const docEfectivo = docDirecto || docDelParty;
+    return docEfectivo || a?.party_id || (a?.acreedor_nombre ?? "").trim().toUpperCase() || "anon";
+  };
+  const positivosAcreedoresSet = new Set<string>();
+  const negativosAcreedoresSet = new Set<string>();
+  let pctPositivo = 0;
+  let pctNegativo = 0;
+  for (const v of votosArr) {
+    const k = claveAcreedor((v as any).acreencia);
+    if (v.voto === "positivo") {
+      positivosAcreedoresSet.add(k);
+      pctPositivo += Number(v.porcentaje_voto);
+    } else if (v.voto === "negativo") {
+      negativosAcreedoresSet.add(k);
+      pctNegativo += Number(v.porcentaje_voto);
+    }
+  }
+  const acreedoresPositivos = positivosAcreedoresSet.size;
+  const acreedoresNegativos = negativosAcreedoresSet.size;
+
+  // Total de acreedores únicos del caso (para saber si "todos votaron")
+  const { data: todasAcreencias } = await supabaseAdmin
+    .from("sgcc_acreencias")
+    .select("party_id, acreedor_documento, acreedor_nombre")
+    .eq("case_id", caseId)
+    .eq("center_id", centerId);
+  const acreedoresUnicosCaso = new Set<string>();
+  for (const a of todasAcreencias ?? []) acreedoresUnicosCaso.add(claveAcreedor(a));
+  const acreedoresVotantes = new Set<string>([...positivosAcreedoresSet, ...negativosAcreedoresSet]);
+  const todosVotaron = acreedoresVotantes.size >= acreedoresUnicosCaso.size && acreedoresUnicosCaso.size > 0;
+
+  // Regla: >50% de votos positivos Y al menos 2 acreedores positivos (únicos)
   const aprobada = pctPositivo > 0.5 && acreedoresPositivos >= 2;
 
   await supabaseAdmin
     .from("sgcc_propuesta_pago")
     .update({
-      votos_positivos: positivos.length,
-      votos_negativos: negativos.length,
+      votos_positivos: acreedoresPositivos,
+      votos_negativos: acreedoresNegativos,
       porcentaje_aprobacion: Math.round(pctPositivo * 10000) / 10000,
       acreedores_positivos: acreedoresPositivos,
-      resultado_aprobada: votosArr.length === (await supabaseAdmin
-        .from("sgcc_acreencias")
-        .select("id", { count: "exact", head: true })
-        .eq("case_id", caseId)).count ? aprobada : null,
+      resultado_aprobada: todosVotaron ? aprobada : null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", propuesta_id);
 
   return NextResponse.json({
     ok: true,
-    votos_positivos: positivos.length,
-    votos_negativos: negativos.length,
+    votos_positivos: acreedoresPositivos,
+    votos_negativos: acreedoresNegativos,
     porcentaje_aprobacion: pctPositivo,
     acreedores_positivos: acreedoresPositivos,
-    todos_votaron: votosArr.length === (await supabaseAdmin
-      .from("sgcc_acreencias")
-      .select("id", { count: "exact", head: true })
-      .eq("case_id", caseId)).count,
+    todos_votaron: todosVotaron,
     aprobada,
   });
 }

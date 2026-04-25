@@ -377,19 +377,32 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
 
   /* ─── Votación ───────────────────────────────────────────────────── */
 
-  async function registrarVoto(propuestaId: string, acreenciaId: string, voto: VotoInsolvencia) {
-    setSaving(`voto-${acreenciaId}`);
+  // Vota en bloque por TODAS las acreencias de un acreedor (un acreedor = un voto en insolvencia,
+  // con peso = suma de los % de sus créditos). Hace un POST por acreencia para reusar el
+  // endpoint individual; el último response trae el resultado consolidado actualizado.
+  async function registrarVotoAcreedor(propuestaId: string, acreenciaIds: string[], voto: VotoInsolvencia) {
+    if (acreenciaIds.length === 0) return;
+    setSaving(`voto-${acreenciaIds[0]}`);
     try {
-      const res = await fetch(`/api/expediente/${caseId}/votacion`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ propuesta_id: propuestaId, acreencia_id: acreenciaId, voto }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setVotos((prev) => ({ ...prev, [acreenciaId]: voto }));
-        setVotacionResult(data);
+      let ultimoResultado: any = null;
+      for (const acreenciaId of acreenciaIds) {
+        const res = await fetch(`/api/expediente/${caseId}/votacion`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ propuesta_id: propuestaId, acreencia_id: acreenciaId, voto }),
+        });
+        if (!res.ok) {
+          flash("error", "No se pudo registrar el voto en uno de los créditos del acreedor");
+          return;
+        }
+        ultimoResultado = await res.json();
       }
+      setVotos((prev) => {
+        const next = { ...prev };
+        for (const id of acreenciaIds) next[id] = voto;
+        return next;
+      });
+      if (ultimoResultado) setVotacionResult(ultimoResultado);
     } finally { setSaving(null); }
   }
 
@@ -441,6 +454,16 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
      de voto en insolvencia es por acreedor, no por crédito — se consolidan. */
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
+  // Mapa party_id → documento del party convocado (lo usamos como fallback cuando una
+  // acreencia importada no tiene `acreedor_documento` propio).
+  const documentoPorParty = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of partesConvocados) {
+      if (p.id && p.documento) m.set(p.id, p.documento);
+    }
+    return m;
+  }, [partesConvocados]);
+
   const gruposAcreedores = useMemo(() => {
     const map = new Map<string, {
       key: string;
@@ -451,23 +474,25 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     for (const a of acreencias) {
       // Priorizar documento normalizado (NIT/CC sin puntos/guiones/espacios, mayúsculas)
       // para que el mismo acreedor se agrupe aunque una acreencia venga de un convocado
-      // (party_id) y otra fuera creada manualmente. Si no hay documento, caer a party_id,
-      // luego nombre normalizado, y por último al id como separador único.
-      const docNorm = normalizarDocumento(a.acreedor_documento);
+      // (party_id) y otra fuera creada manualmente. Si la acreencia no tiene documento
+      // pero tiene party_id, usar el documento del party como fallback.
+      const docDirecto = normalizarDocumento(a.acreedor_documento);
+      const docDelParty = a.party_id ? normalizarDocumento(documentoPorParty.get(a.party_id) ?? null) : "";
+      const docEfectivo = docDirecto || docDelParty;
       const nombreNorm = a.acreedor_nombre?.trim().toUpperCase() || "";
-      const key = docNorm || a.party_id || nombreNorm || `sin-${a.id}`;
+      const key = docEfectivo || a.party_id || nombreNorm || `sin-${a.id}`;
       if (!map.has(key)) {
         map.set(key, {
           key,
           acreedor_nombre: a.acreedor_nombre,
-          acreedor_documento: a.acreedor_documento ?? null,
+          acreedor_documento: a.acreedor_documento ?? documentoPorParty.get(a.party_id ?? "") ?? null,
           acreencias: [],
         });
       }
       map.get(key)!.acreencias.push(a);
     }
     return Array.from(map.values());
-  }, [acreencias]);
+  }, [acreencias, documentoPorParty]);
 
   // Sugerencias únicas de acreedores ya capturados en este caso (para autocompletar y prevenir typos)
   const sugerenciasAcreedores = useMemo(() => {
@@ -1145,43 +1170,89 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
 
           {/* Formulario nueva propuesta */}
           {showPropForm ? (
-            <div className="bg-white rounded-xl border border-[#1B4F9B]/30 p-5">
-              <h4 className="text-sm font-semibold text-[#0D2340] mb-3">Nueva propuesta de pago</h4>
-              <div className="space-y-3">
-                <input
-                  type="text" value={propForm.titulo} onChange={(e) => setPropForm({ ...propForm, titulo: e.target.value })}
-                  placeholder="Título de la propuesta" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none"
-                />
-                <textarea
-                  value={propForm.descripcion} onChange={(e) => setPropForm({ ...propForm, descripcion: e.target.value })}
-                  rows={5} placeholder="Describa la propuesta completa de pago..." className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none resize-y"
-                />
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Plazo (meses)</label>
-                    <input type="number" value={propForm.plazo_meses} onChange={(e) => setPropForm({ ...propForm, plazo_meses: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Tasa de interés</label>
-                    <input type="text" value={propForm.tasa_interes} onChange={(e) => setPropForm({ ...propForm, tasa_interes: e.target.value })}
-                      placeholder="Ej: DTF + 2%" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Periodo de gracia (meses)</label>
-                    <input type="number" value={propForm.periodo_gracia_meses} onChange={(e) => setPropForm({ ...propForm, periodo_gracia_meses: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
+            (() => {
+              const tituloVacio = !propForm.titulo.trim();
+              const descripcionVacia = !propForm.descripcion.trim();
+              const puedeCrear = !tituloVacio && !descripcionVacia && !saving;
+              return (
+                <div className="bg-white rounded-xl border border-[#1B4F9B]/30 p-5">
+                  <h4 className="text-sm font-semibold text-[#0D2340] mb-3">Nueva propuesta de pago</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        Título <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        aria-invalid={tituloVacio}
+                        value={propForm.titulo}
+                        onChange={(e) => setPropForm({ ...propForm, titulo: e.target.value })}
+                        placeholder="Título de la propuesta"
+                        className={`w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none ${
+                          tituloVacio ? "border-red-300 bg-red-50/30" : "border-gray-300"
+                        }`}
+                      />
+                      {tituloVacio && <p className="text-[11px] text-red-600 mt-1">El título es obligatorio.</p>}
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        Descripción <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        required
+                        aria-invalid={descripcionVacia}
+                        value={propForm.descripcion}
+                        onChange={(e) => setPropForm({ ...propForm, descripcion: e.target.value })}
+                        rows={5}
+                        placeholder="Describa la propuesta completa de pago..."
+                        className={`w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none resize-y ${
+                          descripcionVacia ? "border-red-300 bg-red-50/30" : "border-gray-300"
+                        }`}
+                      />
+                      {descripcionVacia && (
+                        <p className="text-[11px] text-red-600 mt-1">
+                          La descripción es obligatoria — explica las cláusulas y términos de la propuesta.
+                        </p>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Plazo (meses)</label>
+                        <input type="number" value={propForm.plazo_meses} onChange={(e) => setPropForm({ ...propForm, plazo_meses: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Tasa de interés</label>
+                        <input type="text" value={propForm.tasa_interes} onChange={(e) => setPropForm({ ...propForm, tasa_interes: e.target.value })}
+                          placeholder="Ej: DTF + 2%" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Periodo de gracia (meses)</label>
+                        <input type="number" value={propForm.periodo_gracia_meses} onChange={(e) => setPropForm({ ...propForm, periodo_gracia_meses: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end items-center">
+                      {!puedeCrear && !saving && (
+                        <span className="text-[11px] text-gray-500 mr-auto">
+                          Completa los campos marcados con <span className="text-red-500">*</span> para continuar.
+                        </span>
+                      )}
+                      <button onClick={() => setShowPropForm(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
+                      <button
+                        onClick={crearPropuesta}
+                        disabled={!puedeCrear}
+                        title={puedeCrear ? undefined : "Completa título y descripción"}
+                        className="px-4 py-2 bg-[#0D2340] text-white rounded-lg text-sm font-medium hover:bg-[#0D2340]/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {saving === "prop" ? "Creando..." : "Crear propuesta"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="flex gap-2 justify-end">
-                  <button onClick={() => setShowPropForm(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
-                  <button onClick={crearPropuesta} disabled={!!saving}
-                    className="px-4 py-2 bg-[#0D2340] text-white rounded-lg text-sm font-medium hover:bg-[#0D2340]/90 disabled:opacity-50">
-                    {saving === "prop" ? "Creando..." : "Crear propuesta"}
-                  </button>
-                </div>
-              </div>
-            </div>
+              );
+            })()
           ) : (
             <button onClick={() => setShowPropForm(true)}
               className="flex items-center gap-2 text-sm text-[#1B4F9B] font-medium hover:underline">
@@ -1230,42 +1301,64 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {acreencias.map((a) => (
-                      <tr key={a.id} className={`hover:bg-gray-50/50 ${a.es_pequeno_acreedor ? "bg-amber-50/20" : ""}`}>
-                        <td className="px-4 py-3 font-medium text-gray-900">{a.acreedor_nombre}</td>
-                        <td className="px-3 py-3 text-right text-gray-700">{fmt(Number(a.con_capital))}</td>
-                        <td className="px-3 py-3 text-center font-bold text-[#1B4F9B]">{pct(a.porcentaje_voto)}</td>
-                        <td className="px-3 py-3 text-center">
-                          {a.es_pequeno_acreedor && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">Sí</span>}
-                        </td>
-                        <td className="px-4 py-3">
-                          {propEnVotacion.modo_votacion === "link" && !votos[a.id] ? (
-                            <span className="text-xs text-gray-400 italic">Pendiente por link</span>
-                          ) : votos[a.id] ? (
-                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-                              votos[a.id] === "positivo" ? "bg-green-100 text-green-700" :
-                              votos[a.id] === "negativo" ? "bg-red-100 text-red-700" :
-                              "bg-gray-100 text-gray-600"
-                            }`}>
-                              {votos[a.id] === "positivo" ? "A favor" : votos[a.id] === "negativo" ? "En contra" : "Abstiene"}
-                            </span>
-                          ) : (
-                            <div className="flex items-center justify-center gap-1">
-                              {(["positivo", "negativo", "abstiene"] as VotoInsolvencia[]).map((v) => (
-                                <button
-                                  key={v}
-                                  onClick={() => registrarVoto(propEnVotacion.id, a.id, v)}
-                                  disabled={saving === `voto-${a.id}`}
-                                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-                                >
-                                  {v === "positivo" ? "A favor" : v === "negativo" ? "En contra" : "Abstiene"}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {gruposAcreedores.map((grupo) => {
+                      // Suma de capital, % de voto, y voto consolidado del grupo.
+                      const capitalGrupo = grupo.acreencias.reduce((s, a) => s + (Number(a.con_capital) || 0), 0);
+                      const pctGrupo = grupo.acreencias.reduce((s, a) => s + (Number(a.porcentaje_voto) || 0), 0);
+                      const todosPequeños = grupo.acreencias.every((a) => a.es_pequeno_acreedor);
+                      const acreenciaIds = grupo.acreencias.map((a) => a.id);
+                      const votosGrupo = acreenciaIds.map((id) => votos[id]).filter(Boolean) as VotoInsolvencia[];
+                      const votoConsolidado: VotoInsolvencia | null =
+                        votosGrupo.length === acreenciaIds.length && votosGrupo.every((v) => v === votosGrupo[0])
+                          ? votosGrupo[0]
+                          : null;
+                      const filaSaving = acreenciaIds.some((id) => saving === `voto-${id}`);
+                      const documento = grupo.acreedor_documento;
+                      return (
+                        <tr key={grupo.key} className={`hover:bg-gray-50/50 ${todosPequeños ? "bg-amber-50/20" : ""}`}>
+                          <td className="px-4 py-3 font-medium text-gray-900">
+                            <div>{grupo.acreedor_nombre}</div>
+                            {documento && <div className="text-[11px] text-gray-500 font-normal">{documento}</div>}
+                            {grupo.acreencias.length > 1 && (
+                              <div className="text-[10px] text-[#1B4F9B] font-medium mt-0.5">
+                                {grupo.acreencias.length} acreencias consolidadas
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 text-right text-gray-700">{fmt(capitalGrupo)}</td>
+                          <td className="px-3 py-3 text-center font-bold text-[#1B4F9B]">{pct(pctGrupo)}</td>
+                          <td className="px-3 py-3 text-center">
+                            {todosPequeños && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">Sí</span>}
+                          </td>
+                          <td className="px-4 py-3">
+                            {propEnVotacion.modo_votacion === "link" && !votoConsolidado ? (
+                              <span className="text-xs text-gray-400 italic">Pendiente por link</span>
+                            ) : votoConsolidado ? (
+                              <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                                votoConsolidado === "positivo" ? "bg-green-100 text-green-700" :
+                                votoConsolidado === "negativo" ? "bg-red-100 text-red-700" :
+                                "bg-gray-100 text-gray-600"
+                              }`}>
+                                {votoConsolidado === "positivo" ? "A favor" : votoConsolidado === "negativo" ? "En contra" : "Abstiene"}
+                              </span>
+                            ) : (
+                              <div className="flex items-center justify-center gap-1">
+                                {(["positivo", "negativo", "abstiene"] as VotoInsolvencia[]).map((v) => (
+                                  <button
+                                    key={v}
+                                    onClick={() => registrarVotoAcreedor(propEnVotacion.id, acreenciaIds, v)}
+                                    disabled={filaSaving}
+                                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50"
+                                  >
+                                    {v === "positivo" ? "A favor" : v === "negativo" ? "En contra" : "Abstiene"}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
