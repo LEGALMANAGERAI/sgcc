@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { PlusCircle, Trash2, ChevronDown, ChevronUp, Briefcase } from "lucide-react";
+import { parseApiError, validarTamanoArchivo } from "@/lib/api-error";
 
 interface Conciliador { id: string; nombre: string }
 interface Sala { id: string; nombre: string; tipo: string }
@@ -129,6 +130,17 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
       }
     }
 
+    // Validar tamaño de cada poder antes de enviar (Vercel rechaza > 4.5 MB)
+    for (const [idx, p] of allPartes.entries()) {
+      if (p.poderFile) {
+        const err = validarTamanoArchivo(p.poderFile, `El poder de la parte ${idx + 1}`);
+        if (err) {
+          setError(err);
+          return;
+        }
+      }
+    }
+
     setLoading(true);
 
     // Preparar datos de partes sin archivos para JSON
@@ -173,20 +185,25 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
       }
     });
 
-    const res = await fetch("/api/casos", {
-      method: "POST",
-      body: fd,
-    });
+    try {
+      const res = await fetch("/api/casos", {
+        method: "POST",
+        body: fd,
+      });
 
-    const data = await res.json();
-    setLoading(false);
+      if (!res.ok) {
+        const msg = await parseApiError(res, "Error al radicar la solicitud");
+        setError(msg);
+        return;
+      }
 
-    if (!res.ok) {
-      setError(data.error ?? "Error al radicar la solicitud");
-      return;
+      const data = await res.json();
+      router.push(`/casos/${data.caso.id}`);
+    } catch (err: any) {
+      setError(`Error de conexión: ${err?.message ?? "intenta de nuevo"}`);
+    } finally {
+      setLoading(false);
     }
-
-    router.push(`/casos/${data.caso.id}`);
   }
 
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { parseApiError, validarTamanoArchivo } from "@/lib/api-error";
 import {
   FileText,
   Download,
@@ -85,6 +86,13 @@ export function TabDocumentos({
     e.preventDefault();
     if (!file) return;
 
+    // Validar tamaño antes de enviar (Vercel rechaza > 4.5 MB y devuelve HTML 413)
+    const tamErr = validarTamanoArchivo(file, "El documento");
+    if (tamErr) {
+      alert(tamErr);
+      return;
+    }
+
     setUploading(true);
     try {
       const formData = new FormData();
@@ -98,8 +106,8 @@ export function TabDocumentos({
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        alert(err.error ?? "Error al subir documento");
+        const msg = await parseApiError(res, "Error al subir documento");
+        alert(msg);
         return;
       }
 
@@ -109,8 +117,8 @@ export function TabDocumentos({
       setNombreDoc("");
       setShowUpload(false);
       window.location.reload();
-    } catch {
-      alert("Error de conexión al subir documento");
+    } catch (err: any) {
+      alert(`Error al subir documento: ${err?.message ?? "intenta de nuevo"}`);
     } finally {
       setUploading(false);
     }
