@@ -42,7 +42,14 @@ export default async function ConfiguracionPage() {
       <PageHeader
         title="Configuración del Centro"
         subtitle="Administra los datos, horarios y checklists de tu centro de conciliación"
-      />
+      >
+        <a
+          href="/configuracion/staff-duplicados"
+          className="text-xs text-[#1B4F9B] hover:underline font-medium"
+        >
+          Cuentas duplicadas →
+        </a>
+      </PageHeader>
       <ConfiguracionClient center={center} checklists={checklists} />
     </>
   );
