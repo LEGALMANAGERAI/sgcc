@@ -377,19 +377,32 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
 
   /* ─── Votación ───────────────────────────────────────────────────── */
 
-  async function registrarVoto(propuestaId: string, acreenciaId: string, voto: VotoInsolvencia) {
-    setSaving(`voto-${acreenciaId}`);
+  // Vota en bloque por TODAS las acreencias de un acreedor (un acreedor = un voto en insolvencia,
+  // con peso = suma de los % de sus créditos). Hace un POST por acreencia para reusar el
+  // endpoint individual; el último response trae el resultado consolidado actualizado.
+  async function registrarVotoAcreedor(propuestaId: string, acreenciaIds: string[], voto: VotoInsolvencia) {
+    if (acreenciaIds.length === 0) return;
+    setSaving(`voto-${acreenciaIds[0]}`);
     try {
-      const res = await fetch(`/api/expediente/${caseId}/votacion`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ propuesta_id: propuestaId, acreencia_id: acreenciaId, voto }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setVotos((prev) => ({ ...prev, [acreenciaId]: voto }));
-        setVotacionResult(data);
+      let ultimoResultado: any = null;
+      for (const acreenciaId of acreenciaIds) {
+        const res = await fetch(`/api/expediente/${caseId}/votacion`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ propuesta_id: propuestaId, acreencia_id: acreenciaId, voto }),
+        });
+        if (!res.ok) {
+          flash("error", "No se pudo registrar el voto en uno de los créditos del acreedor");
+          return;
+        }
+        ultimoResultado = await res.json();
       }
+      setVotos((prev) => {
+        const next = { ...prev };
+        for (const id of acreenciaIds) next[id] = voto;
+        return next;
+      });
+      if (ultimoResultado) setVotacionResult(ultimoResultado);
     } finally { setSaving(null); }
   }
 
@@ -1276,42 +1289,64 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {acreencias.map((a) => (
-                      <tr key={a.id} className={`hover:bg-gray-50/50 ${a.es_pequeno_acreedor ? "bg-amber-50/20" : ""}`}>
-                        <td className="px-4 py-3 font-medium text-gray-900">{a.acreedor_nombre}</td>
-                        <td className="px-3 py-3 text-right text-gray-700">{fmt(Number(a.con_capital))}</td>
-                        <td className="px-3 py-3 text-center font-bold text-[#1B4F9B]">{pct(a.porcentaje_voto)}</td>
-                        <td className="px-3 py-3 text-center">
-                          {a.es_pequeno_acreedor && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">Sí</span>}
-                        </td>
-                        <td className="px-4 py-3">
-                          {propEnVotacion.modo_votacion === "link" && !votos[a.id] ? (
-                            <span className="text-xs text-gray-400 italic">Pendiente por link</span>
-                          ) : votos[a.id] ? (
-                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-                              votos[a.id] === "positivo" ? "bg-green-100 text-green-700" :
-                              votos[a.id] === "negativo" ? "bg-red-100 text-red-700" :
-                              "bg-gray-100 text-gray-600"
-                            }`}>
-                              {votos[a.id] === "positivo" ? "A favor" : votos[a.id] === "negativo" ? "En contra" : "Abstiene"}
-                            </span>
-                          ) : (
-                            <div className="flex items-center justify-center gap-1">
-                              {(["positivo", "negativo", "abstiene"] as VotoInsolvencia[]).map((v) => (
-                                <button
-                                  key={v}
-                                  onClick={() => registrarVoto(propEnVotacion.id, a.id, v)}
-                                  disabled={saving === `voto-${a.id}`}
-                                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-                                >
-                                  {v === "positivo" ? "A favor" : v === "negativo" ? "En contra" : "Abstiene"}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {gruposAcreedores.map((grupo) => {
+                      // Suma de capital, % de voto, y voto consolidado del grupo.
+                      const capitalGrupo = grupo.acreencias.reduce((s, a) => s + (Number(a.con_capital) || 0), 0);
+                      const pctGrupo = grupo.acreencias.reduce((s, a) => s + (Number(a.porcentaje_voto) || 0), 0);
+                      const todosPequeños = grupo.acreencias.every((a) => a.es_pequeno_acreedor);
+                      const acreenciaIds = grupo.acreencias.map((a) => a.id);
+                      const votosGrupo = acreenciaIds.map((id) => votos[id]).filter(Boolean) as VotoInsolvencia[];
+                      const votoConsolidado: VotoInsolvencia | null =
+                        votosGrupo.length === acreenciaIds.length && votosGrupo.every((v) => v === votosGrupo[0])
+                          ? votosGrupo[0]
+                          : null;
+                      const filaSaving = acreenciaIds.some((id) => saving === `voto-${id}`);
+                      const documento = grupo.acreedor_documento;
+                      return (
+                        <tr key={grupo.key} className={`hover:bg-gray-50/50 ${todosPequeños ? "bg-amber-50/20" : ""}`}>
+                          <td className="px-4 py-3 font-medium text-gray-900">
+                            <div>{grupo.acreedor_nombre}</div>
+                            {documento && <div className="text-[11px] text-gray-500 font-normal">{documento}</div>}
+                            {grupo.acreencias.length > 1 && (
+                              <div className="text-[10px] text-[#1B4F9B] font-medium mt-0.5">
+                                {grupo.acreencias.length} acreencias consolidadas
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 text-right text-gray-700">{fmt(capitalGrupo)}</td>
+                          <td className="px-3 py-3 text-center font-bold text-[#1B4F9B]">{pct(pctGrupo)}</td>
+                          <td className="px-3 py-3 text-center">
+                            {todosPequeños && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">Sí</span>}
+                          </td>
+                          <td className="px-4 py-3">
+                            {propEnVotacion.modo_votacion === "link" && !votoConsolidado ? (
+                              <span className="text-xs text-gray-400 italic">Pendiente por link</span>
+                            ) : votoConsolidado ? (
+                              <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                                votoConsolidado === "positivo" ? "bg-green-100 text-green-700" :
+                                votoConsolidado === "negativo" ? "bg-red-100 text-red-700" :
+                                "bg-gray-100 text-gray-600"
+                              }`}>
+                                {votoConsolidado === "positivo" ? "A favor" : votoConsolidado === "negativo" ? "En contra" : "Abstiene"}
+                              </span>
+                            ) : (
+                              <div className="flex items-center justify-center gap-1">
+                                {(["positivo", "negativo", "abstiene"] as VotoInsolvencia[]).map((v) => (
+                                  <button
+                                    key={v}
+                                    onClick={() => registrarVotoAcreedor(propEnVotacion.id, acreenciaIds, v)}
+                                    disabled={filaSaving}
+                                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50"
+                                  >
+                                    {v === "positivo" ? "A favor" : v === "negativo" ? "En contra" : "Abstiene"}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
