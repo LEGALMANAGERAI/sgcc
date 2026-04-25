@@ -184,22 +184,49 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       .eq("supervisor_id", userId)
       .eq("activo", true),
 
-    // Correspondencia próxima a vencer
-    supabaseAdmin
-      .from("sgcc_correspondence")
-      .select("*, responsable:sgcc_staff(nombre)")
-      .eq("center_id", centerId)
-      .neq("estado", "respondido")
-      .not("fecha_limite_respuesta", "is", null)
-      .order("fecha_limite_respuesta", { ascending: true })
-      .limit(20),
+    // Correspondencia próxima a vencer.
+    // Para conciliador: solo la vinculada a sus casos. Para admin/secretario:
+    // todo el centro (incluyendo correspondencia sin caso asociado).
+    isConciliador
+      ? (caseIds.length > 0
+          ? supabaseAdmin
+              .from("sgcc_correspondence")
+              .select("*, responsable:sgcc_staff(nombre)")
+              .eq("center_id", centerId)
+              .in("case_id", caseIds)
+              .neq("estado", "respondido")
+              .not("fecha_limite_respuesta", "is", null)
+              .order("fecha_limite_respuesta", { ascending: true })
+              .limit(20)
+          : Promise.resolve({ data: [] }))
+      : supabaseAdmin
+          .from("sgcc_correspondence")
+          .select("*, responsable:sgcc_staff(nombre)")
+          .eq("center_id", centerId)
+          .neq("estado", "respondido")
+          .not("fecha_limite_respuesta", "is", null)
+          .order("fecha_limite_respuesta", { ascending: true })
+          .limit(20),
 
-    // Actuaciones judiciales no leídas
-    supabaseAdmin
-      .from("sgcc_process_updates")
-      .select("*, watched:sgcc_watched_processes(case_id, numero_proceso)")
-      .eq("leida", false)
-      .limit(20),
+    // Actuaciones judiciales no leídas.
+    // Para conciliador: solo de procesos vigilados vinculados a sus casos.
+    // Para admin/secretario: todas las del centro.
+    isConciliador
+      ? (caseIds.length > 0
+          ? supabaseAdmin
+              .from("sgcc_process_updates")
+              .select("*, watched:sgcc_watched_processes!inner(case_id, numero_proceso, center_id)")
+              .eq("leida", false)
+              .eq("watched.center_id", centerId)
+              .in("watched.case_id", caseIds)
+              .limit(20)
+          : Promise.resolve({ data: [] }))
+      : supabaseAdmin
+          .from("sgcc_process_updates")
+          .select("*, watched:sgcc_watched_processes!inner(case_id, numero_proceso, center_id)")
+          .eq("leida", false)
+          .eq("watched.center_id", centerId)
+          .limit(20),
   ]);
 
   const caseParties = (rawParties ?? []) as CasePartyWithJoins[];
