@@ -25,12 +25,9 @@ export default async function CitacionPage({ params }: Props) {
 
   if (!caso) notFound();
 
-  // Conciliador solo accede si está designado en el caso
-  const sgccRol = (session!.user as any).sgccRol;
-  const userId = (session!.user as any).id;
-  if (sgccRol === "conciliador" && caso.conciliador_id !== userId && caso.secretario_id !== userId) {
-    notFound();
-  }
+  // Conciliador solo accede si está designado (directo o vía audiencia)
+  const { puedeVerCaso } = await import("@/lib/server-utils");
+  if (!(await puedeVerCaso(session, centerId, id))) notFound();
 
   if (caso.estado !== "admitido") redirect(`/casos/${id}`);
 

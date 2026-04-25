@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { aplicarFiltroCasosStaff } from "@/lib/server-utils";
+import { resolverCasosVisiblesParaStaff } from "@/lib/server-utils";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusChip } from "@/components/ui/StatusChip";
 import Link from "next/link";
@@ -38,6 +38,10 @@ export default async function CasosPage({ searchParams }: Props) {
   const session = await auth();
   const centerId = (session!.user as any).centerId;
 
+  // Conciliador: ver solo casos donde está designado (directo en el caso o
+  // con audiencia asignada). Admin/secretario: ver todos los del centro.
+  const visibles = await resolverCasosVisiblesParaStaff(session, centerId);
+
   let query = supabaseAdmin
     .from("sgcc_cases")
     .select(`
@@ -51,8 +55,14 @@ export default async function CasosPage({ searchParams }: Props) {
     .eq("center_id", centerId)
     .order("created_at", { ascending: false });
 
-  // Conciliador solo ve los expedientes donde está designado (como conciliador o secretario).
-  query = aplicarFiltroCasosStaff(query, session);
+  if (visibles.modo === "lista") {
+    if (visibles.caseIds.length === 0) {
+      // Conciliador sin casos asignados: evitamos el query.
+      query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+    } else {
+      query = query.in("id", visibles.caseIds);
+    }
+  }
 
   if (params.estado) query = query.eq("estado", params.estado);
   if (params.materia) query = query.eq("materia", params.materia);

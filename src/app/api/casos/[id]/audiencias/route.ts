@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { data: caso } = await supabaseAdmin
     .from("sgcc_cases")
-    .select("id, estado, numero_radicado, materia, center_id")
+    .select("id, estado, numero_radicado, materia, center_id, conciliador_id")
     .eq("id", caseId)
     .eq("center_id", centerId)
     .single();
@@ -109,6 +109,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   if (caso.estado === "citado") {
     caseUpdate.estado = "audiencia";
+  }
+  // Sincronizar conciliador del caso si venía vacío. Así el conciliador que
+  // atiende la audiencia puede ver el expediente en su listado y dashboard
+  // sin depender de una designación adicional manual. No lo pisamos si ya
+  // hay otro conciliador designado (decisión explícita del admin).
+  if (conciliador_id && !caso.conciliador_id) {
+    caseUpdate.conciliador_id = conciliador_id;
   }
   await supabaseAdmin.from("sgcc_cases").update(caseUpdate).eq("id", caseId);
 

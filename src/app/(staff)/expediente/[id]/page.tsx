@@ -23,7 +23,7 @@ import { HistorialObservacionesAudiencias } from "@/components/modules/expedient
 import type { TipoTramite } from "@/types";
 import { sumarDiasHabiles, diasHabilesEntre } from "@/lib/dias-habiles-colombia";
 import { sincronizarApoderadosDePartes } from "@/lib/sincronizar-apoderados";
-import { staffSoloVeSusCasos } from "@/lib/server-utils";
+import { puedeVerCaso } from "@/lib/server-utils";
 
 /* ─── Constantes ────────────────────────────────────────────────────────── */
 
@@ -79,14 +79,10 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
 
   if (!caso) notFound();
 
-  // Control de acceso: el conciliador solo puede ver expedientes donde es
-  // conciliador_id o secretario_id. Admin y secretario del centro ven todos.
-  if (staffSoloVeSusCasos(session)) {
-    const userId = (session.user as any).id;
-    if (caso.conciliador_id !== userId && caso.secretario_id !== userId) {
-      notFound();
-    }
-  }
+  // Control de acceso: el conciliador solo puede ver expedientes donde está
+  // designado (directo en el caso o con audiencia asignada). Admin y
+  // secretario del centro ven todos.
+  if (!(await puedeVerCaso(session, centerId, id))) notFound();
 
   // Auto-sincronizar apoderados capturados como texto en case_parties
   // hacia sgcc_case_attorneys (idempotente). Evita que el tab Asistencia
