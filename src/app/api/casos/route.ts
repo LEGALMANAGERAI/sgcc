@@ -211,7 +211,7 @@ export async function POST(req: NextRequest) {
       .from("sgcc_attorneys")
       .select("id")
       .eq("numero_doc", att.numero_doc)
-      .single();
+      .maybeSingle();
 
     if (existingAtt) {
       attorneyId = existingAtt.id;
