@@ -100,9 +100,29 @@ export async function POST(req: NextRequest, { params }: Params) {
     .eq("propuesta_id", propuesta_id);
 
   const votosArr = votos ?? [];
+
+  // Fallback: cuando una acreencia no tenga documento propio pero apunte a un party,
+  // usar el documento del party para deduplicar correctamente.
+  const partyIdsVotos = Array.from(
+    new Set(votosArr.map((v) => (v as any).acreencia?.party_id).filter(Boolean) as string[]),
+  );
+  const docPorPartyVoto = new Map<string, string>();
+  if (partyIdsVotos.length > 0) {
+    const { data: parties } = await supabaseAdmin
+      .from("sgcc_parties")
+      .select("id, numero_doc, nit_empresa")
+      .in("id", partyIdsVotos);
+    for (const p of parties ?? []) {
+      const doc = (p as any).numero_doc ?? (p as any).nit_empresa ?? null;
+      if (doc) docPorPartyVoto.set(p.id, doc);
+    }
+  }
+
   const claveAcreedor = (a: any): string => {
-    const docNorm = (a?.acreedor_documento ?? "").replace(/[\s.\-_]/g, "").toUpperCase();
-    return docNorm || a?.party_id || (a?.acreedor_nombre ?? "").trim().toUpperCase() || "anon";
+    const docDirecto = (a?.acreedor_documento ?? "").replace(/[\s.\-_]/g, "").toUpperCase();
+    const docDelParty = a?.party_id ? (docPorPartyVoto.get(a.party_id) ?? "").replace(/[\s.\-_]/g, "").toUpperCase() : "";
+    const docEfectivo = docDirecto || docDelParty;
+    return docEfectivo || a?.party_id || (a?.acreedor_nombre ?? "").trim().toUpperCase() || "anon";
   };
   const positivosAcreedoresSet = new Set<string>();
   const negativosAcreedoresSet = new Set<string>();

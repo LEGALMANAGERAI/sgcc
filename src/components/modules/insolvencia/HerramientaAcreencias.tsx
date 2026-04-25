@@ -454,6 +454,16 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
      de voto en insolvencia es por acreedor, no por crédito — se consolidan. */
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
+  // Mapa party_id → documento del party convocado (lo usamos como fallback cuando una
+  // acreencia importada no tiene `acreedor_documento` propio).
+  const documentoPorParty = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of partesConvocados) {
+      if (p.id && p.documento) m.set(p.id, p.documento);
+    }
+    return m;
+  }, [partesConvocados]);
+
   const gruposAcreedores = useMemo(() => {
     const map = new Map<string, {
       key: string;
@@ -464,23 +474,25 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     for (const a of acreencias) {
       // Priorizar documento normalizado (NIT/CC sin puntos/guiones/espacios, mayúsculas)
       // para que el mismo acreedor se agrupe aunque una acreencia venga de un convocado
-      // (party_id) y otra fuera creada manualmente. Si no hay documento, caer a party_id,
-      // luego nombre normalizado, y por último al id como separador único.
-      const docNorm = normalizarDocumento(a.acreedor_documento);
+      // (party_id) y otra fuera creada manualmente. Si la acreencia no tiene documento
+      // pero tiene party_id, usar el documento del party como fallback.
+      const docDirecto = normalizarDocumento(a.acreedor_documento);
+      const docDelParty = a.party_id ? normalizarDocumento(documentoPorParty.get(a.party_id) ?? null) : "";
+      const docEfectivo = docDirecto || docDelParty;
       const nombreNorm = a.acreedor_nombre?.trim().toUpperCase() || "";
-      const key = docNorm || a.party_id || nombreNorm || `sin-${a.id}`;
+      const key = docEfectivo || a.party_id || nombreNorm || `sin-${a.id}`;
       if (!map.has(key)) {
         map.set(key, {
           key,
           acreedor_nombre: a.acreedor_nombre,
-          acreedor_documento: a.acreedor_documento ?? null,
+          acreedor_documento: a.acreedor_documento ?? documentoPorParty.get(a.party_id ?? "") ?? null,
           acreencias: [],
         });
       }
       map.get(key)!.acreencias.push(a);
     }
     return Array.from(map.values());
-  }, [acreencias]);
+  }, [acreencias, documentoPorParty]);
 
   // Sugerencias únicas de acreedores ya capturados en este caso (para autocompletar y prevenir typos)
   const sugerenciasAcreedores = useMemo(() => {

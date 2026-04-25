@@ -132,10 +132,27 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       .eq("case_id", caseId)
       .eq("center_id", centerId);
 
+    // Cargar documentos de parties referenciados como fallback cuando una acreencia no
+    // tiene documento propio (caso típico: importadas de convocados con doc vacío).
+    const partyIds = Array.from(new Set((acreencias ?? []).map((a) => a.party_id).filter(Boolean) as string[]));
+    const docPorParty = new Map<string, string>();
+    if (partyIds.length > 0) {
+      const { data: parties } = await supabaseAdmin
+        .from("sgcc_parties")
+        .select("id, numero_doc, nit_empresa")
+        .in("id", partyIds);
+      for (const p of parties ?? []) {
+        const doc = (p as any).numero_doc ?? (p as any).nit_empresa ?? null;
+        if (doc) docPorParty.set(p.id, doc);
+      }
+    }
+
     // Agrupar por acreedor (mismo criterio que la UI: documento normalizado | party_id | nombre)
     const claveAcreedor = (a: any): string => {
-      const docNorm = (a?.acreedor_documento ?? "").replace(/[\s.\-_]/g, "").toUpperCase();
-      return docNorm || a?.party_id || (a?.acreedor_nombre ?? "").trim().toUpperCase() || `id-${a?.id}`;
+      const docDirecto = (a?.acreedor_documento ?? "").replace(/[\s.\-_]/g, "").toUpperCase();
+      const docDelParty = a?.party_id ? (docPorParty.get(a.party_id) ?? "").replace(/[\s.\-_]/g, "").toUpperCase() : "";
+      const docEfectivo = docDirecto || docDelParty;
+      return docEfectivo || a?.party_id || (a?.acreedor_nombre ?? "").trim().toUpperCase() || `id-${a?.id}`;
     };
 
     type Grupo = {
