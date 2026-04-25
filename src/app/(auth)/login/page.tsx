@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { signIn } from "next-auth/react";
+import { Suspense, useEffect, useState } from "react";
+import { signIn, signOut } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff, Building2, Users, Sparkles, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, Building2, Users, Sparkles, ArrowLeft, LogOut } from "lucide-react";
 import { SgccLogo } from "@/components/ui/SgccLogo";
 
 type Tab = "staff" | "party";
@@ -25,6 +25,25 @@ export default function LoginPage() {
 function LoginContent() {
   const router = useRouter();
   const params = useSearchParams();
+  // Leemos la sesión vía fetch para no depender de SessionProvider.
+  const [sesionActiva, setSesionActiva] = useState<{
+    user?: { email?: string | null; userType?: "staff" | "party" };
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/session", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        setSesionActiva(data && data.user ? data : null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const registered = params.get("registered") === "1";
 
   const [tab, setTab] = useState<Tab>("staff");
@@ -40,7 +59,33 @@ function LoginContent() {
   const placeholder =
     tab === "staff" ? "correo@centroconciliacion.com" : "correo@ejemplo.com";
 
+  const sesionActivaTipo = sesionActiva?.user?.userType;
+
+  // Cuando el usuario elige tab, si ya había sesión del OTRO tipo, la cerramos
+  // automáticamente para que cada intento de login arranque limpio (sin la
+  // cookie del abogado interfiriendo con el login del conciliador).
+  async function ensureCleanSession() {
+    if (sesionActiva && sesionActivaTipo !== tab) {
+      await signOut({ redirect: false });
+      setSesionActiva(null);
+    }
+  }
+
+  // Redirect estricto por tab — nunca permitir callbackUrl de la zona contraria.
+  function redirectParaTab(t: Tab) {
+    const fallback = t === "staff" ? "/dashboard" : "/mis-casos";
+    const cb = params.get("callbackUrl");
+    if (!cb) return fallback;
+    // Zonas de staff y party no se cruzan
+    const zonasStaff = ["/dashboard", "/casos", "/agenda", "/partes", "/conciliadores", "/salas", "/plantillas", "/reportes", "/configuracion", "/expediente", "/apoderados", "/correspondencia", "/vigilancia", "/firmas"];
+    const zonasParty = ["/mis-casos", "/perfil", "/nueva-solicitud", "/mis-solicitudes"];
+    if (t === "staff" && zonasStaff.some((z) => cb.startsWith(z))) return cb;
+    if (t === "party" && zonasParty.some((z) => cb.startsWith(z))) return cb;
+    return fallback;
+  }
+
   async function doStaffSignIn(centerId?: string) {
+    await ensureCleanSession();
     const res = await signIn("staff", {
       email,
       password,
@@ -49,11 +94,11 @@ function LoginContent() {
     });
 
     if (res?.error) {
-      setError("Correo o contrasena incorrectos");
+      setError("Correo o contraseña incorrectos para la cuenta de staff");
       return false;
     }
 
-    router.push(params.get("callbackUrl") ?? "/dashboard");
+    router.push(redirectParaTab("staff"));
     return true;
   }
 
@@ -64,12 +109,13 @@ function LoginContent() {
 
     try {
       if (tab === "party") {
+        await ensureCleanSession();
         const res = await signIn("party", { email, password, redirect: false });
         if (res?.error) {
-          setError("Correo o contrasena incorrectos");
+          setError("Correo o contraseña incorrectos para la cuenta de parte");
           return;
         }
-        router.push("/mis-casos");
+        router.push(redirectParaTab("party"));
         return;
       }
 
@@ -81,16 +127,29 @@ function LoginContent() {
       });
 
       if (!resp.ok) {
-        setError("Correo o contrasena incorrectos");
+        setError("Error al verificar credenciales. Intenta de nuevo.");
         return;
       }
 
-      const { centers } = (await resp.json()) as {
+      const { centers, reason } = (await resp.json()) as {
         centers: Array<{ id: string; nombre: string }>;
+        reason?: "no_staff" | "wrong_password" | "inactive_center";
       };
 
       if (!centers || centers.length === 0) {
-        setError("Correo o contrasena incorrectos");
+        if (reason === "no_staff") {
+          setError(
+            "Este correo no está registrado como staff en ningún centro. Si querías ingresar como parte, cambia a la pestaña «Partes».",
+          );
+        } else if (reason === "wrong_password") {
+          setError(
+            "La contraseña no coincide con tu cuenta de staff. Recuerda que tu contraseña de staff puede ser distinta de la de tu cuenta de parte.",
+          );
+        } else if (reason === "inactive_center") {
+          setError("Tu cuenta staff está vinculada a un centro inactivo. Contacta al administrador.");
+        } else {
+          setError("Correo o contraseña incorrectos");
+        }
         return;
       }
 
@@ -124,21 +183,34 @@ function LoginContent() {
   async function handleDemo(demoEmail: string, demoPassword: string) {
     setError("");
     setLoading(true);
+    try {
+      if (sesionActiva) await signOut({ redirect: false });
 
-    const res = await signIn("staff", {
-      email: demoEmail,
-      password: demoPassword,
-      redirect: false,
-    });
+      const res = await signIn("staff", {
+        email: demoEmail,
+        password: demoPassword,
+        redirect: false,
+      });
 
-    setLoading(false);
+      if (res?.error) {
+        setError("Error al iniciar sesion demo");
+        return;
+      }
 
-    if (res?.error) {
-      setError("Error al iniciar sesion demo");
-      return;
+      router.push("/dashboard");
+    } finally {
+      setLoading(false);
     }
+  }
 
-    router.push("/dashboard");
+  async function cerrarSesionActiva() {
+    setLoading(true);
+    try {
+      await signOut({ redirect: false });
+      setSesionActiva(null);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -228,6 +300,30 @@ function LoginContent() {
           {registered && (
             <div className="bg-green-50 text-green-700 text-sm px-4 py-3 rounded-lg border border-green-200">
               Cuenta creada. Revisa tu correo para verificar.
+            </div>
+          )}
+
+          {/* Aviso de sesión activa del otro tipo */}
+          {sesionActiva && (
+            <div className="bg-amber-50 text-amber-800 text-xs px-4 py-3 rounded-lg border border-amber-200 flex items-start gap-2">
+              <div className="flex-1">
+                Ya hay una sesión activa como{" "}
+                <strong>{sesionActivaTipo === "staff" ? "staff" : "parte"}</strong>
+                {sesionActiva?.user?.email ? ` (${sesionActiva.user.email})` : ""}.
+                {sesionActivaTipo !== tab
+                  ? " Al ingresar con los datos de abajo se cerrará esta sesión y abrirá la nueva."
+                  : null}
+              </div>
+              <button
+                type="button"
+                onClick={cerrarSesionActiva}
+                disabled={loading}
+                className="flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium whitespace-nowrap disabled:opacity-50"
+                title="Cerrar la sesión activa ahora"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Cerrar
+              </button>
             </div>
           )}
 

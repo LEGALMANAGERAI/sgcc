@@ -45,20 +45,32 @@ export async function POST(req: NextRequest) {
   }
 
   if (!staffRows || staffRows.length === 0) {
-    return NextResponse.json({ centers: [] });
+    return NextResponse.json({ centers: [], reason: "no_staff" });
   }
 
+  // Distinguir "staff existe pero contraseña incorrecta" de "staff no existe"
+  // para poder explicar al usuario por qué no puede entrar.
+  let algunaCoincidencia = false;
   const centers: Array<{ id: string; nombre: string }> = [];
   for (const row of staffRows) {
     if (!row.password_hash) continue;
 
     const ok = await bcrypt.compare(password, row.password_hash);
     if (!ok) continue;
+    algunaCoincidencia = true;
 
     const centerObj = Array.isArray(row.center) ? row.center[0] : row.center;
     if (!centerObj || !centerObj.activo) continue;
 
     centers.push({ id: centerObj.id, nombre: centerObj.nombre });
+  }
+
+  if (centers.length === 0 && !algunaCoincidencia) {
+    return NextResponse.json({ centers: [], reason: "wrong_password" });
+  }
+  if (centers.length === 0) {
+    // Coincidió el password pero el centro está inactivo.
+    return NextResponse.json({ centers: [], reason: "inactive_center" });
   }
 
   return NextResponse.json({ centers });
