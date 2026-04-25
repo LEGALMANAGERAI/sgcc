@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { aplicarFiltroCasosStaff } from "@/lib/server-utils";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusChip } from "@/components/ui/StatusChip";
 import Link from "next/link";
@@ -49,6 +50,9 @@ export default async function CasosPage({ searchParams }: Props) {
     `)
     .eq("center_id", centerId)
     .order("created_at", { ascending: false });
+
+  // Conciliador solo ve los expedientes donde está designado (como conciliador o secretario).
+  query = aplicarFiltroCasosStaff(query, session);
 
   if (params.estado) query = query.eq("estado", params.estado);
   if (params.materia) query = query.eq("materia", params.materia);

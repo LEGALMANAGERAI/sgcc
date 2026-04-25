@@ -18,12 +18,20 @@ export default async function CitacionPage({ params }: Props) {
 
   const { data: caso } = await supabaseAdmin
     .from("sgcc_cases")
-    .select("id, numero_radicado, materia, estado, fecha_limite_citacion, sala_id, conciliador_id")
+    .select("id, numero_radicado, materia, estado, fecha_limite_citacion, sala_id, conciliador_id, secretario_id")
     .eq("id", id)
     .eq("center_id", centerId)
     .single();
 
   if (!caso) notFound();
+
+  // Conciliador solo accede si está designado en el caso
+  const sgccRol = (session!.user as any).sgccRol;
+  const userId = (session!.user as any).id;
+  if (sgccRol === "conciliador" && caso.conciliador_id !== userId && caso.secretario_id !== userId) {
+    notFound();
+  }
+
   if (caso.estado !== "admitido") redirect(`/casos/${id}`);
 
   const { data: templates } = await supabaseAdmin

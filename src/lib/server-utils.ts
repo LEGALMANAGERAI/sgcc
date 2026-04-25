@@ -17,6 +17,30 @@ export function isAdmin(session: any): boolean {
 }
 
 /**
+ * ¿El usuario staff está restringido a ver sólo sus propios casos?
+ *
+ * Regla: los conciliadores solo pueden ver expedientes donde están designados
+ * como conciliador_id (o secretario_id). Admin y secretario del centro ven
+ * todos los casos del centro. Se usa en listados (casos, agenda, dashboard)
+ * y en el control de acceso del detalle del expediente.
+ */
+export function staffSoloVeSusCasos(session: any): boolean {
+  return (session?.user?.sgccRol as string) === "conciliador";
+}
+
+/**
+ * Aplica el filtro `conciliador_id OR secretario_id` a una consulta de
+ * sgcc_cases cuando el usuario es conciliador. Devuelve la query sin cambios
+ * para admin/secretario.
+ */
+export function aplicarFiltroCasosStaff<T extends { or: (f: string) => T }>(query: T, session: any): T {
+  if (!staffSoloVeSusCasos(session)) return query;
+  const userId = (session?.user as any)?.id;
+  if (!userId) return query;
+  return query.or(`conciliador_id.eq.${userId},secretario_id.eq.${userId}`);
+}
+
+/**
  * Genera el siguiente número de radicado para un centro en el año actual.
  * Formato: YYYY-NNNN (ej: 2025-0042)
  */

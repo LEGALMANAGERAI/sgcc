@@ -33,12 +33,19 @@ export default async function AudienciaPage({ params }: Props) {
 
   const { data: caso } = await supabaseAdmin
     .from("sgcc_cases")
-    .select("id, numero_radicado, materia, estado, fecha_audiencia, conciliador_id, sala_id")
+    .select("id, numero_radicado, materia, estado, fecha_audiencia, conciliador_id, secretario_id, sala_id")
     .eq("id", id)
     .eq("center_id", centerId)
     .single();
 
   if (!caso) notFound();
+
+  // Conciliador solo accede si está designado en el caso
+  const sgccRol = (session!.user as any).sgccRol;
+  const userId = (session!.user as any).id;
+  if (sgccRol === "conciliador" && caso.conciliador_id !== userId && caso.secretario_id !== userId) {
+    notFound();
+  }
 
   const [{ data: conciliadores }, { data: salas }, { data: audiencias }] = await Promise.all([
     supabaseAdmin
