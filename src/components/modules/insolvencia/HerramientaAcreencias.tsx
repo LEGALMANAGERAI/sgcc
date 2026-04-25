@@ -120,7 +120,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
 
   const [seccion, setSeccion] = useState<"acreencias" | "definitiva" | "propuesta" | "votacion" | "acuerdo">("acreencias");
   const [fullscreen, setFullscreen] = useState(false);
-  const [downloading, setDownloading] = useState<"docx" | "pdf" | null>(null);
+  const [downloading, setDownloading] = useState<"docx" | "pdf" | "vot-docx" | "vot-pdf" | null>(null);
 
   const flash = useCallback((type: "ok" | "error", msg: string) => {
     if (type === "ok") { setSuccess(msg); setError(""); }
@@ -156,6 +156,36 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
       flash("ok", `Relación descargada como ${format.toUpperCase()}`);
     } catch {
       flash("error", "No se pudo descargar el documento");
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  async function descargarVotacion(format: "docx" | "pdf", propuestaId?: string) {
+    setDownloading(`vot-${format}`);
+    try {
+      const url = `/api/expediente/${caseId}/votacion/export?format=${format}${propuestaId ? `&propuesta_id=${propuestaId}` : ""}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const msg = await res.json().catch(() => ({ error: "Error al generar el acta" }));
+        flash("error", msg.error ?? "Error al generar el acta");
+        return;
+      }
+      const blob = await res.blob();
+      const dispo = res.headers.get("Content-Disposition") ?? "";
+      const match = dispo.match(/filename="?([^";]+)"?/i);
+      const filename = match?.[1] ?? `acta-votacion.${format}`;
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objUrl);
+      flash("ok", `Acta de votación descargada como ${format.toUpperCase()}`);
+    } catch {
+      flash("error", "No se pudo descargar el acta");
     } finally {
       setDownloading(null);
     }
@@ -1281,12 +1311,36 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
             </div>
           ) : (
             <>
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <p className="text-sm font-medium text-blue-800">Votando: {propEnVotacion.titulo}</p>
-                <p className="text-xs text-blue-600 mt-1">
-                  Modo: <strong>{propEnVotacion.modo_votacion === "link" ? "Por link (OTP)" : propEnVotacion.modo_votacion === "dual" ? "Dual (link + manual)" : "Manual"}</strong>
-                  {" — "}Regla: &gt;50% votos positivos + mín. 2 acreedores a favor
-                </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-blue-800">Votando: {propEnVotacion.titulo}</p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Modo: <strong>{propEnVotacion.modo_votacion === "link" ? "Por link (OTP)" : propEnVotacion.modo_votacion === "dual" ? "Dual (link + manual)" : "Manual"}</strong>
+                    {" — "}Regla: &gt;50% votos positivos + mín. 2 acreedores a favor
+                  </p>
+                </div>
+                <div className="flex flex-shrink-0 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => descargarVotacion("docx", propEnVotacion.id)}
+                    disabled={downloading !== null}
+                    title="Descargar acta de votación en Word"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#0D2340] bg-[#0D2340] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#1B4F9B] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {downloading === "vot-docx" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
+                    Word
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => descargarVotacion("pdf", propEnVotacion.id)}
+                    disabled={downloading !== null}
+                    title="Descargar acta de votación en PDF"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D2340] shadow-sm transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {downloading === "vot-pdf" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
+                    PDF
+                  </button>
+                </div>
               </div>
 
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
