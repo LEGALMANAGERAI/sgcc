@@ -82,9 +82,21 @@ export default async function AgendaPage({ searchParams }: Props) {
     .lt("fecha_hora", weekEnd.toISOString())
     .order("fecha_hora", { ascending: true });
 
-  // Si es conciliador, solo sus audiencias
+  // Si es conciliador, solo sus audiencias. Usamos todos los staff_ids que
+  // comparten email en el centro (cubre duplicados por capitalización).
   if (sgccRol === "conciliador") {
-    query = query.eq("conciliador_id", userId);
+    const email = (session!.user as any).email as string | undefined;
+    const ids = new Set<string>();
+    if (userId) ids.add(userId);
+    if (email) {
+      const { data: staffRows } = await supabaseAdmin
+        .from("sgcc_staff")
+        .select("id")
+        .ilike("email", email)
+        .eq("center_id", centerId);
+      for (const s of staffRows ?? []) ids.add(s.id);
+    }
+    query = query.in("conciliador_id", Array.from(ids));
   }
 
   const { data: audiencias } = await query;

@@ -105,6 +105,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
   /* ─── Query 1: Todos los casos del centro/conciliador ──────────────── */
+  // Para conciliador usamos el resolver unificado que también incluye casos
+  // donde tiene una audiencia asignada (aunque sgcc_cases.conciliador_id no
+  // haya sido actualizado). Cubre además duplicados por email en distintos
+  // casings.
+  const { resolverCasosVisiblesParaStaff } = await import("@/lib/server-utils");
+  const visibles = await resolverCasosVisiblesParaStaff(session, centerId);
+
   let casesQuery = supabaseAdmin
     .from("sgcc_cases")
     .select(
@@ -113,8 +120,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     .eq("center_id", centerId)
     .order("created_at", { ascending: false });
 
-  if (isConciliador) {
-    casesQuery = casesQuery.eq("conciliador_id", userId);
+  if (visibles.modo === "lista") {
+    if (visibles.caseIds.length === 0) {
+      casesQuery = casesQuery.eq("id", "00000000-0000-0000-0000-000000000000");
+    } else {
+      casesQuery = casesQuery.in("id", visibles.caseIds);
+    }
   }
 
   const { data: rawCases } = await casesQuery;

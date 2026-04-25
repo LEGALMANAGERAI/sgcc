@@ -40,12 +40,9 @@ export default async function AudienciaPage({ params }: Props) {
 
   if (!caso) notFound();
 
-  // Conciliador solo accede si está designado en el caso
-  const sgccRol = (session!.user as any).sgccRol;
-  const userId = (session!.user as any).id;
-  if (sgccRol === "conciliador" && caso.conciliador_id !== userId && caso.secretario_id !== userId) {
-    notFound();
-  }
+  // Conciliador solo accede si está designado (directo o vía audiencia)
+  const { puedeVerCaso } = await import("@/lib/server-utils");
+  if (!(await puedeVerCaso(session, centerId, id))) notFound();
 
   const [{ data: conciliadores }, { data: salas }, { data: audiencias }] = await Promise.all([
     supabaseAdmin
