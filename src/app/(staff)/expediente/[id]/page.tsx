@@ -197,6 +197,26 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
 
   const attendance = rawAttendance ?? [];
 
+  // Staff del centro para que admin/secretario puedan reasignar
+  // conciliador o secretario desde la pestaña Info.
+  const sgccRol = (session.user as any).sgccRol as string | undefined;
+  const puedeAsignar = sgccRol === "admin" || sgccRol === "secretario";
+  let conciliadoresDelCentro: Array<{ id: string; nombre: string }> = [];
+  let staffDelCentro: Array<{ id: string; nombre: string }> = [];
+  if (puedeAsignar) {
+    const { data: rawStaff } = await supabaseAdmin
+      .from("sgcc_staff")
+      .select("id, nombre, rol")
+      .eq("center_id", centerId)
+      .eq("activo", true)
+      .order("nombre", { ascending: true });
+    const allStaff = rawStaff ?? [];
+    conciliadoresDelCentro = allStaff
+      .filter((s: any) => s.rol === "conciliador")
+      .map((s: any) => ({ id: s.id, nombre: s.nombre }));
+    staffDelCentro = allStaff.map((s: any) => ({ id: s.id, nombre: s.nombre }));
+  }
+
   // Acreencias (solo insolvencia)
   let acreencias: any[] = [];
   if (caso.tipo_tramite === "insolvencia") {
@@ -396,6 +416,9 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
             parties={parties}
             attorneys={attorneys.filter((a: any) => a.activo)}
             timeline={timeline}
+            puedeAsignar={puedeAsignar}
+            conciliadoresDelCentro={conciliadoresDelCentro}
+            staffDelCentro={staffDelCentro}
           />
           <div className="mt-8">
             <div className="flex items-center justify-between mb-3">

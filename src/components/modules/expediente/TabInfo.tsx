@@ -10,14 +10,23 @@ import {
   Circle,
   Calendar,
 } from "lucide-react";
+import { AsignarConciliador } from "./AsignarConciliador";
 
 /* ─── Props ─────────────────────────────────────────────────────────────── */
+
+interface StaffOption {
+  id: string;
+  nombre: string;
+}
 
 interface TabInfoProps {
   caso: any;
   parties: any[];
   attorneys: any[];
   timeline: any[];
+  puedeAsignar?: boolean;
+  conciliadoresDelCentro?: StaffOption[];
+  staffDelCentro?: StaffOption[];
 }
 
 /* ─── Constantes ────────────────────────────────────────────────────────── */
@@ -41,7 +50,15 @@ const ETAPA_COLORS: Record<string, string> = {
 
 /* ─── Component ─────────────────────────────────────────────────────────── */
 
-export function TabInfo({ caso, parties, attorneys, timeline }: TabInfoProps) {
+export function TabInfo({
+  caso,
+  parties,
+  attorneys,
+  timeline,
+  puedeAsignar = false,
+  conciliadoresDelCentro = [],
+  staffDelCentro = [],
+}: TabInfoProps) {
   // Mapa de apoderado activo por party_id
   const activeAttorneyByParty = new Map<string, any>();
   for (const ca of attorneys) {
@@ -89,14 +106,30 @@ export function TabInfo({ caso, parties, attorneys, timeline }: TabInfoProps) {
             label="Fecha admisión"
             value={caso.fecha_admision ? formatDate(caso.fecha_admision) : "Pendiente"}
           />
-          <InfoField
-            label="Conciliador"
-            value={caso.conciliador?.nombre ?? "Sin asignar"}
-          />
-          <InfoField
-            label="Secretario"
-            value={caso.secretario?.nombre ?? "Sin asignar"}
-          />
+          {puedeAsignar ? (
+            <AsignarConciliador
+              caseId={caso.id}
+              campo="conciliador_id"
+              label="Conciliador"
+              valorActualId={caso.conciliador?.id ?? caso.conciliador_id ?? null}
+              valorActualNombre={caso.conciliador?.nombre ?? null}
+              opciones={conciliadoresDelCentro}
+            />
+          ) : (
+            <InfoField label="Conciliador" value={caso.conciliador?.nombre ?? "Sin asignar"} />
+          )}
+          {puedeAsignar ? (
+            <AsignarConciliador
+              caseId={caso.id}
+              campo="secretario_id"
+              label="Secretario"
+              valorActualId={caso.secretario?.id ?? caso.secretario_id ?? null}
+              valorActualNombre={caso.secretario?.nombre ?? null}
+              opciones={staffDelCentro}
+            />
+          ) : (
+            <InfoField label="Secretario" value={caso.secretario?.nombre ?? "Sin asignar"} />
+          )}
           <InfoField
             label="Sala"
             value={caso.sala?.nombre ?? "Sin asignar"}
