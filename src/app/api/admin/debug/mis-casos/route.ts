@@ -80,6 +80,7 @@ export async function GET(req: NextRequest) {
   // casos del centro con sus conciliador_id/secretario_id actuales, para
   // verificar visualmente si la asignación quedó guardada.
   let dumpCasosCentro: any[] | null = null;
+  let dumpStaffCentro: any[] | null = null;
   if (queryEmail && puedeConsultarOtros) {
     const { data } = await supabaseAdmin
       .from("sgcc_cases")
@@ -90,6 +91,14 @@ export async function GET(req: NextRequest) {
       .order("created_at", { ascending: false })
       .limit(50);
     dumpCasosCentro = data ?? [];
+
+    // Dump de TODOS los staff del centro para detectar duplicados
+    const { data: allStaff } = await supabaseAdmin
+      .from("sgcc_staff")
+      .select("id, email, nombre, rol, activo, created_at")
+      .eq("center_id", centerId)
+      .order("nombre", { ascending: true });
+    dumpStaffCentro = allStaff ?? [];
   }
 
   return NextResponse.json({
@@ -110,5 +119,6 @@ export async function GET(req: NextRequest) {
     total_casos_visibles: caseIds.size,
     case_ids_visibles: Array.from(caseIds),
     ...(dumpCasosCentro ? { dump_casos_centro: dumpCasosCentro } : {}),
+    ...(dumpStaffCentro ? { dump_staff_centro: dumpStaffCentro } : {}),
   });
 }
