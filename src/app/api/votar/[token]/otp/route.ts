@@ -11,29 +11,33 @@ type Params = { params: Promise<{ token: string }> };
 export async function POST(_req: NextRequest, { params }: Params) {
   const { token } = await params;
 
-  // Buscar el voto por token
-  const { data: voto } = await supabaseAdmin
+  // Buscar la fila principal del token (la más antigua del grupo). El token cubre todas
+  // las acreencias del mismo acreedor, pero el OTP se ata a una sola fila representativa
+  // para que /votar verifique con el mismo firmante_id.
+  const { data: filas } = await supabaseAdmin
     .from("sgcc_votacion_insolvencia")
-    .select("id, acreencia:sgcc_acreencias(acreedor_nombre), propuesta:sgcc_propuesta_pago(estado)")
+    .select("id, acreencia_id, propuesta:sgcc_propuesta_pago(estado)")
     .eq("token", token)
-    .single();
+    .order("created_at", { ascending: true })
+    .limit(1);
 
-  if (!voto) {
+  const filaPrincipal = filas?.[0] as any;
+  if (!filaPrincipal) {
     return NextResponse.json({ error: "Token inválido" }, { status: 404 });
   }
 
-  if ((voto.propuesta as any)?.estado !== "en_votacion") {
+  if (filaPrincipal.propuesta?.estado !== "en_votacion") {
     return NextResponse.json({ error: "La votación no está activa" }, { status: 400 });
   }
 
-  // Obtener email del acreedor (desde la parte vinculada o del registro)
+  // Obtener email del acreedor desde la acreencia asociada
   const { data: acreenciaFull } = await supabaseAdmin
     .from("sgcc_acreencias")
     .select("party_id, acreedor_nombre")
-    .eq("id", (voto as any).acreencia_id ?? voto.id)
+    .eq("id", filaPrincipal.acreencia_id)
     .single();
 
-  // Buscar email de la parte
+  // Buscar email del party
   let email: string | null = null;
   if (acreenciaFull?.party_id) {
     const { data: party } = await supabaseAdmin
@@ -48,9 +52,8 @@ export async function POST(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "No se encontró email del acreedor" }, { status: 400 });
   }
 
-  // Reutilizar el sistema OTP de firma (genera, guarda, envía)
-  // Usamos el voto.id como "firmante_id" para reutilizar la tabla sgcc_firma_otp
-  const result = await crearYEnviarOtp(voto.id, email, "email");
+  // Reutilizar el sistema OTP de firma — fila principal como firmante_id
+  const result = await crearYEnviarOtp(filaPrincipal.id, email, "email");
 
   return NextResponse.json({ destino: result.destino, canal: "email" });
 }

@@ -25,6 +25,12 @@ interface Props {
       clase_credito: string;
       es_pequeno_acreedor: boolean;
     };
+    creditos?: Array<{
+      id: string;
+      con_capital: number;
+      porcentaje_voto: number;
+      clase_credito: string;
+    }>;
     propuesta: {
       titulo: string;
       descripcion: string;
@@ -42,7 +48,8 @@ const fmt = (n: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
 
 export function VotarClient({ token, initialData }: Props) {
-  const { acreedor, propuesta } = initialData;
+  const { acreedor, propuesta, creditos } = initialData;
+  const tieneVariosCreditos = (creditos?.length ?? 0) > 1;
   const [paso, setPaso] = useState<Paso>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -144,6 +151,21 @@ export function VotarClient({ token, initialData }: Props) {
               <span>Capital conciliado: <strong>{fmt(acreedor.con_capital)}</strong></span>
               <span>Derecho de voto: <strong>{(acreedor.porcentaje_voto * 100).toFixed(2)}%</strong></span>
             </div>
+            {tieneVariosCreditos && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <p className="text-xs text-[#1B4F9B] font-medium mb-2">
+                  Su voto se aplicará a los siguientes {creditos!.length} créditos consolidados:
+                </p>
+                <div className="space-y-1">
+                  {creditos!.map((c, i) => (
+                    <div key={c.id} className="flex justify-between text-xs text-gray-600 bg-gray-50 rounded px-3 py-1.5">
+                      <span>Crédito #{i + 1}</span>
+                      <span>{fmt(c.con_capital)} <span className="text-gray-400">({(c.porcentaje_voto * 100).toFixed(2)}%)</span></span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Propuesta */}
