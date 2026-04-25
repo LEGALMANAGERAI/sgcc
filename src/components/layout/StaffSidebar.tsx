@@ -39,12 +39,16 @@ import { SgccLogo } from "@/components/ui/SgccLogo";
  */
 
 type NavBadgeKey = "vigilancia";
+type StaffRol = "admin" | "secretario" | "conciliador";
 
 interface NavItem {
   label: string;
   href: string;
   icon: LucideIcon;
   badgeKey?: NavBadgeKey;
+  // Si se omite, todos los roles staff ven el ítem. Si se especifica, solo
+  // los roles listados lo ven.
+  rolesPermitidos?: StaffRol[];
 }
 
 interface NavSection {
@@ -71,10 +75,16 @@ const sections: NavSection[] = [
         href: "/vigilancia",
         icon: Eye,
         badgeKey: "vigilancia",
+        rolesPermitidos: ["admin", "secretario"],
       },
       { label: "Firmas", href: "/firmas", icon: PenTool },
       { label: "Partes", href: "/partes", icon: Users },
-      { label: "Conciliadores", href: "/conciliadores", icon: UserCog },
+      {
+        label: "Conciliadores",
+        href: "/conciliadores",
+        icon: UserCog,
+        rolesPermitidos: ["admin", "secretario"],
+      },
       { label: "Salas", href: "/salas", icon: DoorOpen },
       { label: "Plantillas", href: "/plantillas", icon: FileText },
       { label: "Tickets", href: "/tickets", icon: LifeBuoy },
@@ -94,13 +104,22 @@ interface Badges {
 interface Props {
   centerName: string;
   vigilanciaNoLeidas?: number;
+  sgccRol?: StaffRol;
 }
 
 const STORAGE_KEY = "sgcc-sidebar";
 
-export function StaffSidebar({ centerName, vigilanciaNoLeidas = 0 }: Props) {
+export function StaffSidebar({ centerName, vigilanciaNoLeidas = 0, sgccRol }: Props) {
   const pathname = usePathname();
   const badges: Badges = { vigilancia: vigilanciaNoLeidas };
+
+  // Filtrar items según el rol del staff y colapsar secciones vacías.
+  const seccionesVisibles = sections
+    .map((s) => ({
+      ...s,
+      items: s.items.filter((i) => !i.rolesPermitidos || (sgccRol && i.rolesPermitidos.includes(sgccRol))),
+    }))
+    .filter((s) => s.items.length > 0);
 
   // Estado de visibilidad persistido en localStorage.
   // Aplicamos el data-attribute al <body> para que el <main> (en el server layout)
@@ -172,7 +191,7 @@ export function StaffSidebar({ centerName, vigilanciaNoLeidas = 0 }: Props) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
-        {sections.map((section) => (
+        {seccionesVisibles.map((section) => (
           <div key={section.title} className="mb-5 last:mb-0">
             <p className="px-[10px] mb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-[color:var(--color-ink)] opacity-50">
               {section.title}
