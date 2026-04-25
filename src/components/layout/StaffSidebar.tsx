@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { clsx } from "clsx";
 import {
   LayoutDashboard,
@@ -19,6 +20,8 @@ import {
   Eye,
   PenTool,
   LifeBuoy,
+  PanelLeftClose,
+  PanelLeftOpen,
   type LucideIcon,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
@@ -93,27 +96,78 @@ interface Props {
   vigilanciaNoLeidas?: number;
 }
 
+const STORAGE_KEY = "sgcc-sidebar";
+
 export function StaffSidebar({ centerName, vigilanciaNoLeidas = 0 }: Props) {
   const pathname = usePathname();
   const badges: Badges = { vigilancia: vigilanciaNoLeidas };
+
+  // Estado de visibilidad persistido en localStorage.
+  // Aplicamos el data-attribute al <body> para que el <main> (en el server layout)
+  // pueda responder con CSS — no podemos mover el estado al padre porque es server.
+  const [hidden, setHidden] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const stored = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+    const initiallyHidden = stored === "hidden";
+    setHidden(initiallyHidden);
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    document.body.dataset.sidebar = hidden ? "hidden" : "visible";
+    localStorage.setItem(STORAGE_KEY, hidden ? "hidden" : "visible");
+  }, [hidden, mounted]);
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
 
   return (
-    <aside
-      className="fixed inset-y-0 left-0 w-60 flex flex-col z-30 border-r border-[color:var(--color-rule)]"
-      style={{ background: "#FDFCFA" }}
-    >
-      {/* Logo */}
-      <div className="px-4 py-5 border-b border-[color:var(--color-rule)]">
-        <SgccLogo size="sm" showDescriptor={false} />
-        <p
-          className="text-[11px] uppercase tracking-[0.12em] truncate mt-2 font-medium"
-          style={{ color: "rgba(10,22,40,0.6)" }}
+    <>
+      {/* Botón flotante para reabrir cuando el sidebar está oculto */}
+      {mounted && hidden && (
+        <button
+          type="button"
+          onClick={() => setHidden(false)}
+          className="fixed top-4 left-4 z-40 p-2 rounded-lg bg-white border border-[color:var(--color-rule)] shadow-sm hover:bg-[color:var(--color-paper-warm)] transition-colors"
+          title="Mostrar menú lateral"
+          aria-label="Mostrar menú lateral"
         >
-          {centerName}
-        </p>
+          <PanelLeftOpen className="w-4 h-4 text-[color:var(--color-ink)]" />
+        </button>
+      )}
+
+      <aside
+        className={clsx(
+          "fixed inset-y-0 left-0 w-60 flex flex-col z-30 border-r border-[color:var(--color-rule)]",
+          "transition-transform duration-200 ease-out",
+          mounted && hidden ? "-translate-x-full" : "translate-x-0",
+        )}
+        style={{ background: "#FDFCFA" }}
+        aria-hidden={mounted && hidden}
+      >
+      {/* Logo + toggle */}
+      <div className="px-4 py-5 border-b border-[color:var(--color-rule)] flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <SgccLogo size="sm" showDescriptor={false} />
+          <p
+            className="text-[11px] uppercase tracking-[0.12em] truncate mt-2 font-medium"
+            style={{ color: "rgba(10,22,40,0.6)" }}
+          >
+            {centerName}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setHidden(true)}
+          className="p-1.5 rounded-md hover:bg-[color:var(--color-paper-warm)] transition-colors flex-shrink-0"
+          title="Ocultar menú lateral"
+          aria-label="Ocultar menú lateral"
+        >
+          <PanelLeftClose className="w-4 h-4 text-[color:var(--color-ink)] opacity-60" />
+        </button>
       </div>
 
       {/* Nav */}
@@ -186,5 +240,6 @@ export function StaffSidebar({ centerName, vigilanciaNoLeidas = 0 }: Props) {
         </button>
       </div>
     </aside>
+    </>
   );
 }

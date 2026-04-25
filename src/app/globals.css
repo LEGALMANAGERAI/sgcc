@@ -100,3 +100,8 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(10, 22, 40, 0.24);
 }
+
+/* Staff shell — cuando el sidebar está oculto, el main recupera el espacio */
+body[data-sidebar="hidden"] main[data-staff-main] {
+  margin-left: 0 !important;
+}

@@ -29,7 +29,10 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   return (
     <div className="flex min-h-screen bg-gray-50">
       <StaffSidebar centerName={center?.nombre ?? "Centro"} vigilanciaNoLeidas={vigilanciaNoLeidas ?? 0} />
-      <main className="flex-1 ml-60 p-8 max-w-7xl">
+      <main
+        data-staff-main
+        className="flex-1 ml-60 p-8 max-w-7xl transition-[margin-left] duration-200 ease-out"
+      >
         {children}
       </main>
     </div>
