@@ -172,8 +172,15 @@ export function StaffSidebar({ centerName, vigilanciaNoLeidas = 0, sgccRol }: Pr
         <div className="min-w-0 flex-1">
           <SgccLogo size="sm" showDescriptor={false} />
           <p
-            className="text-[11px] uppercase tracking-[0.12em] truncate mt-2 font-medium"
-            style={{ color: "rgba(10,22,40,0.6)" }}
+            title={centerName}
+            className="text-[11px] uppercase tracking-[0.08em] mt-2 font-medium leading-tight break-words"
+            style={{
+              color: "rgba(10,22,40,0.6)",
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
           >
             {centerName}
           </p>
