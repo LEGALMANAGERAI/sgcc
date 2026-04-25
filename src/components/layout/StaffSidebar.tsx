@@ -167,28 +167,28 @@ export function StaffSidebar({ centerName, vigilanciaNoLeidas = 0, sgccRol }: Pr
         style={{ background: "#FDFCFA" }}
         aria-hidden={mounted && hidden}
       >
-      {/* Logo + toggle */}
-      <div className="px-4 py-5 border-b border-[color:var(--color-rule)] flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <SgccLogo size="sm" showDescriptor={false} />
-          <p
-            title={centerName}
-            className="text-[11px] uppercase tracking-[0.08em] mt-2 font-medium leading-tight break-words"
-            style={{
-              color: "rgba(10,22,40,0.6)",
-              display: "-webkit-box",
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {centerName}
-          </p>
-        </div>
+      {/* Logo + toggle.
+          Logo y nombre del centro centrados; el botón de ocultar va absoluto
+          en la esquina superior derecha para no desplazar el logo. */}
+      <div className="relative px-4 py-5 border-b border-[color:var(--color-rule)] flex flex-col items-center text-center">
+        <SgccLogo size="sm" showDescriptor={false} />
+        <p
+          title={centerName}
+          className="text-[11px] uppercase tracking-[0.08em] mt-2 font-medium leading-tight break-words w-full"
+          style={{
+            color: "rgba(10,22,40,0.6)",
+            display: "-webkit-box",
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {centerName}
+        </p>
         <button
           type="button"
           onClick={() => setHidden(true)}
-          className="p-1.5 rounded-md hover:bg-[color:var(--color-paper-warm)] transition-colors flex-shrink-0"
+          className="absolute top-2 right-2 p-1.5 rounded-md hover:bg-[color:var(--color-paper-warm)] transition-colors"
           title="Ocultar menú lateral"
           aria-label="Ocultar menú lateral"
         >
