@@ -12,15 +12,17 @@ type Params = { params: Promise<{ codigo: string }> };
  */
 export async function GET(_req: NextRequest, { params }: Params) {
   const { codigo } = await params;
-  const codigoUpper = codigo.trim().toUpperCase();
-  if (codigoUpper.length < 4 || codigoUpper.length > 16) {
+  const codigoLimpio = codigo.trim();
+  if (codigoLimpio.length < 4 || codigoLimpio.length > 16) {
     return NextResponse.json({ error: "Código inválido" }, { status: 400 });
   }
 
+  // ilike para case-insensitive — el código se guarda en BD con la capitalización
+  // que puso el creador del centro y no es seguro asumir mayúsculas.
   const { data: centro } = await supabaseAdmin
     .from("sgcc_centers")
     .select("id, codigo_corto, nombre, ciudad, departamento, logo_url, color_primario, color_secundario, activo")
-    .eq("codigo_corto", codigoUpper)
+    .ilike("codigo_corto", codigoLimpio)
     .maybeSingle();
 
   if (!centro || !centro.activo) {
