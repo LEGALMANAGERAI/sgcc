@@ -194,28 +194,52 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Crear apoderados si se proporcionaron
+  // Crear apoderados si se proporcionaron.
+  // Recolectamos warnings en lugar de abortar el caso, así el expediente queda
+  // creado y el frontend recibe la lista de apoderados que NO se pudieron
+  // guardar para poder reintentar manualmente.
+  const apoderadosWarnings: Array<{ idx: number; nombre: string; error: string }> = [];
+
+  // Normalizador de documento para no crear duplicados de attorneys por
+  // diferencias de puntos/guiones/espacios.
+  const normDoc = (d: string) => (d ?? "").replace(/[\s.\-_]/g, "").toUpperCase();
+
   for (let idx = 0; idx < partes.length; idx++) {
     const p = partes[idx];
     if (!p.apoderado || !p.apoderado.nombre || !p.apoderado.numero_doc) continue;
 
     const partyRecord = casePartyRecords[idx];
-    if (!partyRecord) continue;
+    if (!partyRecord) {
+      apoderadosWarnings.push({ idx, nombre: p.apoderado.nombre, error: "No se encontró la parte vinculada" });
+      continue;
+    }
 
     const att = p.apoderado;
     const now = new Date().toISOString();
+    const docNormalizado = normDoc(att.numero_doc);
 
-    // Buscar o crear el attorney
-    let attorneyId: string;
-    const { data: existingAtt } = await supabaseAdmin
+    // Buscar attorney existente: primero exacto, luego por documento normalizado.
+    let attorneyId: string | null = null;
+    const { data: existingExact } = await supabaseAdmin
       .from("sgcc_attorneys")
-      .select("id")
+      .select("id, numero_doc")
       .eq("numero_doc", att.numero_doc)
       .maybeSingle();
 
+    let existingAtt = existingExact;
+    if (!existingAtt && docNormalizado) {
+      // Si no encontró exacto, busca por todos los attorneys con doc normalizado igual.
+      // Solo válido cuando es claramente una variación de formato (raro).
+      const { data: candidatos } = await supabaseAdmin
+        .from("sgcc_attorneys")
+        .select("id, numero_doc");
+      const match = (candidatos ?? []).find((c) => normDoc(c.numero_doc) === docNormalizado);
+      if (match) existingAtt = match;
+    }
+
     if (existingAtt) {
       attorneyId = existingAtt.id;
-      await supabaseAdmin.from("sgcc_attorneys").update({
+      const { error: updErr } = await supabaseAdmin.from("sgcc_attorneys").update({
         nombre: att.nombre,
         tipo_doc: att.tipo_doc ?? "CC",
         tarjeta_profesional: att.tarjeta_profesional || null,
@@ -223,10 +247,13 @@ export async function POST(req: NextRequest) {
         telefono: att.telefono || null,
         updated_at: now,
       }).eq("id", attorneyId);
+      if (updErr) {
+        console.error(`[CASOS] update attorney falló: ${updErr.message}`);
+      }
     } else {
-      attorneyId = randomUUID();
-      await supabaseAdmin.from("sgcc_attorneys").insert({
-        id: attorneyId,
+      const newId = randomUUID();
+      const { error: insAttErr } = await supabaseAdmin.from("sgcc_attorneys").insert({
+        id: newId,
         nombre: att.nombre,
         tipo_doc: att.tipo_doc ?? "CC",
         numero_doc: att.numero_doc,
@@ -236,11 +263,20 @@ export async function POST(req: NextRequest) {
         created_at: now,
         updated_at: now,
       });
+      if (insAttErr) {
+        console.error(`[CASOS] insert attorney falló: ${insAttErr.message}`);
+        apoderadosWarnings.push({ idx, nombre: att.nombre, error: `No se pudo crear el apoderado: ${insAttErr.message}` });
+        continue;
+      }
+      attorneyId = newId;
     }
+
+    if (!attorneyId) continue;
 
     // Crear case_attorney
     const caseAttorneyId = randomUUID();
     let poderUrl: string | null = null;
+    let poderPathSubido: string | null = null; // para limpiar si el insert falla
 
     // Subir poder si hay archivo
     if (formData) {
@@ -252,16 +288,17 @@ export async function POST(req: NextRequest) {
           .from("poderes")
           .upload(filePath, buffer, { contentType: "application/pdf", upsert: true });
         if (upErr) {
-          console.error(`[CASOS] Error subiendo poder a storage: ${upErr.message}`);
+          console.error(`[CASOS] upload poder falló: ${upErr.message}`);
+          apoderadosWarnings.push({ idx, nombre: att.nombre, error: `No se pudo subir el archivo del poder: ${upErr.message}` });
         } else {
           const { data: urlData } = supabaseAdmin.storage.from("poderes").getPublicUrl(filePath);
           poderUrl = urlData.publicUrl;
-          console.log(`[CASOS] Poder subido: ${poderUrl}`);
+          poderPathSubido = filePath;
         }
       }
     }
 
-    await supabaseAdmin.from("sgcc_case_attorneys").insert({
+    const { error: insCaErr } = await supabaseAdmin.from("sgcc_case_attorneys").insert({
       id: caseAttorneyId,
       case_id: caseId,
       party_id: partyRecord.party_id,
@@ -273,6 +310,15 @@ export async function POST(req: NextRequest) {
       created_at: now,
       updated_at: now,
     });
+
+    if (insCaErr) {
+      console.error(`[CASOS] insert case_attorney falló: ${insCaErr.message}`);
+      apoderadosWarnings.push({ idx, nombre: att.nombre, error: `No se pudo vincular el apoderado al caso: ${insCaErr.message}` });
+      // Limpiar archivo huérfano para no dejar basura en storage
+      if (poderPathSubido) {
+        await supabaseAdmin.storage.from("poderes").remove([poderPathSubido]).catch(() => {});
+      }
+    }
   }
 
   // Crear evento de timeline
@@ -305,5 +351,8 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({ caso }, { status: 201 });
+  return NextResponse.json(
+    { caso, apoderadosWarnings: apoderadosWarnings.length > 0 ? apoderadosWarnings : undefined },
+    { status: 201 },
+  );
 }
