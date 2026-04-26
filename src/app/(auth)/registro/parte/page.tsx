@@ -1,12 +1,22 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Scale } from "lucide-react";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 
 export default function RegistroPage() {
+  return (
+    <Suspense>
+      <RegistroPageContent />
+    </Suspense>
+  );
+}
+
+function RegistroPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const codigoFromQuery = searchParams.get("codigo")?.trim().toUpperCase() ?? "";
   const errorRef = useRef<HTMLDivElement | null>(null);
   const [form, setForm] = useState({
     tipo_persona: "natural",
@@ -19,8 +29,17 @@ export default function RegistroPage() {
     telefono: "",
     password: "",
     confirm: "",
-    codigo_centro: "",
+    codigo_centro: codigoFromQuery,
   });
+
+  // Si el código viene en la URL (?codigo=...) precarga el campo y al cambiar
+  // la URL (raro pero seguro) refresca.
+  useEffect(() => {
+    if (codigoFromQuery && form.codigo_centro !== codigoFromQuery) {
+      setForm((p) => ({ ...p, codigo_centro: codigoFromQuery }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [codigoFromQuery]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 

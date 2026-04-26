@@ -44,6 +44,12 @@ export default async function ConfiguracionPage() {
         subtitle="Administra los datos, horarios y checklists de tu centro de conciliación"
       >
         <a
+          href="/configuracion/boton-web"
+          className="text-xs text-[#1B4F9B] hover:underline font-medium"
+        >
+          Botón para tu sitio web →
+        </a>
+        <a
           href="/configuracion/staff-duplicados"
           className="text-xs text-[#1B4F9B] hover:underline font-medium"
         >
