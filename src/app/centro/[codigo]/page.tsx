@@ -13,12 +13,12 @@ interface Props {
 
 export default async function CentroLandingPage({ params }: Props) {
   const { codigo } = await params;
-  const codigoUpper = codigo.trim().toUpperCase();
+  const codigoLimpio = codigo.trim();
 
   const { data: centro } = await supabaseAdmin
     .from("sgcc_centers")
     .select("id, codigo_corto, nombre, ciudad, departamento, logo_url, color_primario, color_secundario, activo")
-    .eq("codigo_corto", codigoUpper)
+    .ilike("codigo_corto", codigoLimpio)
     .maybeSingle();
 
   if (!centro || !centro.activo) notFound();
