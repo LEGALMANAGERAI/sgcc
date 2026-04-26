@@ -19,14 +19,21 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   // ilike para case-insensitive — el código se guarda en BD con la capitalización
   // que puso el creador del centro y no es seguro asumir mayúsculas.
-  const { data: centro } = await supabaseAdmin
+  const { data: centro, error } = await supabaseAdmin
     .from("sgcc_centers")
     .select("id, codigo_corto, nombre, ciudad, departamento, logo_url, color_primario, color_secundario, activo")
     .ilike("codigo_corto", codigoLimpio)
     .maybeSingle();
 
-  if (!centro || !centro.activo) {
-    return NextResponse.json({ error: "Centro no encontrado" }, { status: 404 });
+  if (error) {
+    console.error("[centro/codigo] error:", error.message);
+    return NextResponse.json({ error: "Centro no encontrado", debug: error.message }, { status: 404 });
+  }
+  if (!centro) {
+    return NextResponse.json({ error: "Centro no encontrado", debug: `sin match para "${codigoLimpio}"` }, { status: 404 });
+  }
+  if (!centro.activo) {
+    return NextResponse.json({ error: "Centro no encontrado", debug: "centro inactivo" }, { status: 404 });
   }
 
   return NextResponse.json({
