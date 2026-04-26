@@ -69,15 +69,17 @@ export default async function AgendaPage({ searchParams }: Props) {
   const today = formatDate(getWeekStart());
 
   // Audiencias de la semana — filtramos por centro via join a sgcc_cases
+  // y excluimos audiencias de expedientes archivados (soft delete).
   let query = supabaseAdmin
     .from("sgcc_hearings")
     .select(`
       id, fecha_hora, duracion_min, estado, tipo, notas_previas,
-      caso:sgcc_cases!inner(id, numero_radicado, center_id),
+      caso:sgcc_cases!inner(id, numero_radicado, center_id, archivado_at),
       sala:sgcc_rooms(nombre),
       conciliador:sgcc_staff(id, nombre)
     `)
     .eq("caso.center_id", centerId)
+    .is("caso.archivado_at", null)
     .gte("fecha_hora", weekStart.toISOString())
     .lt("fecha_hora", weekEnd.toISOString())
     .order("fecha_hora", { ascending: true });

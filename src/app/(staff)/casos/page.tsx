@@ -53,6 +53,7 @@ export default async function CasosPage({ searchParams }: Props) {
       )
     `)
     .eq("center_id", centerId)
+    .is("archivado_at", null)
     .order("created_at", { ascending: false });
 
   if (visibles.modo === "lista") {
