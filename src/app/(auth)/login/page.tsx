@@ -217,8 +217,8 @@ function LoginContent() {
     <div className="min-h-screen bg-[#0D2340] flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="bg-[color:var(--color-ink)] px-8 py-8 flex justify-center">
-          <SgccLogo variant="dark" size="lg" showDescriptor />
+        <div className="bg-white px-8 py-8 flex justify-center border-b-2 border-[#1B4F9B]">
+          <SgccLogo variant="light" size="lg" showDescriptor />
         </div>
 
         {/* Selector de centros cuando el staff trabaja en varios */}
