@@ -198,6 +198,18 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
       }
 
       const data = await res.json();
+
+      // Si algún apoderado no se pudo guardar, lo decimos antes de navegar.
+      if (Array.isArray(data?.apoderadosWarnings) && data.apoderadosWarnings.length > 0) {
+        const detalle = data.apoderadosWarnings
+          .map((w: any) => `• ${w.nombre}: ${w.error}`)
+          .join("\n");
+        alert(
+          `El expediente se creó, pero no se pudieron registrar todos los apoderados:\n\n${detalle}\n\n` +
+            "Puedes agregarlos manualmente desde la pestaña Poderes del expediente.",
+        );
+      }
+
       router.push(`/casos/${data.caso.id}`);
     } catch (err: any) {
       setError(`Error de conexión: ${err?.message ?? "intenta de nuevo"}`);
