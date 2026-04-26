@@ -24,6 +24,7 @@ import type { TipoTramite } from "@/types";
 import { sumarDiasHabiles, diasHabilesEntre } from "@/lib/dias-habiles-colombia";
 import { sincronizarApoderadosDePartes } from "@/lib/sincronizar-apoderados";
 import { puedeVerCaso } from "@/lib/server-utils";
+import { EliminarExpediente } from "@/components/modules/expediente/EliminarExpediente";
 
 /* ─── Constantes ────────────────────────────────────────────────────────── */
 
@@ -78,6 +79,9 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
     .single();
 
   if (!caso) notFound();
+
+  // Si el expediente fue eliminado (soft delete) lo ocultamos como si no existiera.
+  if ((caso as any).archivado_at) notFound();
 
   // Control de acceso: el conciliador solo puede ver expedientes donde está
   // designado (directo en el caso o con audiencia asignada). Admin y
@@ -427,6 +431,9 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
             </div>
             <HistorialObservacionesAudiencias caseId={id} audiencias={hearings} />
           </div>
+          {sgccRol === "admin" && (
+            <EliminarExpediente caseId={id} numeroRadicado={caso.numero_radicado} />
+          )}
         </>
       )}
 

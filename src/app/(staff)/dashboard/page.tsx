@@ -118,6 +118,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       "*, conciliador:sgcc_staff!conciliador_id(nombre), secretario:sgcc_staff!secretario_id(nombre)"
     )
     .eq("center_id", centerId)
+    .is("archivado_at", null)
     .order("created_at", { ascending: false });
 
   if (visibles.modo === "lista") {
