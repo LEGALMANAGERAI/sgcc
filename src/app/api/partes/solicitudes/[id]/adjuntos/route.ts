@@ -74,7 +74,7 @@ export async function POST(
 
   let publicUrl: string;
   try {
-    publicUrl = await uploadFile(file, "documentos", path, file.type);
+    publicUrl = await uploadFile(file, "sgcc-documents", path, file.type);
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Error subiendo archivo" },
