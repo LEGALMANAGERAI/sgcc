@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
         nombre: nombre?.trim() || file.name,
         storage_path: storagePath,
         url,
-        subido_por_party_id: userId,
+        subido_por_party: userId,
         created_at: now,
       })
       .select()
