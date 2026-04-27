@@ -156,7 +156,7 @@ export default async function CasoDetallePage({
       .from("sgcc_documents")
       .select("*")
       .eq("case_id", caseId)
-      .eq("subido_por_party_id", userId)
+      .eq("subido_por_party", userId)
       .order("created_at", { ascending: false }),
   ]);
 
