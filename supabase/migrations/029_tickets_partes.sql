@@ -50,6 +50,7 @@ CREATE INDEX IF NOT EXISTS idx_ticket_adjuntos_ticket
   ON sgcc_ticket_adjuntos(ticket_id);
 
 ALTER TABLE sgcc_ticket_adjuntos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "allow_all" ON sgcc_ticket_adjuntos;
 CREATE POLICY "allow_all" ON sgcc_ticket_adjuntos FOR ALL USING (TRUE);
 
 COMMENT ON COLUMN sgcc_tickets.solicitante_party_id IS
