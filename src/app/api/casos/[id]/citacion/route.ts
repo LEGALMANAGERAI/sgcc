@@ -81,7 +81,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const storagePath = `sgcc-docs/${centerId}/${caseId}/citacion-${Date.now()}.docx`;
   const url = await uploadFile(
     docBuffer,
-    "documentos",
+    "sgcc-documents",
     storagePath,
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
   );

@@ -26,13 +26,13 @@ export async function DELETE(
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
 
-  // Extraer path del URL público: ".../documentos/<path>"
-  const marker = "/documentos/";
+  // Extraer path del URL público: ".../sgcc-documents/<path>"
+  const marker = "/sgcc-documents/";
   const idx = (doc as { url: string }).url.indexOf(marker);
   if (idx !== -1) {
     const path = (doc as { url: string }).url.slice(idx + marker.length);
     try {
-      await deleteFile("documentos", path);
+      await deleteFile("sgcc-documents", path);
     } catch (e) {
       console.error("[adjuntos DELETE] falló delete en Storage:", e);
       // Seguimos con el borrado del registro de todos modos

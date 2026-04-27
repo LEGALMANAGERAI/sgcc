@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     // Subir nuevo logo
     const ext = file.name.split(".").pop() ?? "png";
     const storagePath = `sgcc/${centerId}/branding/logo.${ext}`;
-    const url = await uploadFile(file, "documentos", storagePath, file.type);
+    const url = await uploadFile(file, "sgcc-documents", storagePath, file.type);
 
     // Actualizar URL en el centro
     const { error: updateError } = await supabaseAdmin

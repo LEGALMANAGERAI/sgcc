@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     // Subir archivo a Supabase Storage
     const ext = file.name.split(".").pop() ?? "pdf";
     const storagePath = `sgcc/${centerId}/casos/${caseId}/partes/${userId}/${randomUUID()}.${ext}`;
-    const url = await uploadFile(file, "documentos", storagePath, file.type);
+    const url = await uploadFile(file, "sgcc-documents", storagePath, file.type);
 
     // Registrar en sgcc_documents
     const docId = randomUUID();
