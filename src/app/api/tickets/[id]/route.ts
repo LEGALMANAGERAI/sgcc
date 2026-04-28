@@ -48,7 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Verificar que el ticket pertenece al centro
   const { data: ticket, error: findErr } = await supabaseAdmin
     .from("sgcc_tickets")
-    .select("id, solicitante_staff_id, asignado_staff_id, titulo")
+    .select("id, solicitante_staff_id, solicitante_party_id, asignado_staff_id, titulo, center_id")
     .eq("id", id)
     .eq("center_id", centerId)
     .single();
@@ -103,24 +103,45 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Notificar al solicitante cuando se responde
-  if (respuestaNueva && ticket.solicitante_staff_id && ticket.solicitante_staff_id !== staffId) {
+  // Notificar al solicitante cuando se responde (staff o parte)
+  if (respuestaNueva) {
     try {
-      const { data: solicitante } = await supabaseAdmin
-        .from("sgcc_staff")
-        .select("id, email")
-        .eq("id", ticket.solicitante_staff_id)
-        .single();
+      // Caso A: solicitante es staff
+      if (ticket.solicitante_staff_id && ticket.solicitante_staff_id !== staffId) {
+        const { data: solicitante } = await supabaseAdmin
+          .from("sgcc_staff")
+          .select("id, email")
+          .eq("id", ticket.solicitante_staff_id)
+          .single();
+        if (solicitante) {
+          await notify({
+            centerId,
+            tipo: "ticket_respondido",
+            titulo: `💬 Respuesta a tu ticket — ${ticket.titulo}`,
+            mensaje: `Tu ticket ha sido respondido.\n\n${respuestaNueva}`,
+            recipients: [{ staffId: solicitante.id, email: solicitante.email ?? undefined }],
+            canal: "both",
+          });
+        }
+      }
 
-      if (solicitante) {
-        await notify({
-          centerId,
-          tipo: "ticket_respondido",
-          titulo: `💬 Respuesta a tu ticket — ${ticket.titulo}`,
-          mensaje: `Tu ticket ha sido respondido.\n\n${respuestaNueva}`,
-          recipients: [{ staffId: solicitante.id, email: solicitante.email ?? undefined }],
-          canal: "both",
-        });
+      // Caso B: solicitante es parte
+      if (ticket.solicitante_party_id) {
+        const { data: parte } = await supabaseAdmin
+          .from("sgcc_parties")
+          .select("id, email")
+          .eq("id", ticket.solicitante_party_id)
+          .single();
+        if (parte) {
+          await notify({
+            centerId,
+            tipo: "ticket_respondido",
+            titulo: `💬 Respuesta a tu ticket — ${ticket.titulo}`,
+            mensaje: `El centro respondió tu ticket.\n\n${respuestaNueva}`,
+            recipients: [{ partyId: parte.id, email: parte.email ?? undefined }],
+            canal: "both",
+          });
+        }
       }
     } catch (e) {
       console.error("[TICKETS] Error notificando respuesta:", e);
