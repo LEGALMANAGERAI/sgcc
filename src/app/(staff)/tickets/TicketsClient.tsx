@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, MessageSquare, X, Filter } from "lucide-react";
+import { AdjuntosUpload } from "@/components/tickets/AdjuntosUpload";
 
 interface StaffLite {
   id: string;
@@ -23,6 +24,14 @@ interface TicketRow {
   respondido_at: string | null;
   created_at: string;
   case_id: string | null;
+  solicitante_party_id: string | null;
+  solicitante_party: {
+    id: string;
+    nombres: string | null;
+    apellidos: string | null;
+    razon_social: string | null;
+    email: string | null;
+  } | null;
   solicitante: { id: string; nombre: string; email: string } | null;
   asignado: { id: string; nombre: string; email: string } | null;
   respondedor: { id: string; nombre: string; email: string } | null;
@@ -84,12 +93,15 @@ export default function TicketsClient({ initialTickets, staff, currentStaffId, i
   const [filterCategoria, setFilterCategoria] = useState<string>("");
   const [filterEstado, setFilterEstado] = useState<string>("");
   const [filterPrioridad, setFilterPrioridad] = useState<string>("");
+  const [origen, setOrigen] = useState<"todos" | "parte" | "staff">("todos");
 
   const filtered = useMemo(() => {
     const list = initialTickets.filter((t) => {
       if (filterCategoria && t.categoria !== filterCategoria) return false;
       if (filterEstado && t.estado !== filterEstado) return false;
       if (filterPrioridad && t.prioridad !== filterPrioridad) return false;
+      if (origen === "parte" && !t.solicitante_party_id) return false;
+      if (origen === "staff" && t.solicitante_party_id) return false;
       return true;
     });
     return list.sort((a, b) => {
@@ -98,7 +110,7 @@ export default function TicketsClient({ initialTickets, staff, currentStaffId, i
       if (oa !== ob) return oa - ob;
       return (PRIO_ORDER[a.prioridad] ?? 99) - (PRIO_ORDER[b.prioridad] ?? 99);
     });
-  }, [initialTickets, filterCategoria, filterEstado, filterPrioridad]);
+  }, [initialTickets, filterCategoria, filterEstado, filterPrioridad, origen]);
 
   const anyFilter = !!(filterCategoria || filterEstado || filterPrioridad);
 
@@ -110,6 +122,23 @@ export default function TicketsClient({ initialTickets, staff, currentStaffId, i
           <div className="flex items-center gap-2 text-sm text-[#3D5068] flex-1 min-w-[200px]">
             <span className="font-bold text-[#1A2332]">🎫 Tickets</span>
             <span className="text-[#7A8FA6]">· {filtered.length} de {initialTickets.length}</span>
+          </div>
+
+          {/* Pills origen */}
+          <div className="flex gap-2">
+            {(["todos", "parte", "staff"] as const).map((o) => (
+              <button
+                key={o}
+                onClick={() => setOrigen(o)}
+                className={`px-3 py-1 rounded-full text-sm border ${
+                  origen === o
+                    ? "bg-[#0D2340] text-white border-[#0D2340]"
+                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                {o === "todos" ? "Todos" : o === "parte" ? "De partes" : "Internos"}
+              </button>
+            ))}
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -227,8 +256,24 @@ export default function TicketsClient({ initialTickets, staff, currentStaffId, i
                           <p className="text-xs text-[#7A8FA6] line-clamp-2 mt-0.5">{t.descripcion}</p>
                         )}
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-[11px] text-[#7A8FA6]">
-                          <span>
-                            👤 {t.solicitante?.nombre ?? "—"}
+                          <span className="flex items-center gap-1.5">
+                            👤{" "}
+                            {t.solicitante_party_id ? (
+                              <span className="flex items-center gap-1.5">
+                                {t.solicitante_party
+                                  ? [t.solicitante_party.nombres, t.solicitante_party.apellidos]
+                                      .filter(Boolean)
+                                      .join(" ") ||
+                                    t.solicitante_party.razon_social ||
+                                    t.solicitante_party.email
+                                  : "Parte"}
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-violet-100 text-violet-700 border border-violet-200">
+                                  Parte
+                                </span>
+                              </span>
+                            ) : (
+                              t.solicitante?.nombre ?? "—"
+                            )}
                             <span className="text-[#B7C2D4]"> · solicitante</span>
                           </span>
                           {t.asignado && (
@@ -492,6 +537,19 @@ function ResponderModal({
   const [estado, setEstado] = useState(ticket.estado);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [adjuntos, setAdjuntos] = useState<any[]>([]);
+
+  async function recargarAdjuntos(ticketId: string) {
+    const res = await fetch(`/api/tickets/${ticketId}`);
+    if (res.ok) {
+      const data = await res.json();
+      setAdjuntos(data.adjuntos ?? []);
+    }
+  }
+
+  useEffect(() => {
+    recargarAdjuntos(ticket.id);
+  }, [ticket.id]);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -564,6 +622,32 @@ function ResponderModal({
                 </p>
               )}
             </div>
+
+            {/* Adjuntos del staff en la respuesta */}
+            <div className="pt-3 border-t border-gray-100 space-y-2">
+              <h4 className="text-xs font-semibold text-gray-600">Adjuntos en mi respuesta</h4>
+              <AdjuntosUpload
+                endpoint={`/api/tickets/${ticket.id}/adjuntos`}
+                onUploaded={() => recargarAdjuntos(ticket.id)}
+              />
+              {adjuntos.filter((a) => a.subido_por_staff).map((a) => (
+                <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className="block text-sm text-[#1B4F9B] hover:underline">
+                  📎 {a.nombre_archivo}
+                </a>
+              ))}
+            </div>
+
+            {/* Adjuntos de la parte */}
+            {adjuntos.filter((a) => a.subido_por_party).length > 0 && (
+              <div className="pt-3 border-t border-gray-100 space-y-2">
+                <h4 className="text-xs font-semibold text-gray-600">Adjuntos de la parte</h4>
+                {adjuntos.filter((a) => a.subido_por_party).map((a) => (
+                  <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className="block text-sm text-[#1B4F9B] hover:underline">
+                    📎 {a.nombre_archivo}
+                  </a>
+                ))}
+              </div>
+            )}
 
             {error && (
               <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">

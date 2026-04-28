@@ -17,6 +17,7 @@ export default async function TicketsPage() {
       .select(`
         *,
         solicitante:sgcc_staff!sgcc_tickets_solicitante_staff_id_fkey(id, nombre, email),
+        solicitante_party:sgcc_parties!sgcc_tickets_solicitante_party_id_fkey(id, nombres, apellidos, razon_social, email),
         asignado:sgcc_staff!sgcc_tickets_asignado_staff_id_fkey(id, nombre, email),
         respondedor:sgcc_staff!sgcc_tickets_respondido_por_fkey(id, nombre, email),
         caso:sgcc_cases(id, numero_radicado)
@@ -40,6 +41,9 @@ export default async function TicketsPage() {
   const altaPrioridad = tickets.filter(
     (t: any) => t.prioridad === "Alta" && t.estado !== "Cerrado"
   ).length;
+  const ticketsPartes = tickets.filter(
+    (t: any) => t.solicitante_party_id && t.estado !== "Cerrado"
+  ).length;
 
   return (
     <div>
@@ -49,11 +53,19 @@ export default async function TicketsPage() {
       />
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5 mb-5">
         <KpiCard label="Total" value={total} hint="Tickets registrados" borderColor="#0D2340" valueClass="text-[#0D2340]" />
         <KpiCard label="Pendientes" value={pendientes} hint="Sin atender" borderColor="#d97706" valueClass="text-amber-600" />
         <KpiCard label="En revisión" value={enRevision} hint="En proceso" borderColor="#2563eb" valueClass="text-blue-600" />
         <KpiCard label="Alta prioridad" value={altaPrioridad} hint="Sin cerrar" borderColor="#dc2626" valueClass="text-red-600" />
+        <div
+          className="bg-violet-50 border border-violet-200 rounded-lg p-5 shadow-[0_1px_4px_rgba(13,35,64,0.06)]"
+          style={{ borderLeft: "4px solid #7c3aed" }}
+        >
+          <div className="text-[11px] font-bold text-violet-700 uppercase tracking-widest mb-1.5">De partes</div>
+          <div className="text-3xl font-black text-violet-900">{ticketsPartes}</div>
+          <div className="text-[11px] text-violet-600">Tickets abiertos de partes</div>
+        </div>
       </div>
 
       <TicketsClient

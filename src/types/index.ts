@@ -421,7 +421,7 @@ export interface SgccNotification {
 
 // ─── Tickets ────────────────────────────────────────────────────────────────
 
-export type TicketCategoria = "soporte" | "administrativo" | "operativo";
+export type TicketCategoria = "soporte" | "administrativo" | "operativo" | "consulta_parte";
 export type TicketPrioridad = "Normal" | "Media" | "Alta";
 export type TicketEstado = "Pendiente" | "EnRevision" | "Respondido" | "Cerrado";
 
@@ -435,12 +435,26 @@ export interface SgccTicket {
   prioridad: TicketPrioridad;
   estado: TicketEstado;
   solicitante_staff_id: string | null;
+  solicitante_party_id: string | null;
   asignado_staff_id: string | null;
   respuesta: string | null;
   respondido_por: string | null;
   respondido_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface SgccTicketAdjunto {
+  id: string;
+  ticket_id: string;
+  nombre_archivo: string;
+  storage_path: string;
+  url: string;
+  mime_type: string | null;
+  tamano_bytes: number | null;
+  subido_por_party: string | null;
+  subido_por_staff: string | null;
+  created_at: string;
 }
 
 // ─── Timeline ───────────────────────────────────────────────────────────────
