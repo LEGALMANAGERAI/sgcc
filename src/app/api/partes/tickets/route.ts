@@ -76,7 +76,8 @@ export async function POST(req: NextRequest) {
     if (!caseParty) {
       return NextResponse.json({ error: "No tiene acceso a este caso" }, { status: 403 });
     }
-    centerId = (caseParty as any).caso.center_id;
+    const caso = caseParty.caso as unknown as { center_id: string };
+    centerId = caso.center_id;
   }
   if (!centerId) {
     return NextResponse.json(
@@ -147,7 +148,7 @@ export async function POST(req: NextRequest) {
       });
     }
   } catch (e) {
-    console.error("[partes/tickets] Error notificando ticket nuevo:", e);
+    console.error("[PARTES/TICKETS] Error notificando ticket nuevo:", e);
   }
 
   return NextResponse.json(data, { status: 201 });
