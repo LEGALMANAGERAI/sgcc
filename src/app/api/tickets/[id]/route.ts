@@ -31,7 +31,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 404 });
-  return NextResponse.json(data);
+
+  // Cargar adjuntos
+  const { data: adjuntos } = await supabaseAdmin
+    .from("sgcc_ticket_adjuntos")
+    .select("*")
+    .eq("ticket_id", id)
+    .order("created_at", { ascending: true });
+
+  return NextResponse.json({ ...data, adjuntos: adjuntos ?? [] });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
