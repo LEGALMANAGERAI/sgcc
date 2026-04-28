@@ -47,39 +47,57 @@ export async function PATCH(
   const guard = await requireParte();
   if ("error" in guard) return guard.error;
   const { id } = await params;
-  const body = await req.json();
-
-  // Solo se permite cerrar el ticket: cualquier otro campo → 403
-  const keys = Object.keys(body);
-  if (keys.length !== 1 || keys[0] !== "estado" || body.estado !== "Cerrado") {
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Body JSON inválido" }, { status: 400 });
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
     return NextResponse.json(
       { error: "Las partes solo pueden cerrar el ticket" },
       { status: 403 }
     );
   }
 
-  // Verificar ownership
+  // Solo se permite cerrar el ticket: cualquier otro campo → 403
+  const keys = Object.keys(body as object);
+  const bodyObj = body as Record<string, unknown>;
+  if (keys.length !== 1 || keys[0] !== "estado" || bodyObj.estado !== "Cerrado") {
+    return NextResponse.json(
+      { error: "Las partes solo pueden cerrar el ticket" },
+      { status: 403 }
+    );
+  }
+
+  // Cargar ticket para obtener center_id y titulo (usado en notificación).
+  // Update atómico con .neq("estado","Cerrado") evita race condition con
+  // múltiples PATCH concurrentes (dos tabs cerrando al mismo tiempo).
   const { data: ticket } = await supabaseAdmin
     .from("sgcc_tickets")
-    .select("id, center_id, titulo, estado")
+    .select("id, center_id, titulo")
     .eq("id", id)
     .eq("solicitante_party_id", guard.userId)
     .maybeSingle();
   if (!ticket) {
     return NextResponse.json({ error: "Ticket no encontrado" }, { status: 404 });
   }
-  if (ticket.estado === "Cerrado") {
-    return NextResponse.json({ error: "El ticket ya está cerrado" }, { status: 400 });
-  }
 
   const { data, error } = await supabaseAdmin
     .from("sgcc_tickets")
     .update({ estado: "Cerrado", updated_at: new Date().toISOString() })
     .eq("id", id)
+    .eq("solicitante_party_id", guard.userId)
+    .neq("estado", "Cerrado")
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error || !data) {
+    return NextResponse.json(
+      { error: "El ticket ya está cerrado o no se pudo cerrar" },
+      { status: 409 }
+    );
+  }
 
   // Notificación informativa a admins del centro (Q4)
   try {
