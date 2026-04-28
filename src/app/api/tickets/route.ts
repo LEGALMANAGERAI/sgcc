@@ -20,12 +20,14 @@ export async function GET(req: NextRequest) {
   const estado = searchParams.get("estado");
   const categoria = searchParams.get("categoria");
   const caseId = searchParams.get("case_id");
+  const origen = searchParams.get("origen"); // 'parte' | 'staff' | 'todos' (default todos)
 
   let query = supabaseAdmin
     .from("sgcc_tickets")
     .select(`
       *,
       solicitante:sgcc_staff!sgcc_tickets_solicitante_staff_id_fkey(id, nombre, email),
+      solicitante_party:sgcc_parties!sgcc_tickets_solicitante_party_id_fkey(id, nombres, apellidos, razon_social, email),
       asignado:sgcc_staff!sgcc_tickets_asignado_staff_id_fkey(id, nombre, email),
       respondedor:sgcc_staff!sgcc_tickets_respondido_por_fkey(id, nombre, email),
       caso:sgcc_cases(id, numero_radicado)
@@ -36,6 +38,8 @@ export async function GET(req: NextRequest) {
   if (estado) query = query.eq("estado", estado);
   if (categoria) query = query.eq("categoria", categoria);
   if (caseId) query = query.eq("case_id", caseId);
+  if (origen === "parte") query = query.not("solicitante_party_id", "is", null);
+  else if (origen === "staff") query = query.not("solicitante_staff_id", "is", null);
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
