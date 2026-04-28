@@ -105,18 +105,29 @@ export async function puedeVerCaso(session: any, centerId: string, caseId: strin
 /**
  * Genera el siguiente número de radicado para un centro en el año actual.
  * Formato: YYYY-NNNN (ej: 2025-0042)
+ *
+ * Usa MAX(numero_radicado) en vez de COUNT(*) para evitar colisiones
+ * cuando se borran casos (huecos en la secuencia).
  */
 export async function generateRadicado(centerId: string): Promise<string> {
   const year = new Date().getFullYear();
 
-  // Contar casos del año actual para este centro
-  const { count } = await supabaseAdmin
+  const { data } = await supabaseAdmin
     .from("sgcc_cases")
-    .select("*", { count: "exact", head: true })
+    .select("numero_radicado")
     .eq("center_id", centerId)
-    .like("numero_radicado", `${year}-%`);
+    .like("numero_radicado", `${year}-%`)
+    .order("numero_radicado", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  const seq = (count ?? 0) + 1;
+  let seq = 1;
+  if (data?.numero_radicado) {
+    const parts = String(data.numero_radicado).split("-");
+    const lastSeq = parseInt(parts[1] ?? "0", 10);
+    if (!Number.isNaN(lastSeq)) seq = lastSeq + 1;
+  }
+
   return `${year}-${String(seq).padStart(4, "0")}`;
 }
 

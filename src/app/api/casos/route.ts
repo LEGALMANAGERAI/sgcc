@@ -85,35 +85,49 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Se requiere al menos un convocado" }, { status: 400 });
   }
 
-  // Generar radicado
-  const numero_radicado = await generateRadicado(centerId);
   const caseId = randomUUID();
 
   // Asignar conciliador según método del centro
   const conciliadorAsignado = await asignarConciliador(centerId, conciliador_id);
 
-  // Insertar caso
-  const { data: caso, error: caseError } = await supabaseAdmin
-    .from("sgcc_cases")
-    .insert({
-      id: caseId,
-      center_id: centerId,
-      numero_radicado,
-      tipo_tramite: tipo_tramite || "conciliacion",
-      materia,
-      descripcion,
-      cuantia: cuantia ?? null,
-      cuantia_indeterminada: cuantia_indeterminada ?? false,
-      conciliador_id: conciliadorAsignado,
-      sala_id: sala_id ?? null,
-      estado: "solicitud",
-      fecha_solicitud: new Date().toISOString().split("T")[0],
-      created_by_staff: (session.user as any).id,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
+  // Insertar caso con retry-on-conflict del numero_radicado.
+  // Aunque generateRadicado ya usa MAX (no COUNT), pueden ocurrir colisiones
+  // si dos requests entran en paralelo: el retry busca el siguiente disponible.
+  let caso: any = null;
+  let caseError: any = null;
+  let numero_radicado = "";
+  for (let attempt = 0; attempt < 5; attempt++) {
+    numero_radicado = await generateRadicado(centerId);
+    const result = await supabaseAdmin
+      .from("sgcc_cases")
+      .insert({
+        id: caseId,
+        center_id: centerId,
+        numero_radicado,
+        tipo_tramite: tipo_tramite || "conciliacion",
+        materia,
+        descripcion,
+        cuantia: cuantia ?? null,
+        cuantia_indeterminada: cuantia_indeterminada ?? false,
+        conciliador_id: conciliadorAsignado,
+        sala_id: sala_id ?? null,
+        estado: "solicitud",
+        fecha_solicitud: new Date().toISOString().split("T")[0],
+        created_by_staff: (session.user as any).id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+    if (!result.error) {
+      caso = result.data;
+      caseError = null;
+      break;
+    }
+    caseError = result.error;
+    // 23505 = unique_violation en Postgres
+    if (result.error.code !== "23505") break;
+  }
 
   if (caseError) return NextResponse.json({ error: caseError.message }, { status: 500 });
 
