@@ -56,11 +56,17 @@ const fmt = (n: number) =>
 
 const pct = (n: number) => `${(n * 100).toFixed(2)}%`;
 
-/** Normaliza un documento (NIT/CC) eliminando puntos, guiones, espacios y pasando a mayúsculas.
- *  Se usa como clave estable para agrupar al mismo acreedor aunque lo hayan escrito con formatos distintos. */
+/** Normaliza un documento (NIT/CC) para usarlo como clave estable de agrupación.
+ *  - Quita TODO lo que no sea letra/dígito (puntos, espacios, guiones, paréntesis, slashes, etc.).
+ *  - Si parece un NIT colombiano con dígito de verificación al final (ej. "860.035.827-5"),
+ *    descarta el VD para que coincida con la versión escrita sin él ("860.035.827").
+ *    Así el mismo acreedor agrupa aunque un usuario lo capturó con VD y otro sin. */
 function normalizarDocumento(d: string | null | undefined): string {
   if (!d) return "";
-  return d.replace(/[\s.\-_]/g, "").toUpperCase();
+  const trimmed = d.trim();
+  const nitConVD = trimmed.match(/^([\d.\s]+)-(\d)\s*$/);
+  const base = nitConVD ? nitConVD[1] : trimmed;
+  return base.replace(/[^\dA-Za-z]/g, "").toUpperCase();
 }
 
 const conceptos = [
