@@ -7,6 +7,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Users, ShieldCheck, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { ApoderadosActions } from "./ApoderadosActions";
+import type { SgccAttorney } from "@/types";
 
 interface Props {
   searchParams: Promise<{ filtro?: string }>;
@@ -62,15 +63,15 @@ export default async function ApoderadosPage({ searchParams }: Props) {
   }
 
   // Stats
-  const totalVerificados = allAttorneys.filter((a: any) => a.verificado).length;
-  const totalSinVerificar = allAttorneys.filter((a: any) => !a.verificado).length;
+  const totalVerificados = allAttorneys.filter((a: SgccAttorney) => a.verificado).length;
+  const totalSinVerificar = allAttorneys.filter((a: SgccAttorney) => !a.verificado).length;
 
   // Filtrar según searchParams
-  let filtered = allAttorneys as any[];
+  let filtered: SgccAttorney[] = allAttorneys;
   if (params.filtro === "verificados") {
-    filtered = filtered.filter((a: any) => a.verificado);
+    filtered = filtered.filter((a) => a.verificado);
   } else if (params.filtro === "sin-verificar") {
-    filtered = filtered.filter((a: any) => !a.verificado);
+    filtered = filtered.filter((a) => !a.verificado);
   }
 
   return (
@@ -159,8 +160,8 @@ export default async function ApoderadosPage({ searchParams }: Props) {
                 </td>
               </tr>
             ) : (
-              filtered.map((a: any) => {
-                const nombre = [a.nombres, a.apellidos].filter(Boolean).join(" ") || "—";
+              filtered.map((a) => {
+                const nombre = a.nombre || "—";
                 const casosActivos = activeCaseCounts[a.id] ?? 0;
 
                 return (
@@ -168,9 +169,9 @@ export default async function ApoderadosPage({ searchParams }: Props) {
                     <td className="px-5 py-3 font-medium text-gray-900">{nombre}</td>
                     <td className="px-5 py-3 font-mono text-gray-700">{a.tarjeta_profesional || "—"}</td>
                     <td className="px-5 py-3 text-gray-600">
-                      {a.tipo_documento && a.numero_documento
-                        ? `${a.tipo_documento.toUpperCase()} ${a.numero_documento}`
-                        : a.numero_documento || "—"}
+                      {a.tipo_doc && a.numero_doc
+                        ? `${a.tipo_doc.toUpperCase()} ${a.numero_doc}`
+                        : a.numero_doc || "—"}
                     </td>
                     <td className="px-5 py-3 text-gray-600 max-w-[200px] truncate">
                       {a.email || "—"}
