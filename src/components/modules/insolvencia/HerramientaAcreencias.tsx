@@ -1020,6 +1020,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
               <thead>
                 <tr className="bg-[#0D2340] text-white">
                   <th className="px-3 py-2.5 text-left font-semibold min-w-[180px]">Acreedor</th>
+                  <th className="px-2 py-2.5 text-center font-semibold">Clase</th>
                   {conceptos.map((c) => (
                     <th key={c.key} className="px-2 py-2.5 text-right font-semibold">{c.label}</th>
                   ))}
@@ -1043,6 +1044,16 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                         <td className="px-3 py-2 font-medium text-gray-900">
                           <div>{a.acreedor_nombre}{a.acreedor_documento && <span className="text-gray-400 ml-1">({a.acreedor_documento})</span>}</div>
                           {a.identificacion_credito && <div className="text-[10px] text-gray-500 mt-0.5">{a.identificacion_credito}</div>}
+                        </td>
+                        <td className="px-2 py-2 text-center">
+                          {(() => {
+                            const cl = CLASES.find((c) => c.value === a.clase_credito) ?? CLASES[4];
+                            return (
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${cl.color}`}>
+                                {cl.label}
+                              </span>
+                            );
+                          })()}
                         </td>
                         {conceptos.map((c) => (
                           <td key={c.key} className="px-1 py-2 text-right">
@@ -1115,6 +1126,24 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                             </div>
                           </div>
                         </td>
+                        <td className="px-2 py-2.5 text-center">
+                          {(() => {
+                            const clases = new Set(grupo.acreencias.map((a) => a.clase_credito));
+                            if (clases.size === 1) {
+                              const cl = CLASES.find((c) => c.value === [...clases][0]) ?? CLASES[4];
+                              return (
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${cl.color}`}>
+                                  {cl.label}
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700">
+                                Mixta
+                              </span>
+                            );
+                          })()}
+                        </td>
                         {conceptos.map((c) => (
                           <td key={c.key} className="px-2 py-2.5 text-right font-bold text-gray-900">
                             {fmt(totalesGrupo[c.key])}
@@ -1150,6 +1179,16 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                                   )}
                                 </div>
                               </div>
+                            </td>
+                            <td className="px-2 py-2 text-center">
+                              {(() => {
+                                const cl = CLASES.find((c) => c.value === a.clase_credito) ?? CLASES[4];
+                                return (
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${cl.color}`}>
+                                    {cl.label}
+                                  </span>
+                                );
+                              })()}
                             </td>
                             {conceptos.map((c) => (
                               <td key={c.key} className="px-1 py-2 text-right">
@@ -1190,6 +1229,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
               <tfoot>
                 <tr className="bg-gray-50 border-t-2 border-[#0D2340] font-bold text-xs">
                   <td className="px-3 py-2 text-gray-900">TOTALES</td>
+                  <td></td>
                   {conceptos.map((c) => {
                     const total = acreencias.reduce((s, a) => s + (Number((a as any)[`con_${c.key}`]) || 0), 0);
                     return <td key={c.key} className="px-2 py-2 text-right text-gray-900">{fmt(total)}</td>;
