@@ -96,6 +96,157 @@ function calcularCuotaPMT(capital: number, tasaAnual: number, meses: number): nu
   return capital * (r * factor) / (factor - 1);
 }
 
+/* ─── Propuesta de pago — opciones estructuradas ─────────────────── */
+
+const MODALIDADES_PAGO = [
+  { v: "cuotas_fijas", l: "Cuotas mensuales fijas" },
+  { v: "cuotas_variables", l: "Cuotas variables (capital constante)" },
+  { v: "unico_pago", l: "Pago único al vencimiento" },
+  { v: "mixta", l: "Mixta (especificar en notas)" },
+] as const;
+
+const PERIODICIDADES = [
+  { v: "mensual", l: "Mensual" },
+  { v: "bimensual", l: "Bimensual" },
+  { v: "trimestral", l: "Trimestral" },
+  { v: "semestral", l: "Semestral" },
+] as const;
+
+const TIPOS_TASA = [
+  { v: "cero", l: "Sin intereses (0%)" },
+  { v: "ipc", l: "IPC" },
+  { v: "ipc_mas", l: "IPC + spread" },
+  { v: "dtf_mas", l: "DTF + spread" },
+  { v: "ibr_mas", l: "IBR + spread" },
+  { v: "fija", l: "Tasa fija (%)" },
+] as const;
+
+type ModalidadPago = (typeof MODALIDADES_PAGO)[number]["v"];
+type Periodicidad = (typeof PERIODICIDADES)[number]["v"];
+type TipoTasa = (typeof TIPOS_TASA)[number]["v"];
+
+interface PropuestaForm {
+  titulo: string;
+  modalidad: ModalidadPago;
+  periodicidad: Periodicidad;
+  plazo_meses: string;
+  periodo_gracia_meses: string;
+  tasa_tipo: TipoTasa;
+  tasa_valor: string;
+  condonaciones: {
+    intereses_corrientes: boolean;
+    intereses_moratorios: boolean;
+    otros_conceptos: boolean;
+  };
+  detalle_condonaciones: string;
+  notas_libres: string;
+  descripcion: string;
+  descripcionEditadaManualmente: boolean;
+}
+
+const PROP_FORM_INICIAL: PropuestaForm = {
+  titulo: "",
+  modalidad: "cuotas_fijas",
+  periodicidad: "mensual",
+  plazo_meses: "12",
+  periodo_gracia_meses: "0",
+  tasa_tipo: "cero",
+  tasa_valor: "",
+  condonaciones: { intereses_corrientes: false, intereses_moratorios: false, otros_conceptos: false },
+  detalle_condonaciones: "",
+  notas_libres: "",
+  descripcion: "",
+  descripcionEditadaManualmente: false,
+};
+
+const ESTRUCTURA_TAG = "__sgcc_propuesta_v1";
+
+function tasaATexto(tipo: TipoTasa, valor: string): string {
+  const v = valor.trim();
+  switch (tipo) {
+    case "cero": return "0%";
+    case "ipc": return "IPC";
+    case "ipc_mas": return v ? `IPC + ${v}%` : "IPC + spread";
+    case "dtf_mas": return v ? `DTF + ${v}%` : "DTF + spread";
+    case "ibr_mas": return v ? `IBR + ${v}%` : "IBR + spread";
+    case "fija": return v ? `${v}% fija` : "Fija";
+  }
+}
+
+function modalidadLabel(m: ModalidadPago): string {
+  return MODALIDADES_PAGO.find((x) => x.v === m)?.l ?? m;
+}
+
+function periodicidadLabel(p: Periodicidad): string {
+  return PERIODICIDADES.find((x) => x.v === p)?.l ?? p;
+}
+
+function generarDescripcionAutomatica(f: PropuestaForm): string {
+  const partes: string[] = [];
+  const periodicidad = f.modalidad !== "unico_pago" ? ` con periodicidad ${periodicidadLabel(f.periodicidad).toLowerCase()}` : "";
+  partes.push(`Se propone el pago bajo la modalidad de ${modalidadLabel(f.modalidad).toLowerCase()}${periodicidad}.`);
+
+  const plazo = f.plazo_meses ? parseInt(f.plazo_meses, 10) : 0;
+  if (plazo > 0) partes.push(`El plazo total de la propuesta es de ${plazo} meses.`);
+
+  const gracia = f.periodo_gracia_meses ? parseInt(f.periodo_gracia_meses, 10) : 0;
+  if (gracia > 0) partes.push(`Se contempla un período de gracia de ${gracia} meses, durante los cuales no se realizarán pagos al capital.`);
+
+  partes.push(`La tasa de interés aplicable será ${tasaATexto(f.tasa_tipo, f.tasa_valor)}.`);
+
+  const condList: string[] = [];
+  if (f.condonaciones.intereses_corrientes) condList.push("intereses corrientes");
+  if (f.condonaciones.intereses_moratorios) condList.push("intereses moratorios");
+  if (f.condonaciones.otros_conceptos) condList.push("otros conceptos distintos al capital");
+  if (condList.length > 0) {
+    let texto = `Se solicita a los acreedores la condonación de los siguientes conceptos: ${condList.join(", ")}.`;
+    if (f.detalle_condonaciones.trim()) texto += ` ${f.detalle_condonaciones.trim()}`;
+    partes.push(texto);
+  }
+
+  if (f.notas_libres.trim()) partes.push(f.notas_libres.trim());
+
+  return partes.join("\n\n");
+}
+
+function serializarEstructura(f: PropuestaForm): string {
+  return JSON.stringify({
+    [ESTRUCTURA_TAG]: 1,
+    modalidad: f.modalidad,
+    periodicidad: f.periodicidad,
+    tasa_tipo: f.tasa_tipo,
+    tasa_valor: f.tasa_valor,
+    condonaciones: f.condonaciones,
+    detalle_condonaciones: f.detalle_condonaciones,
+    notas_libres: f.notas_libres,
+    descripcion_editada_manualmente: f.descripcionEditadaManualmente,
+  });
+}
+
+function parseEstructura(notas: string | null | undefined): Partial<PropuestaForm> | null {
+  if (!notas) return null;
+  const trimmed = notas.trim();
+  if (!trimmed.startsWith("{")) return null;
+  try {
+    const data = JSON.parse(trimmed);
+    if (!data || typeof data !== "object" || data[ESTRUCTURA_TAG] !== 1) return null;
+    return {
+      modalidad: data.modalidad,
+      periodicidad: data.periodicidad,
+      tasa_tipo: data.tasa_tipo,
+      tasa_valor: data.tasa_valor ?? "",
+      condonaciones: data.condonaciones ?? PROP_FORM_INICIAL.condonaciones,
+      detalle_condonaciones: data.detalle_condonaciones ?? "",
+      notas_libres: data.notas_libres ?? "",
+      descripcionEditadaManualmente: !!data.descripcion_editada_manualmente,
+    };
+  } catch {
+    return null;
+  }
+}
+
+const PROPUESTA_EDITABLE_ESTADOS = new Set(["borrador", "socializada"]);
+
 /* ─── Componente ─────────────────────────────────────────────────── */
 
 export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvocados }: Props) {
@@ -107,7 +258,8 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
   // Propuesta
   const [propuestas, setPropuestas] = useState<any[]>([]);
   const [showPropForm, setShowPropForm] = useState(false);
-  const [propForm, setPropForm] = useState({ titulo: "", descripcion: "", plazo_meses: "", tasa_interes: "", periodo_gracia_meses: "" });
+  const [editingPropId, setEditingPropId] = useState<string | null>(null);
+  const [propForm, setPropForm] = useState<PropuestaForm>(PROP_FORM_INICIAL);
 
   // Votación
   const [votos, setVotos] = useState<Record<string, VotoInsolvencia>>({});
@@ -203,6 +355,31 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     fetchPropuestas();
     fetchAcuerdo();
   }, []);
+
+  // Mientras el form de propuesta esté abierto y la descripción no haya sido editada
+  // a mano, regenerarla a partir de los campos estructurados.
+  useEffect(() => {
+    if (!showPropForm || propForm.descripcionEditadaManualmente) return;
+    const auto = generarDescripcionAutomatica(propForm);
+    if (auto !== propForm.descripcion) {
+      setPropForm((prev) => ({ ...prev, descripcion: auto }));
+    }
+  }, [
+    showPropForm,
+    propForm.descripcionEditadaManualmente,
+    propForm.modalidad,
+    propForm.periodicidad,
+    propForm.plazo_meses,
+    propForm.periodo_gracia_meses,
+    propForm.tasa_tipo,
+    propForm.tasa_valor,
+    propForm.condonaciones.intereses_corrientes,
+    propForm.condonaciones.intereses_moratorios,
+    propForm.condonaciones.otros_conceptos,
+    propForm.detalle_condonaciones,
+    propForm.notas_libres,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ]);
 
   async function fetchPropuestas() {
     const res = await fetch(`/api/expediente/${caseId}/propuesta`);
@@ -431,28 +608,66 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
 
   /* ─── Propuesta ──────────────────────────────────────────────────── */
 
-  async function crearPropuesta() {
+  function abrirNuevaPropuesta() {
+    setEditingPropId(null);
+    setPropForm(PROP_FORM_INICIAL);
+    setShowPropForm(true);
+  }
+
+  function abrirEdicionPropuesta(p: any) {
+    const desdeEstructura = parseEstructura(p.notas);
+    setEditingPropId(p.id);
+    setPropForm({
+      ...PROP_FORM_INICIAL,
+      ...(desdeEstructura ?? {}),
+      titulo: p.titulo ?? "",
+      plazo_meses: p.plazo_meses != null ? String(p.plazo_meses) : "",
+      periodo_gracia_meses: p.periodo_gracia_meses != null ? String(p.periodo_gracia_meses) : "0",
+      descripcion: p.descripcion ?? "",
+      // Si la propuesta es legacy (sin estructura JSON) o el usuario ya editó la descripción,
+      // no debemos sobrescribirla con el autogenerador.
+      descripcionEditadaManualmente: desdeEstructura?.descripcionEditadaManualmente ?? !desdeEstructura,
+    });
+    setShowPropForm(true);
+  }
+
+  function cerrarFormPropuesta() {
+    setShowPropForm(false);
+    setEditingPropId(null);
+    setPropForm(PROP_FORM_INICIAL);
+  }
+
+  async function guardarPropuesta() {
     if (!propForm.titulo.trim() || !propForm.descripcion.trim()) {
       flash("error", "Título y descripción son requeridos");
       return;
     }
+    const isEdit = !!editingPropId;
     setSaving("prop");
     try {
+      const payload = {
+        titulo: propForm.titulo.trim(),
+        descripcion: propForm.descripcion.trim(),
+        plazo_meses: propForm.plazo_meses ? parseInt(propForm.plazo_meses, 10) : null,
+        tasa_interes: tasaATexto(propForm.tasa_tipo, propForm.tasa_valor),
+        periodo_gracia_meses: propForm.periodo_gracia_meses ? parseInt(propForm.periodo_gracia_meses, 10) : 0,
+        notas: serializarEstructura(propForm),
+      };
       const res = await fetch(`/api/expediente/${caseId}/propuesta`, {
-        method: "POST",
+        method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...propForm,
-          plazo_meses: propForm.plazo_meses ? parseInt(propForm.plazo_meses) : null,
-          periodo_gracia_meses: propForm.periodo_gracia_meses ? parseInt(propForm.periodo_gracia_meses) : 0,
-        }),
+        body: JSON.stringify(isEdit ? { propuesta_id: editingPropId, ...payload } : payload),
       });
-      if (!res.ok) { flash("error", "Error al crear propuesta"); return; }
+      if (!res.ok) {
+        flash("error", isEdit ? "Error al actualizar propuesta" : "Error al crear propuesta");
+        return;
+      }
       await fetchPropuestas();
-      setShowPropForm(false);
-      setPropForm({ titulo: "", descripcion: "", plazo_meses: "", tasa_interes: "", periodo_gracia_meses: "" });
-      flash("ok", "Propuesta creada");
-    } finally { setSaving(null); }
+      cerrarFormPropuesta();
+      flash("ok", isEdit ? "Propuesta actualizada" : "Propuesta creada");
+    } finally {
+      setSaving(null);
+    }
   }
 
   async function cambiarEstadoPropuesta(propuestaId: string, estado: string, modoVotacion?: string) {
@@ -1263,80 +1478,115 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
       {seccion === "propuesta" && (
         <div className="space-y-4">
           {/* Propuestas existentes */}
-          {propuestas.map((p) => (
-            <div key={p.id} className="bg-white rounded-xl border border-gray-200 p-5">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div>
-                  <h4 className="font-semibold text-[#0D2340]">{p.titulo}</h4>
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium mt-1 ${
-                    p.estado === "aprobada" ? "bg-green-100 text-green-700" :
-                    p.estado === "rechazada" ? "bg-red-100 text-red-700" :
-                    p.estado === "en_votacion" ? "bg-blue-100 text-blue-700" :
-                    p.estado === "socializada" ? "bg-purple-100 text-purple-700" :
-                    "bg-gray-100 text-gray-600"
-                  }`}>
-                    {p.estado.replace("_", " ")}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  {p.estado === "borrador" && (
-                    <button
-                      onClick={() => cambiarEstadoPropuesta(p.id, "socializada")}
-                      disabled={!!saving}
-                      className="text-xs px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 disabled:opacity-50"
-                    >
-                      Marcar como socializada
-                    </button>
-                  )}
-                  {p.estado === "socializada" && (
-                    <div className="flex gap-1.5">
+          {propuestas.map((p) => {
+            const estructura = parseEstructura(p.notas);
+            const editable = PROPUESTA_EDITABLE_ESTADOS.has(p.estado);
+            const condonaciones = estructura?.condonaciones;
+            const condonacionList = [
+              condonaciones?.intereses_corrientes && "Int. corrientes",
+              condonaciones?.intereses_moratorios && "Int. moratorios",
+              condonaciones?.otros_conceptos && "Otros conceptos",
+            ].filter(Boolean) as string[];
+            return (
+              <div key={p.id} className="bg-white rounded-xl border border-gray-200 p-5">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <h4 className="font-semibold text-[#0D2340]">{p.titulo}</h4>
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium mt-1 ${
+                      p.estado === "aprobada" ? "bg-green-100 text-green-700" :
+                      p.estado === "rechazada" ? "bg-red-100 text-red-700" :
+                      p.estado === "en_votacion" ? "bg-blue-100 text-blue-700" :
+                      p.estado === "socializada" ? "bg-purple-100 text-purple-700" :
+                      "bg-gray-100 text-gray-600"
+                    }`}>
+                      {p.estado.replace("_", " ")}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 justify-end">
+                    {editable && (
                       <button
-                        onClick={() => cambiarEstadoPropuesta(p.id, "en_votacion", "manual")}
-                        disabled={!!saving || acreencias.length === 0}
-                        className="text-xs px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
-                        title="El operador registra cada voto manualmente"
+                        onClick={() => abrirEdicionPropuesta(p)}
+                        disabled={!!saving}
+                        className="text-xs px-3 py-1.5 bg-[#0D2340]/5 text-[#0D2340] rounded-lg hover:bg-[#0D2340]/10 disabled:opacity-50"
+                        title="Editar la propuesta"
                       >
-                        Voto manual
+                        Editar
                       </button>
+                    )}
+                    {p.estado === "borrador" && (
                       <button
-                        onClick={() => cambiarEstadoPropuesta(p.id, "en_votacion", "link")}
-                        disabled={!!saving || acreencias.length === 0}
-                        className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50"
-                        title="Cada acreedor recibe un link para votar con OTP"
-                      >
-                        Voto por link
-                      </button>
-                      <button
-                        onClick={() => cambiarEstadoPropuesta(p.id, "en_votacion", "dual")}
-                        disabled={!!saving || acreencias.length === 0}
+                        onClick={() => cambiarEstadoPropuesta(p.id, "socializada")}
+                        disabled={!!saving}
                         className="text-xs px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 disabled:opacity-50"
-                        title="Links + operador puede registrar votos manualmente"
                       >
-                        Dual
+                        Marcar como socializada
                       </button>
-                    </div>
+                    )}
+                    {p.estado === "socializada" && (
+                      <>
+                        <button
+                          onClick={() => cambiarEstadoPropuesta(p.id, "en_votacion", "manual")}
+                          disabled={!!saving || acreencias.length === 0}
+                          className="text-xs px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                          title="El operador registra cada voto manualmente"
+                        >
+                          Voto manual
+                        </button>
+                        <button
+                          onClick={() => cambiarEstadoPropuesta(p.id, "en_votacion", "link")}
+                          disabled={!!saving || acreencias.length === 0}
+                          className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50"
+                          title="Cada acreedor recibe un link para votar con OTP"
+                        >
+                          Voto por link
+                        </button>
+                        <button
+                          onClick={() => cambiarEstadoPropuesta(p.id, "en_votacion", "dual")}
+                          disabled={!!saving || acreencias.length === 0}
+                          className="text-xs px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 disabled:opacity-50"
+                          title="Links + operador puede registrar votos manualmente"
+                        >
+                          Dual
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{p.descripcion}</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-gray-500">
+                  {estructura?.modalidad && (
+                    <span>Modalidad: {modalidadLabel(estructura.modalidad as ModalidadPago)}</span>
+                  )}
+                  {estructura?.modalidad && estructura.modalidad !== "unico_pago" && estructura.periodicidad && (
+                    <span>Periodicidad: {periodicidadLabel(estructura.periodicidad as Periodicidad)}</span>
+                  )}
+                  {p.plazo_meses && <span>Plazo: {p.plazo_meses} meses</span>}
+                  {p.tasa_interes && <span>Tasa: {p.tasa_interes}</span>}
+                  {p.periodo_gracia_meses > 0 && <span>Gracia: {p.periodo_gracia_meses} meses</span>}
+                  {condonacionList.length > 0 && (
+                    <span>Condonaciones: {condonacionList.join(", ")}</span>
                   )}
                 </div>
               </div>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{p.descripcion}</p>
-              <div className="flex flex-wrap gap-4 mt-3 text-xs text-gray-500">
-                {p.plazo_meses && <span>Plazo: {p.plazo_meses} meses</span>}
-                {p.tasa_interes && <span>Tasa: {p.tasa_interes}</span>}
-                {p.periodo_gracia_meses > 0 && <span>Gracia: {p.periodo_gracia_meses} meses</span>}
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
-          {/* Formulario nueva propuesta */}
+          {/* Formulario nueva propuesta / edición */}
           {showPropForm ? (
             (() => {
               const tituloVacio = !propForm.titulo.trim();
               const descripcionVacia = !propForm.descripcion.trim();
-              const puedeCrear = !tituloVacio && !descripcionVacia && !saving;
+              const puedeGuardar = !tituloVacio && !descripcionVacia && !saving;
+              const isEdit = !!editingPropId;
+              const requiereSpread = ["ipc_mas", "dtf_mas", "ibr_mas", "fija"].includes(propForm.tasa_tipo);
+              const muestraPeriodicidad = propForm.modalidad !== "unico_pago";
               return (
                 <div className="bg-white rounded-xl border border-[#1B4F9B]/30 p-5">
-                  <h4 className="text-sm font-semibold text-[#0D2340] mb-3">Nueva propuesta de pago</h4>
-                  <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-[#0D2340] mb-3">
+                    {isEdit ? "Editar propuesta de pago" : "Nueva propuesta de pago"}
+                  </h4>
+                  <div className="space-y-4">
+                    {/* Título */}
                     <div>
                       <label className="block text-xs text-gray-600 mb-1">
                         Título <span className="text-red-500">*</span>
@@ -1347,65 +1597,231 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                         aria-invalid={tituloVacio}
                         value={propForm.titulo}
                         onChange={(e) => setPropForm({ ...propForm, titulo: e.target.value })}
-                        placeholder="Título de la propuesta"
+                        placeholder="Ej: Propuesta inicial — pago a 24 meses"
                         className={`w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none ${
                           tituloVacio ? "border-red-300 bg-red-50/30" : "border-gray-300"
                         }`}
                       />
                       {tituloVacio && <p className="text-[11px] text-red-600 mt-1">El título es obligatorio.</p>}
                     </div>
+
+                    {/* Modalidad y periodicidad */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Modalidad de pago</label>
+                        <select
+                          value={propForm.modalidad}
+                          onChange={(e) => setPropForm({ ...propForm, modalidad: e.target.value as ModalidadPago })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
+                        >
+                          {MODALIDADES_PAGO.map((m) => (
+                            <option key={m.v} value={m.v}>{m.l}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {muestraPeriodicidad && (
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Periodicidad</label>
+                          <select
+                            value={propForm.periodicidad}
+                            onChange={(e) => setPropForm({ ...propForm, periodicidad: e.target.value as Periodicidad })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
+                          >
+                            {PERIODICIDADES.map((p) => (
+                              <option key={p.v} value={p.v}>{p.l}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Plazo y gracia */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Plazo (meses)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={propForm.plazo_meses}
+                          onChange={(e) => setPropForm({ ...propForm, plazo_meses: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Período de gracia (meses)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={propForm.periodo_gracia_meses}
+                          onChange={(e) => setPropForm({ ...propForm, periodo_gracia_meses: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Tasa */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Tipo de tasa</label>
+                        <select
+                          value={propForm.tasa_tipo}
+                          onChange={(e) => setPropForm({ ...propForm, tasa_tipo: e.target.value as TipoTasa, tasa_valor: "" })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
+                        >
+                          {TIPOS_TASA.map((t) => (
+                            <option key={t.v} value={t.v}>{t.l}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {requiereSpread && (
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">
+                            {propForm.tasa_tipo === "fija" ? "Tasa fija (%)" : "Spread (%)"}
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            value={propForm.tasa_valor}
+                            onChange={(e) => setPropForm({ ...propForm, tasa_valor: e.target.value })}
+                            placeholder={propForm.tasa_tipo === "fija" ? "Ej: 18" : "Ej: 2.5"}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Condonaciones */}
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                      <p className="text-xs font-medium text-gray-700 mb-2">Condonaciones solicitadas (opcional)</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={propForm.condonaciones.intereses_corrientes}
+                            onChange={(e) => setPropForm({
+                              ...propForm,
+                              condonaciones: { ...propForm.condonaciones, intereses_corrientes: e.target.checked },
+                            })}
+                            className="rounded"
+                          />
+                          Intereses corrientes
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={propForm.condonaciones.intereses_moratorios}
+                            onChange={(e) => setPropForm({
+                              ...propForm,
+                              condonaciones: { ...propForm.condonaciones, intereses_moratorios: e.target.checked },
+                            })}
+                            className="rounded"
+                          />
+                          Intereses moratorios
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={propForm.condonaciones.otros_conceptos}
+                            onChange={(e) => setPropForm({
+                              ...propForm,
+                              condonaciones: { ...propForm.condonaciones, otros_conceptos: e.target.checked },
+                            })}
+                            className="rounded"
+                          />
+                          Otros conceptos distintos al capital
+                        </label>
+                      </div>
+                      <label className="block text-xs text-gray-600 mt-3 mb-1">Detalle adicional (opcional)</label>
+                      <textarea
+                        rows={2}
+                        value={propForm.detalle_condonaciones}
+                        onChange={(e) => setPropForm({ ...propForm, detalle_condonaciones: e.target.value })}
+                        placeholder="Ej: Se solicita también la condonación de honorarios de cobranza."
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
+                      />
+                    </div>
+
+                    {/* Notas adicionales (entran al texto autogenerado) */}
                     <div>
-                      <label className="block text-xs text-gray-600 mb-1">
-                        Descripción <span className="text-red-500">*</span>
-                      </label>
+                      <label className="block text-xs text-gray-600 mb-1">Notas adicionales (opcional)</label>
+                      <textarea
+                        rows={2}
+                        value={propForm.notas_libres}
+                        onChange={(e) => setPropForm({ ...propForm, notas_libres: e.target.value })}
+                        placeholder="Cláusulas, garantías u otros pactos relevantes."
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
+                      />
+                    </div>
+
+                    {/* Descripción autogenerada / editable */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs text-gray-600">
+                          Descripción <span className="text-red-500">*</span>
+                          {propForm.descripcionEditadaManualmente ? (
+                            <span className="ml-2 text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
+                              edición manual
+                            </span>
+                          ) : (
+                            <span className="ml-2 text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                              autogenerada
+                            </span>
+                          )}
+                        </label>
+                        {propForm.descripcionEditadaManualmente && (
+                          <button
+                            type="button"
+                            onClick={() => setPropForm({
+                              ...propForm,
+                              descripcionEditadaManualmente: false,
+                              descripcion: generarDescripcionAutomatica({ ...propForm, descripcionEditadaManualmente: false }),
+                            })}
+                            className="text-[11px] text-[#1B4F9B] hover:underline"
+                          >
+                            Regenerar desde campos
+                          </button>
+                        )}
+                      </div>
                       <textarea
                         required
                         aria-invalid={descripcionVacia}
                         value={propForm.descripcion}
-                        onChange={(e) => setPropForm({ ...propForm, descripcion: e.target.value })}
-                        rows={5}
-                        placeholder="Describa la propuesta completa de pago..."
+                        onChange={(e) => setPropForm({
+                          ...propForm,
+                          descripcion: e.target.value,
+                          descripcionEditadaManualmente: true,
+                        })}
+                        rows={6}
+                        placeholder="La descripción se genera automáticamente con los campos de arriba. Puedes editarla a mano si necesitas algo más específico."
                         className={`w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none resize-y ${
                           descripcionVacia ? "border-red-300 bg-red-50/30" : "border-gray-300"
                         }`}
                       />
                       {descripcionVacia && (
                         <p className="text-[11px] text-red-600 mt-1">
-                          La descripción es obligatoria — explica las cláusulas y términos de la propuesta.
+                          La descripción es obligatoria — completa los campos o escríbela a mano.
                         </p>
                       )}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">Plazo (meses)</label>
-                        <input type="number" value={propForm.plazo_meses} onChange={(e) => setPropForm({ ...propForm, plazo_meses: e.target.value })}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">Tasa de interés</label>
-                        <input type="text" value={propForm.tasa_interes} onChange={(e) => setPropForm({ ...propForm, tasa_interes: e.target.value })}
-                          placeholder="Ej: DTF + 2%" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">Periodo de gracia (meses)</label>
-                        <input type="number" value={propForm.periodo_gracia_meses} onChange={(e) => setPropForm({ ...propForm, periodo_gracia_meses: e.target.value })}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none" />
-                      </div>
-                    </div>
-                    <div className="flex gap-2 justify-end items-center">
-                      {!puedeCrear && !saving && (
+
+                    {/* Acciones */}
+                    <div className="flex gap-2 justify-end items-center pt-1">
+                      {!puedeGuardar && !saving && (
                         <span className="text-[11px] text-gray-500 mr-auto">
                           Completa los campos marcados con <span className="text-red-500">*</span> para continuar.
                         </span>
                       )}
-                      <button onClick={() => setShowPropForm(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
+                      <button onClick={cerrarFormPropuesta} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
                       <button
-                        onClick={crearPropuesta}
-                        disabled={!puedeCrear}
-                        title={puedeCrear ? undefined : "Completa título y descripción"}
+                        onClick={guardarPropuesta}
+                        disabled={!puedeGuardar}
+                        title={puedeGuardar ? undefined : "Completa título y descripción"}
                         className="px-4 py-2 bg-[#0D2340] text-white rounded-lg text-sm font-medium hover:bg-[#0D2340]/90 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {saving === "prop" ? "Creando..." : "Crear propuesta"}
+                        {saving === "prop"
+                          ? (isEdit ? "Guardando..." : "Creando...")
+                          : (isEdit ? "Guardar cambios" : "Crear propuesta")}
                       </button>
                     </div>
                   </div>
@@ -1413,7 +1829,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
               );
             })()
           ) : (
-            <button onClick={() => setShowPropForm(true)}
+            <button onClick={abrirNuevaPropuesta}
               className="flex items-center gap-2 text-sm text-[#1B4F9B] font-medium hover:underline">
               <Plus className="w-4 h-4" /> Nueva propuesta
             </button>
