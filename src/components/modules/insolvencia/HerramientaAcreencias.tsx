@@ -155,6 +155,9 @@ interface PropuestaForm {
   detalle_condonaciones: string;
   notas_libres: string;
   incluir_resumen_cuotas: boolean;
+  // Override manual de cuota mensual por acreencia. Si está presente, pisa el cálculo PMT.
+  // El input se guarda como string para que el campo vacío no fuerce 0.
+  cuota_overrides: Record<string, string>;
   descripcion: string;
   descripcionEditadaManualmente: boolean;
 }
@@ -175,6 +178,7 @@ const PROP_FORM_INICIAL: PropuestaForm = {
   detalle_condonaciones: "",
   notas_libres: "",
   incluir_resumen_cuotas: true,
+  cuota_overrides: {},
   descripcion: "",
   descripcionEditadaManualmente: false,
 };
@@ -209,11 +213,14 @@ interface CuotaCalculadaPorAcreencia {
   clase: ClaseCredito;
   capital: number;
   cuota_inicial: number;
+  cuota_calculada: number; // siempre la PMT, aunque haya override
+  cuota_override?: number; // si el operador escribió una cuota personalizada
   total_pagar: number;
   total_intereses: number;
   numero_cuotas: number;
   porcentaje_prorrata?: number;
   tramo?: "pequeno" | "otro"; // solo cuando prioridad_pequenos
+  cuota_insuficiente?: boolean; // override × N° cuotas no alcanza a cubrir el capital
 }
 
 interface ResultadoCalculoCuotas {
@@ -268,7 +275,7 @@ function calcularCuotasPropuesta(
         mesesGracia: gracia,
         tipo,
       });
-      filas.push(filaDesdeCronograma(ac, clase, cron));
+      filas.push(filaDesdeCronograma(ac, clase, cron, form.cuota_overrides));
     }
   }
 
@@ -296,7 +303,7 @@ function calcularCuotasPropuesta(
       });
       for (const r of resultados) {
         const ac = quintos[r.acreedor_index];
-        const fila = filaDesdeCronograma(ac, "quinta", r.cronograma);
+        const fila = filaDesdeCronograma(ac, "quinta", r.cronograma, form.cuota_overrides);
         fila.porcentaje_prorrata = r.porcentaje_prorrata;
         fila.tramo = idxPequenos.has(r.acreedor_index) ? "pequeno" : "otro";
         filas.push(fila);
@@ -310,7 +317,7 @@ function calcularCuotasPropuesta(
       });
       for (const r of resultados) {
         const ac = quintos[r.acreedor_index];
-        const fila = filaDesdeCronograma(ac, "quinta", r.cronograma);
+        const fila = filaDesdeCronograma(ac, "quinta", r.cronograma, form.cuota_overrides);
         fila.porcentaje_prorrata = r.porcentaje_prorrata;
         filas.push(fila);
       }
@@ -338,17 +345,44 @@ function filaDesdeCronograma(
   ac: SgccAcreencia,
   clase: ClaseCredito,
   cron: CuotaCronograma[],
+  overrides: Record<string, string>,
 ): CuotaCalculadaPorAcreencia {
   const t = totalesDeCronograma(cron);
+  const calculada = cron.length > 0 ? cron[0].cuota_total : 0;
+  const capital = Number(ac.con_capital);
+  const numCuotas = cron.length;
+
+  const overrideRaw = overrides?.[ac.id];
+  const overrideNum = overrideRaw ? parseFloat(overrideRaw) : NaN;
+  const tieneOverride = Number.isFinite(overrideNum) && overrideNum > 0;
+
+  if (tieneOverride) {
+    const totalPagar = overrideNum * numCuotas;
+    return {
+      acreencia_id: ac.id,
+      acreedor_nombre: ac.acreedor_nombre,
+      clase,
+      capital,
+      cuota_inicial: overrideNum,
+      cuota_calculada: calculada,
+      cuota_override: overrideNum,
+      total_pagar: totalPagar,
+      total_intereses: Math.max(0, totalPagar - capital),
+      numero_cuotas: numCuotas,
+      cuota_insuficiente: totalPagar < capital,
+    };
+  }
+
   return {
     acreencia_id: ac.id,
     acreedor_nombre: ac.acreedor_nombre,
     clase,
-    capital: Number(ac.con_capital),
-    cuota_inicial: cron.length > 0 ? cron[0].cuota_total : 0,
+    capital,
+    cuota_inicial: calculada,
+    cuota_calculada: calculada,
     total_pagar: t.total,
     total_intereses: t.intereses,
-    numero_cuotas: cron.length,
+    numero_cuotas: numCuotas,
   };
 }
 
@@ -441,6 +475,7 @@ function serializarEstructura(f: PropuestaForm): string {
     detalle_condonaciones: f.detalle_condonaciones,
     notas_libres: f.notas_libres,
     incluir_resumen_cuotas: f.incluir_resumen_cuotas,
+    cuota_overrides: f.cuota_overrides,
     descripcion_editada_manualmente: f.descripcionEditadaManualmente,
   });
 }
@@ -465,6 +500,7 @@ function parseEstructura(notas: string | null | undefined): Partial<PropuestaFor
       detalle_condonaciones: data.detalle_condonaciones ?? "",
       notas_libres: data.notas_libres ?? "",
       incluir_resumen_cuotas: data.incluir_resumen_cuotas ?? false,
+      cuota_overrides: (data.cuota_overrides && typeof data.cuota_overrides === "object") ? data.cuota_overrides : {},
       descripcionEditadaManualmente: !!data.descripcion_editada_manualmente,
     };
   } catch {
@@ -610,6 +646,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     propForm.detalle_condonaciones,
     propForm.notas_libres,
     propForm.incluir_resumen_cuotas,
+    propForm.cuota_overrides,
     acreencias,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ]);
@@ -2006,6 +2043,15 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                       acreencias={acreencias}
                       incluirEnDescripcion={propForm.incluir_resumen_cuotas}
                       onToggleIncluir={(v) => setPropForm({ ...propForm, incluir_resumen_cuotas: v })}
+                      onChangeOverride={(acreenciaId, valor) => {
+                        const next = { ...propForm.cuota_overrides };
+                        if (!valor.trim()) {
+                          delete next[acreenciaId];
+                        } else {
+                          next[acreenciaId] = valor;
+                        }
+                        setPropForm({ ...propForm, cuota_overrides: next });
+                      }}
                     />
 
                     {/* Condonaciones */}
@@ -2973,13 +3019,16 @@ function CuotasCalculadasPanel({
   acreencias,
   incluirEnDescripcion,
   onToggleIncluir,
+  onChangeOverride,
 }: {
   form: PropuestaForm;
   acreencias: SgccAcreencia[];
   incluirEnDescripcion: boolean;
   onToggleIncluir: (v: boolean) => void;
+  onChangeOverride: (acreenciaId: string, valor: string) => void;
 }) {
   const resultado = useMemo(() => calcularCuotasPropuesta(form, acreencias), [form, acreencias]);
+  const algunaInsuficiente = resultado.filas.some((f) => f.cuota_insuficiente);
 
   return (
     <div className="rounded-lg border border-[#1B4F9B]/20 bg-[#1B4F9B]/5 p-3">
@@ -2987,7 +3036,7 @@ function CuotasCalculadasPanel({
         <div>
           <p className="text-xs font-semibold text-[#0D2340]">Cuotas calculadas por acreedor</p>
           <p className="text-[11px] text-gray-600">
-            Se calcula automáticamente con el plazo, gracia, tasa anual y tipo de amortización. La quinta clase se prorratea.
+            Se calculan con plazo, gracia, tasa y tipo de amortización. La quinta clase se prorratea. Puedes <b>sobrescribir</b> la cuota de cualquier acreedor en la columna &quot;Cuota personalizada&quot;.
           </p>
         </div>
         <label className="flex items-center gap-2 text-[11px] text-gray-700 cursor-pointer whitespace-nowrap">
@@ -3013,7 +3062,17 @@ function CuotasCalculadasPanel({
             <Kpi label="Total intereses" value={fmt(resultado.totales.intereses)} />
             <Kpi label="Plazo máximo" value={`${resultado.totales.plazo_max} meses`} />
           </div>
-          <TablaCuotasPorClase filas={resultado.filas} prioridad={form.prioridad_pequenos} />
+          {algunaInsuficiente && (
+            <p className="text-[11px] text-red-700 bg-red-50 border border-red-200 rounded p-2 mb-2">
+              Hay cuotas personalizadas que, multiplicadas por el N° de cuotas, no alcanzan a cubrir el capital del acreedor (marcadas en rojo).
+            </p>
+          )}
+          <TablaCuotasPorClase
+            filas={resultado.filas}
+            prioridad={form.prioridad_pequenos}
+            overrides={form.cuota_overrides}
+            onChangeOverride={onChangeOverride}
+          />
         </>
       )}
     </div>
@@ -3032,9 +3091,13 @@ function Kpi({ label, value }: { label: string; value: string }) {
 function TablaCuotasPorClase({
   filas,
   prioridad,
+  overrides,
+  onChangeOverride,
 }: {
   filas: CuotaCalculadaPorAcreencia[];
   prioridad: boolean;
+  overrides: Record<string, string>;
+  onChangeOverride: (acreenciaId: string, valor: string) => void;
 }) {
   const ORDEN: ClaseCredito[] = ["primera", "segunda", "tercera", "cuarta", "quinta"];
   const porClase = new Map<ClaseCredito, CuotaCalculadaPorAcreencia[]>();
@@ -3049,7 +3112,6 @@ function TablaCuotasPorClase({
       {ORDEN.map((clase) => {
         const grupo = porClase.get(clase);
         if (!grupo || grupo.length === 0) return null;
-        // En quinta con prioridad, ordenar pequeños primero.
         const ordenado = clase === "quinta" && prioridad
           ? [...grupo].sort((a, b) => (a.tramo === "pequeno" ? -1 : 0) - (b.tramo === "pequeno" ? -1 : 0))
           : grupo;
@@ -3065,40 +3127,78 @@ function TablaCuotasPorClase({
                     <th className="text-left px-3 py-1.5">Acreedor</th>
                     <th className="text-right px-2">Capital</th>
                     {clase === "quinta" && <th className="text-right px-2">Prorrata</th>}
-                    <th className="text-right px-2">Cuota</th>
+                    <th className="text-right px-2">Cuota calc.</th>
+                    <th className="text-right px-2">Cuota personalizada</th>
                     <th className="text-right px-2">N°</th>
                     <th className="text-right px-2">Total</th>
                     <th className="text-right px-3">Intereses</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {ordenado.map((f) => (
-                    <tr key={f.acreencia_id} className="border-b border-gray-100 last:border-0">
-                      <td className="px-3 py-1.5">
-                        <span className="text-gray-800">{f.acreedor_nombre || "(sin nombre)"}</span>
-                        {f.tramo === "pequeno" && (
-                          <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded">
-                            pequeño
-                          </span>
-                        )}
-                        {f.tramo === "otro" && (
-                          <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
-                            otros 5ª
-                          </span>
-                        )}
-                      </td>
-                      <td className="text-right px-2">{fmt(f.capital)}</td>
-                      {clase === "quinta" && (
-                        <td className="text-right px-2 text-gray-600">
-                          {f.porcentaje_prorrata != null ? `${f.porcentaje_prorrata}%` : "—"}
+                  {ordenado.map((f) => {
+                    const tieneOverride = f.cuota_override != null;
+                    return (
+                      <tr key={f.acreencia_id} className={`border-b border-gray-100 last:border-0 ${f.cuota_insuficiente ? "bg-red-50/50" : ""}`}>
+                        <td className="px-3 py-1.5">
+                          <span className="text-gray-800">{f.acreedor_nombre || "(sin nombre)"}</span>
+                          {f.tramo === "pequeno" && (
+                            <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded">
+                              pequeño
+                            </span>
+                          )}
+                          {f.tramo === "otro" && (
+                            <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                              otros 5ª
+                            </span>
+                          )}
                         </td>
-                      )}
-                      <td className="text-right px-2 font-medium">{fmt(f.cuota_inicial)}</td>
-                      <td className="text-right px-2 text-gray-600">{f.numero_cuotas}</td>
-                      <td className="text-right px-2">{fmt(f.total_pagar)}</td>
-                      <td className="text-right px-3 text-gray-600">{fmt(f.total_intereses)}</td>
-                    </tr>
-                  ))}
+                        <td className="text-right px-2">{fmt(f.capital)}</td>
+                        {clase === "quinta" && (
+                          <td className="text-right px-2 text-gray-600">
+                            {f.porcentaje_prorrata != null ? `${f.porcentaje_prorrata}%` : "—"}
+                          </td>
+                        )}
+                        <td className={`text-right px-2 ${tieneOverride ? "text-gray-400 line-through" : "font-medium"}`}>
+                          {fmt(f.cuota_calculada)}
+                        </td>
+                        <td className="px-2 py-1">
+                          <div className="flex items-center justify-end gap-1">
+                            <input
+                              type="number"
+                              step="0.01"
+                              min={0}
+                              value={overrides[f.acreencia_id] ?? ""}
+                              onChange={(e) => onChangeOverride(f.acreencia_id, e.target.value)}
+                              placeholder="—"
+                              title="Deja vacío para usar la cuota calculada"
+                              className={`w-24 border rounded px-1.5 py-0.5 text-right text-[11px] focus:ring-1 focus:ring-[#1B4F9B]/40 outline-none ${
+                                tieneOverride
+                                  ? f.cuota_insuficiente
+                                    ? "border-red-300 bg-red-50 text-red-700 font-medium"
+                                    : "border-amber-300 bg-amber-50 text-amber-800 font-medium"
+                                  : "border-gray-200 bg-white text-gray-700"
+                              }`}
+                            />
+                            {tieneOverride && (
+                              <button
+                                type="button"
+                                onClick={() => onChangeOverride(f.acreencia_id, "")}
+                                title="Volver a la cuota calculada"
+                                className="text-gray-400 hover:text-gray-600 text-[10px] px-1"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="text-right px-2 text-gray-600">{f.numero_cuotas}</td>
+                        <td className={`text-right px-2 ${f.cuota_insuficiente ? "text-red-700 font-medium" : ""}`}>
+                          {fmt(f.total_pagar)}
+                        </td>
+                        <td className="text-right px-3 text-gray-600">{fmt(f.total_intereses)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
