@@ -307,6 +307,26 @@ function calcularCuotasPropuesta(
         numeroCuotas = Math.max(1, Math.ceil(n));
       }
 
+      // Tope de seguridad: si el N° de cuotas excede 50 años (600), tratamos la cuota
+      // como insuficiente. Sin este guard, escribir el primer dígito en el input
+      // (cuota muy pequeña) generaba un cronograma de millones de filas → freeze del browser.
+      const MAX_CUOTAS_RAZONABLE = 600;
+      if (!Number.isFinite(numeroCuotas) || numeroCuotas > MAX_CUOTAS_RAZONABLE) {
+        filas.push({
+          acreencia_id: ac.id,
+          acreedor_nombre: ac.acreedor_nombre,
+          clase: ac.clase_credito,
+          capital,
+          cuota_inicial: cuotaAcreedor,
+          total_pagar: 0,
+          total_intereses: 0,
+          numero_cuotas: 0,
+          porcentaje_prorrata: ac.clase_credito === "quinta" ? round2(proporcion * 100) : undefined,
+          cuota_insuficiente: true,
+        });
+        continue;
+      }
+
       // Generar cronograma con N° calculado para obtener cuota PMT real (puede diferir
       // unos centavos del prorrateo por redondeo del N°).
       const cron = generarCronograma({
@@ -3185,7 +3205,7 @@ function CuotasCalculadasPanel({
           </div>
           {algunaInsuficiente && (
             <p className="text-[11px] text-red-700 bg-red-50 border border-red-200 rounded p-2 mb-2">
-              Hay acreedores cuya cuota asignada no alcanza a cubrir los intereses mensuales (marcados en rojo). Aumenta la cuota disponible o baja la tasa.
+              Hay acreedores cuya cuota asignada no cubre los intereses mensuales o resultaría en un plazo mayor a 50 años (marcados en rojo). Aumenta la cuota disponible o baja la tasa.
             </p>
           )}
           <TablaCuotasPorClase
