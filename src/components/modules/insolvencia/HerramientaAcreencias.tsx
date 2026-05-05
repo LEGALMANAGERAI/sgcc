@@ -24,6 +24,13 @@ import {
 import type { SgccAcreencia, VotoInsolvencia, ClaseCredito } from "@/types";
 import { Handshake } from "lucide-react";
 import {
+  generarCronograma,
+  generarCronogramaProrrataQuinta,
+  generarCronogramaPrioridadPequenos,
+  totalesDeCronograma,
+} from "@/lib/solicitudes/payment-plan";
+import type { CuotaCronograma, TipoAmortizacion } from "@/types/solicitudes";
+import {
   DndContext,
   closestCenter,
   KeyboardSensor,
@@ -133,6 +140,13 @@ interface PropuestaForm {
   periodo_gracia_meses: string;
   tasa_tipo: TipoTasa;
   tasa_valor: string;
+  // Tasa anual nominal usada para calcular las cuotas (PMT). Independiente de tasa_tipo,
+  // que es la denominación legal/descriptiva (ej. "DTF + 2%"). Aquí se exige un % numérico.
+  tasa_calculo_anual_pct: string;
+  tipo_amortizacion: TipoAmortizacion;
+  // Quinta clase: priorización de pequeños acreedores (Art. 553 Ley 2445).
+  prioridad_pequenos: boolean;
+  m_cuotas_pequenos: string;
   condonaciones: {
     intereses_corrientes: boolean;
     intereses_moratorios: boolean;
@@ -140,6 +154,7 @@ interface PropuestaForm {
   };
   detalle_condonaciones: string;
   notas_libres: string;
+  incluir_resumen_cuotas: boolean;
   descripcion: string;
   descripcionEditadaManualmente: boolean;
 }
@@ -152,9 +167,14 @@ const PROP_FORM_INICIAL: PropuestaForm = {
   periodo_gracia_meses: "0",
   tasa_tipo: "cero",
   tasa_valor: "",
+  tasa_calculo_anual_pct: "0",
+  tipo_amortizacion: "francesa",
+  prioridad_pequenos: false,
+  m_cuotas_pequenos: "",
   condonaciones: { intereses_corrientes: false, intereses_moratorios: false, otros_conceptos: false },
   detalle_condonaciones: "",
   notas_libres: "",
+  incluir_resumen_cuotas: true,
   descripcion: "",
   descripcionEditadaManualmente: false,
 };
@@ -181,7 +201,190 @@ function periodicidadLabel(p: Periodicidad): string {
   return PERIODICIDADES.find((x) => x.v === p)?.l ?? p;
 }
 
-function generarDescripcionAutomatica(f: PropuestaForm): string {
+// Resultado por acreencia tras aplicar el cálculo de cuotas según los parámetros del form
+// y la lógica de prelación (1ª-4ª individual, 5ª prorrata o prioridad pequeños).
+interface CuotaCalculadaPorAcreencia {
+  acreencia_id: string;
+  acreedor_nombre: string;
+  clase: ClaseCredito;
+  capital: number;
+  cuota_inicial: number;
+  total_pagar: number;
+  total_intereses: number;
+  numero_cuotas: number;
+  porcentaje_prorrata?: number;
+  tramo?: "pequeno" | "otro"; // solo cuando prioridad_pequenos
+}
+
+interface ResultadoCalculoCuotas {
+  ok: boolean;
+  mensaje?: string;
+  filas: CuotaCalculadaPorAcreencia[];
+  totales: {
+    capital: number;
+    a_pagar: number;
+    intereses: number;
+    plazo_max: number;
+  };
+}
+
+const CLASES_INDIVIDUALES: ClaseCredito[] = ["primera", "segunda", "tercera", "cuarta"];
+
+function calcularCuotasPropuesta(
+  form: PropuestaForm,
+  acreencias: SgccAcreencia[],
+): ResultadoCalculoCuotas {
+  const VACIO: ResultadoCalculoCuotas = {
+    ok: false,
+    filas: [],
+    totales: { capital: 0, a_pagar: 0, intereses: 0, plazo_max: 0 },
+  };
+  const conCapital = acreencias.filter((a) => Number(a.con_capital) > 0);
+  if (conCapital.length === 0) {
+    return { ...VACIO, mensaje: "No hay acreencias con capital conciliado." };
+  }
+  const plazo = parseInt(form.plazo_meses || "0", 10);
+  if (!plazo || plazo <= 0) {
+    return { ...VACIO, mensaje: "Indica un plazo en meses para calcular las cuotas." };
+  }
+  const tasaAnualPct = parseFloat(form.tasa_calculo_anual_pct || "");
+  if (!Number.isFinite(tasaAnualPct) || tasaAnualPct < 0) {
+    return { ...VACIO, mensaje: "Ingresa la tasa anual nominal (%) para calcular las cuotas." };
+  }
+  const gracia = parseInt(form.periodo_gracia_meses || "0", 10) || 0;
+  const tasaMensualPct = tasaAnualPct / 12;
+  const tipo = form.tipo_amortizacion;
+
+  const filas: CuotaCalculadaPorAcreencia[] = [];
+
+  // Clases 1ª-4ª: cronograma individual con la misma tasa global.
+  for (const clase of CLASES_INDIVIDUALES) {
+    const grupo = conCapital.filter((a) => a.clase_credito === clase);
+    for (const ac of grupo) {
+      const cron = generarCronograma({
+        capital: Number(ac.con_capital),
+        tasaMensualPct,
+        numeroCuotas: plazo,
+        mesesGracia: gracia,
+        tipo,
+      });
+      filas.push(filaDesdeCronograma(ac, clase, cron));
+    }
+  }
+
+  // Quinta clase
+  const quintos = conCapital.filter((a) => a.clase_credito === "quinta");
+  if (quintos.length > 0) {
+    const creditos5 = quintos.map((a, i) => ({
+      acreedor_index: i,
+      capital: Number(a.con_capital),
+      tasa_interes_mensual_pct: tasaMensualPct,
+    }));
+
+    if (form.prioridad_pequenos) {
+      const m = Math.max(1, Math.min(plazo - 1, parseInt(form.m_cuotas_pequenos || "0", 10) || Math.floor(plazo / 2)));
+      const idxPequenos = new Set(quintos.map((a, i) => (a.es_pequeno_acreedor ? i : -1)).filter((x) => x >= 0));
+      const pequenos = creditos5.filter((c) => idxPequenos.has(c.acreedor_index));
+      const otros = creditos5.filter((c) => !idxPequenos.has(c.acreedor_index));
+      const resultados = generarCronogramaPrioridadPequenos({
+        pequenos,
+        otros,
+        numeroCuotasTotal: plazo,
+        mCuotasPequenos: m,
+        mesesGraciaCompartido: gracia,
+        tipoAmortizacion: tipo,
+      });
+      for (const r of resultados) {
+        const ac = quintos[r.acreedor_index];
+        const fila = filaDesdeCronograma(ac, "quinta", r.cronograma);
+        fila.porcentaje_prorrata = r.porcentaje_prorrata;
+        fila.tramo = idxPequenos.has(r.acreedor_index) ? "pequeno" : "otro";
+        filas.push(fila);
+      }
+    } else {
+      const resultados = generarCronogramaProrrataQuinta({
+        creditos: creditos5,
+        numeroCuotasCompartido: plazo,
+        mesesGraciaCompartido: gracia,
+        tipoAmortizacion: tipo,
+      });
+      for (const r of resultados) {
+        const ac = quintos[r.acreedor_index];
+        const fila = filaDesdeCronograma(ac, "quinta", r.cronograma);
+        fila.porcentaje_prorrata = r.porcentaje_prorrata;
+        filas.push(fila);
+      }
+    }
+  }
+
+  const totales = filas.reduce(
+    (acc, f) => ({
+      capital: acc.capital + f.capital,
+      a_pagar: acc.a_pagar + f.total_pagar,
+      intereses: acc.intereses + f.total_intereses,
+      plazo_max: Math.max(acc.plazo_max, f.numero_cuotas + (gracia || 0)),
+    }),
+    { capital: 0, a_pagar: 0, intereses: 0, plazo_max: 0 },
+  );
+
+  if (filas.length === 0) {
+    return { ...VACIO, mensaje: "Las acreencias deben tener clase de crédito asignada." };
+  }
+
+  return { ok: true, filas, totales };
+}
+
+function filaDesdeCronograma(
+  ac: SgccAcreencia,
+  clase: ClaseCredito,
+  cron: CuotaCronograma[],
+): CuotaCalculadaPorAcreencia {
+  const t = totalesDeCronograma(cron);
+  return {
+    acreencia_id: ac.id,
+    acreedor_nombre: ac.acreedor_nombre,
+    clase,
+    capital: Number(ac.con_capital),
+    cuota_inicial: cron.length > 0 ? cron[0].cuota_total : 0,
+    total_pagar: t.total,
+    total_intereses: t.intereses,
+    numero_cuotas: cron.length,
+  };
+}
+
+function resumenCuotasParaDescripcion(r: ResultadoCalculoCuotas): string {
+  if (!r.ok || r.filas.length === 0) return "";
+  const porClase = new Map<ClaseCredito, CuotaCalculadaPorAcreencia[]>();
+  for (const f of r.filas) {
+    const arr = porClase.get(f.clase) ?? [];
+    arr.push(f);
+    porClase.set(f.clase, arr);
+  }
+  const claseLabel: Record<ClaseCredito, string> = {
+    primera: "Primera clase",
+    segunda: "Segunda clase",
+    tercera: "Tercera clase",
+    cuarta: "Cuarta clase",
+    quinta: "Quinta clase",
+  };
+  const lineas: string[] = ["Resumen de cuotas calculadas por acreedor:"];
+  for (const clase of ["primera", "segunda", "tercera", "cuarta", "quinta"] as ClaseCredito[]) {
+    const filas = porClase.get(clase);
+    if (!filas || filas.length === 0) continue;
+    lineas.push(`• ${claseLabel[clase]}:`);
+    for (const f of filas) {
+      const tramo = f.tramo === "pequeno" ? " [pequeño acreedor]" : f.tramo === "otro" ? " [otros 5ª]" : "";
+      const pror = f.porcentaje_prorrata != null ? ` · prorrata ${f.porcentaje_prorrata}%` : "";
+      lineas.push(
+        `   – ${f.acreedor_nombre}${tramo}: capital ${fmt(f.capital)} → cuota ${fmt(f.cuota_inicial)} en ${f.numero_cuotas} cuotas (total ${fmt(f.total_pagar)})${pror}`,
+      );
+    }
+  }
+  lineas.push(`Total proyectado a pagar: ${fmt(r.totales.a_pagar)} (intereses ${fmt(r.totales.intereses)}).`);
+  return lineas.join("\n");
+}
+
+function generarDescripcionAutomatica(f: PropuestaForm, acreencias: SgccAcreencia[] = []): string {
   const partes: string[] = [];
   const periodicidad = f.modalidad !== "unico_pago" ? ` con periodicidad ${periodicidadLabel(f.periodicidad).toLowerCase()}` : "";
   partes.push(`Se propone el pago bajo la modalidad de ${modalidadLabel(f.modalidad).toLowerCase()}${periodicidad}.`);
@@ -193,6 +396,14 @@ function generarDescripcionAutomatica(f: PropuestaForm): string {
   if (gracia > 0) partes.push(`Se contempla un período de gracia de ${gracia} meses, durante los cuales no se realizarán pagos al capital.`);
 
   partes.push(`La tasa de interés aplicable será ${tasaATexto(f.tasa_tipo, f.tasa_valor)}.`);
+
+  if (f.prioridad_pequenos) {
+    const m = parseInt(f.m_cuotas_pequenos || "0", 10);
+    const mTxt = m > 0 ? ` durante las primeras ${m} cuotas` : "";
+    partes.push(
+      `Se prioriza el pago a los pequeños acreedores de quinta clase (Art. 553 Ley 2445), quienes recibirán el pago${mTxt} antes que los demás acreedores de la misma clase.`,
+    );
+  }
 
   const condList: string[] = [];
   if (f.condonaciones.intereses_corrientes) condList.push("intereses corrientes");
@@ -206,6 +417,12 @@ function generarDescripcionAutomatica(f: PropuestaForm): string {
 
   if (f.notas_libres.trim()) partes.push(f.notas_libres.trim());
 
+  if (f.incluir_resumen_cuotas) {
+    const r = calcularCuotasPropuesta(f, acreencias);
+    const resumen = resumenCuotasParaDescripcion(r);
+    if (resumen) partes.push(resumen);
+  }
+
   return partes.join("\n\n");
 }
 
@@ -216,9 +433,14 @@ function serializarEstructura(f: PropuestaForm): string {
     periodicidad: f.periodicidad,
     tasa_tipo: f.tasa_tipo,
     tasa_valor: f.tasa_valor,
+    tasa_calculo_anual_pct: f.tasa_calculo_anual_pct,
+    tipo_amortizacion: f.tipo_amortizacion,
+    prioridad_pequenos: f.prioridad_pequenos,
+    m_cuotas_pequenos: f.m_cuotas_pequenos,
     condonaciones: f.condonaciones,
     detalle_condonaciones: f.detalle_condonaciones,
     notas_libres: f.notas_libres,
+    incluir_resumen_cuotas: f.incluir_resumen_cuotas,
     descripcion_editada_manualmente: f.descripcionEditadaManualmente,
   });
 }
@@ -235,9 +457,14 @@ function parseEstructura(notas: string | null | undefined): Partial<PropuestaFor
       periodicidad: data.periodicidad,
       tasa_tipo: data.tasa_tipo,
       tasa_valor: data.tasa_valor ?? "",
+      tasa_calculo_anual_pct: data.tasa_calculo_anual_pct ?? "0",
+      tipo_amortizacion: data.tipo_amortizacion ?? "francesa",
+      prioridad_pequenos: !!data.prioridad_pequenos,
+      m_cuotas_pequenos: data.m_cuotas_pequenos ?? "",
       condonaciones: data.condonaciones ?? PROP_FORM_INICIAL.condonaciones,
       detalle_condonaciones: data.detalle_condonaciones ?? "",
       notas_libres: data.notas_libres ?? "",
+      incluir_resumen_cuotas: data.incluir_resumen_cuotas ?? false,
       descripcionEditadaManualmente: !!data.descripcion_editada_manualmente,
     };
   } catch {
@@ -360,7 +587,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
   // a mano, regenerarla a partir de los campos estructurados.
   useEffect(() => {
     if (!showPropForm || propForm.descripcionEditadaManualmente) return;
-    const auto = generarDescripcionAutomatica(propForm);
+    const auto = generarDescripcionAutomatica(propForm, acreencias);
     if (auto !== propForm.descripcion) {
       setPropForm((prev) => ({ ...prev, descripcion: auto }));
     }
@@ -373,11 +600,17 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     propForm.periodo_gracia_meses,
     propForm.tasa_tipo,
     propForm.tasa_valor,
+    propForm.tasa_calculo_anual_pct,
+    propForm.tipo_amortizacion,
+    propForm.prioridad_pequenos,
+    propForm.m_cuotas_pequenos,
     propForm.condonaciones.intereses_corrientes,
     propForm.condonaciones.intereses_moratorios,
     propForm.condonaciones.otros_conceptos,
     propForm.detalle_condonaciones,
     propForm.notas_libres,
+    propForm.incluir_resumen_cuotas,
+    acreencias,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ]);
 
@@ -1691,6 +1924,90 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                       )}
                     </div>
 
+                    {/* Parámetros de cálculo de cuotas */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">
+                          Tasa anual nominal para cálculo (%)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={propForm.tasa_calculo_anual_pct}
+                          onChange={(e) => setPropForm({ ...propForm, tasa_calculo_anual_pct: e.target.value })}
+                          placeholder="Ej: 12 para 12% anual"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
+                        />
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          Solo para cálculo de cuotas (PMT). El texto descriptivo arriba (ej. &quot;DTF + 2%&quot;) queda en la propuesta.
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Tipo de amortización</label>
+                        <select
+                          value={propForm.tipo_amortizacion}
+                          onChange={(e) => setPropForm({ ...propForm, tipo_amortizacion: e.target.value as TipoAmortizacion })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
+                        >
+                          <option value="francesa">Francesa (cuota fija)</option>
+                          <option value="lineal">Lineal (capital constante)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Prioridad pequeños acreedores */}
+                    {(() => {
+                      const hayQuintaClase = acreencias.some((a) => a.clase_credito === "quinta" && Number(a.con_capital) > 0);
+                      if (!hayQuintaClase) return null;
+                      const plazoNum = parseInt(propForm.plazo_meses || "0", 10) || 0;
+                      const mDefault = plazoNum > 1 ? Math.floor(plazoNum / 2) : 1;
+                      const mActual = parseInt(propForm.m_cuotas_pequenos || "", 10);
+                      const m = Number.isFinite(mActual) && mActual > 0 ? mActual : mDefault;
+                      return (
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                          <label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={propForm.prioridad_pequenos}
+                              onChange={(e) => setPropForm({ ...propForm, prioridad_pequenos: e.target.checked })}
+                              className="rounded"
+                            />
+                            <span className="font-medium">Priorizar pequeños acreedores de quinta clase (Art. 553 Ley 2445)</span>
+                          </label>
+                          {propForm.prioridad_pequenos && (
+                            <div className="mt-3 ml-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">
+                                  Cuotas asignadas al tramo de pequeños (1..{Math.max(1, plazoNum - 1)})
+                                </label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={Math.max(1, plazoNum - 1)}
+                                  value={propForm.m_cuotas_pequenos}
+                                  onChange={(e) => setPropForm({ ...propForm, m_cuotas_pequenos: e.target.value })}
+                                  placeholder={`${mDefault} (default)`}
+                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
+                                />
+                              </div>
+                              <div className="text-xs text-gray-600 self-end pb-2">
+                                En las primeras {m} cuotas pagan los pequeños acreedores; en las siguientes {Math.max(0, plazoNum - m)} pagan los demás de 5ª.
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Cuotas calculadas por acreedor */}
+                    <CuotasCalculadasPanel
+                      form={propForm}
+                      acreencias={acreencias}
+                      incluirEnDescripcion={propForm.incluir_resumen_cuotas}
+                      onToggleIncluir={(v) => setPropForm({ ...propForm, incluir_resumen_cuotas: v })}
+                    />
+
                     {/* Condonaciones */}
                     <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                       <p className="text-xs font-medium text-gray-700 mb-2">Condonaciones solicitadas (opcional)</p>
@@ -1775,7 +2092,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                             onClick={() => setPropForm({
                               ...propForm,
                               descripcionEditadaManualmente: false,
-                              descripcion: generarDescripcionAutomatica({ ...propForm, descripcionEditadaManualmente: false }),
+                              descripcion: generarDescripcionAutomatica({ ...propForm, descripcionEditadaManualmente: false }, acreencias),
                             })}
                             className="text-[11px] text-[#1B4F9B] hover:underline"
                           >
@@ -2638,5 +2955,156 @@ function MoneyInput({ value, onSave }: { value: number; onSave: (v: number) => v
     >
       {value ? fmt(value) : "—"}
     </button>
+  );
+}
+
+// ─── Panel de cuotas calculadas por acreedor ──────────────────────────────
+
+const CLASE_LABEL_CORTO: Record<ClaseCredito, string> = {
+  primera: "1ª clase",
+  segunda: "2ª clase",
+  tercera: "3ª clase",
+  cuarta: "4ª clase",
+  quinta: "5ª clase",
+};
+
+function CuotasCalculadasPanel({
+  form,
+  acreencias,
+  incluirEnDescripcion,
+  onToggleIncluir,
+}: {
+  form: PropuestaForm;
+  acreencias: SgccAcreencia[];
+  incluirEnDescripcion: boolean;
+  onToggleIncluir: (v: boolean) => void;
+}) {
+  const resultado = useMemo(() => calcularCuotasPropuesta(form, acreencias), [form, acreencias]);
+
+  return (
+    <div className="rounded-lg border border-[#1B4F9B]/20 bg-[#1B4F9B]/5 p-3">
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div>
+          <p className="text-xs font-semibold text-[#0D2340]">Cuotas calculadas por acreedor</p>
+          <p className="text-[11px] text-gray-600">
+            Se calcula automáticamente con el plazo, gracia, tasa anual y tipo de amortización. La quinta clase se prorratea.
+          </p>
+        </div>
+        <label className="flex items-center gap-2 text-[11px] text-gray-700 cursor-pointer whitespace-nowrap">
+          <input
+            type="checkbox"
+            checked={incluirEnDescripcion}
+            onChange={(e) => onToggleIncluir(e.target.checked)}
+            className="rounded"
+          />
+          Incluir resumen en la descripción
+        </label>
+      </div>
+
+      {!resultado.ok ? (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+          {resultado.mensaje ?? "No se pueden calcular cuotas con los parámetros actuales."}
+        </p>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+            <Kpi label="Capital pasivo" value={fmt(resultado.totales.capital)} />
+            <Kpi label="Total a pagar" value={fmt(resultado.totales.a_pagar)} />
+            <Kpi label="Total intereses" value={fmt(resultado.totales.intereses)} />
+            <Kpi label="Plazo máximo" value={`${resultado.totales.plazo_max} meses`} />
+          </div>
+          <TablaCuotasPorClase filas={resultado.filas} prioridad={form.prioridad_pequenos} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function Kpi({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-gray-200 bg-white px-2 py-1.5">
+      <p className="text-[10px] text-gray-500 leading-tight">{label}</p>
+      <p className="text-xs font-semibold text-[#0D2340]">{value}</p>
+    </div>
+  );
+}
+
+function TablaCuotasPorClase({
+  filas,
+  prioridad,
+}: {
+  filas: CuotaCalculadaPorAcreencia[];
+  prioridad: boolean;
+}) {
+  const ORDEN: ClaseCredito[] = ["primera", "segunda", "tercera", "cuarta", "quinta"];
+  const porClase = new Map<ClaseCredito, CuotaCalculadaPorAcreencia[]>();
+  for (const f of filas) {
+    const arr = porClase.get(f.clase) ?? [];
+    arr.push(f);
+    porClase.set(f.clase, arr);
+  }
+
+  return (
+    <div className="space-y-3">
+      {ORDEN.map((clase) => {
+        const grupo = porClase.get(clase);
+        if (!grupo || grupo.length === 0) return null;
+        // En quinta con prioridad, ordenar pequeños primero.
+        const ordenado = clase === "quinta" && prioridad
+          ? [...grupo].sort((a, b) => (a.tramo === "pequeno" ? -1 : 0) - (b.tramo === "pequeno" ? -1 : 0))
+          : grupo;
+        return (
+          <div key={clase} className="bg-white rounded-md border border-gray-200 overflow-hidden">
+            <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-200 text-[11px] font-semibold text-[#0D2340]">
+              {CLASE_LABEL_CORTO[clase]} · {ordenado.length} {ordenado.length === 1 ? "acreedor" : "acreedores"}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="text-gray-500 border-b">
+                    <th className="text-left px-3 py-1.5">Acreedor</th>
+                    <th className="text-right px-2">Capital</th>
+                    {clase === "quinta" && <th className="text-right px-2">Prorrata</th>}
+                    <th className="text-right px-2">Cuota</th>
+                    <th className="text-right px-2">N°</th>
+                    <th className="text-right px-2">Total</th>
+                    <th className="text-right px-3">Intereses</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ordenado.map((f) => (
+                    <tr key={f.acreencia_id} className="border-b border-gray-100 last:border-0">
+                      <td className="px-3 py-1.5">
+                        <span className="text-gray-800">{f.acreedor_nombre || "(sin nombre)"}</span>
+                        {f.tramo === "pequeno" && (
+                          <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded">
+                            pequeño
+                          </span>
+                        )}
+                        {f.tramo === "otro" && (
+                          <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                            otros 5ª
+                          </span>
+                        )}
+                      </td>
+                      <td className="text-right px-2">{fmt(f.capital)}</td>
+                      {clase === "quinta" && (
+                        <td className="text-right px-2 text-gray-600">
+                          {f.porcentaje_prorrata != null ? `${f.porcentaje_prorrata}%` : "—"}
+                        </td>
+                      )}
+                      <td className="text-right px-2 font-medium">{fmt(f.cuota_inicial)}</td>
+                      <td className="text-right px-2 text-gray-600">{f.numero_cuotas}</td>
+                      <td className="text-right px-2">{fmt(f.total_pagar)}</td>
+                      <td className="text-right px-3 text-gray-600">{fmt(f.total_intereses)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
