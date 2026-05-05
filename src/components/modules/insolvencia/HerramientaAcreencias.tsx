@@ -146,9 +146,11 @@ interface PropuestaForm {
   periodo_gracia_meses: string;
   tasa_tipo: TipoTasa;
   tasa_valor: string;
-  // Tasa anual nominal usada para calcular las cuotas (PMT). Independiente de tasa_tipo,
-  // que es la denominación legal/descriptiva (ej. "DTF + 2%"). Aquí se exige un % numérico.
-  tasa_calculo_anual_pct: string;
+  // Tasa numérica usada para calcular las cuotas (PMT). Independiente de tasa_tipo,
+  // que es la denominación legal/descriptiva (ej. "DTF + 2%"). Se interpreta según
+  // tasa_calculo_modo: "nmv" = nominal mensual; "ea" = efectiva anual.
+  tasa_calculo_pct: string;
+  tasa_calculo_modo: "nmv" | "ea";
   tipo_amortizacion: TipoAmortizacion;
   // Quinta clase: priorización de pequeños acreedores (Art. 553 Ley 2445).
   // Solo aplica en modo plazo_fijo.
@@ -176,7 +178,8 @@ const PROP_FORM_INICIAL: PropuestaForm = {
   periodo_gracia_meses: "0",
   tasa_tipo: "cero",
   tasa_valor: "",
-  tasa_calculo_anual_pct: "0",
+  tasa_calculo_pct: "0",
+  tasa_calculo_modo: "nmv",
   tipo_amortizacion: "francesa",
   prioridad_pequenos: false,
   m_cuotas_pequenos: "",
@@ -189,6 +192,20 @@ const PROP_FORM_INICIAL: PropuestaForm = {
 };
 
 const ESTRUCTURA_TAG = "__sgcc_propuesta_v1";
+
+// ─── Conversión de tasas (Colombia: NMV ↔ EA) ─────────────────────────
+// NMV (nominal mensual vencida) → EA: EA = (1 + nmv)^12 - 1
+// EA → NMV: nmv = (1 + EA)^(1/12) - 1
+function nmvAEA(nmvPct: number): number {
+  return (Math.pow(1 + nmvPct / 100, 12) - 1) * 100;
+}
+function eaANMV(eaPct: number): number {
+  return (Math.pow(1 + eaPct / 100, 1 / 12) - 1) * 100;
+}
+/** Devuelve la tasa mensual (en %) lista para PMT, según el modo del form. */
+function tasaMensualDesdeForm(valorPct: number, modo: "nmv" | "ea"): number {
+  return modo === "ea" ? eaANMV(valorPct) : valorPct;
+}
 
 function tasaATexto(tipo: TipoTasa, valor: string): string {
   const v = valor.trim();
@@ -253,12 +270,17 @@ function calcularCuotasPropuesta(
   if (conCapital.length === 0) {
     return { ...VACIO, mensaje: "No hay acreencias con capital conciliado." };
   }
-  const tasaAnualPct = parseFloat(form.tasa_calculo_anual_pct || "");
-  if (!Number.isFinite(tasaAnualPct) || tasaAnualPct < 0) {
-    return { ...VACIO, mensaje: "Ingresa la tasa anual nominal (%) para calcular las cuotas." };
+  const tasaInputPct = parseFloat(form.tasa_calculo_pct || "");
+  if (!Number.isFinite(tasaInputPct) || tasaInputPct < 0) {
+    return {
+      ...VACIO,
+      mensaje: form.tasa_calculo_modo === "ea"
+        ? "Ingresa la tasa efectiva anual (%) para calcular las cuotas."
+        : "Ingresa la tasa nominal mensual (%) para calcular las cuotas.",
+    };
   }
   const gracia = parseInt(form.periodo_gracia_meses || "0", 10) || 0;
-  const tasaMensualPct = tasaAnualPct / 12;
+  const tasaMensualPct = tasaMensualDesdeForm(tasaInputPct, form.tasa_calculo_modo);
   const tipo = form.tipo_amortizacion;
 
   // ─── Modo "cuota disponible" ─────────────────────────────────────────
@@ -562,7 +584,8 @@ function serializarEstructura(f: PropuestaForm): string {
     cuota_disponible_total: f.cuota_disponible_total,
     tasa_tipo: f.tasa_tipo,
     tasa_valor: f.tasa_valor,
-    tasa_calculo_anual_pct: f.tasa_calculo_anual_pct,
+    tasa_calculo_pct: f.tasa_calculo_pct,
+    tasa_calculo_modo: f.tasa_calculo_modo,
     tipo_amortizacion: f.tipo_amortizacion,
     prioridad_pequenos: f.prioridad_pequenos,
     m_cuotas_pequenos: f.m_cuotas_pequenos,
@@ -588,7 +611,23 @@ function parseEstructura(notas: string | null | undefined): Partial<PropuestaFor
       cuota_disponible_total: data.cuota_disponible_total ?? "",
       tasa_tipo: data.tasa_tipo,
       tasa_valor: data.tasa_valor ?? "",
-      tasa_calculo_anual_pct: data.tasa_calculo_anual_pct ?? "0",
+      // Migración: si la propuesta es legacy y trae tasa_calculo_anual_pct (que era
+      // anual nominal /12), la reinterpretamos como NMV con valor /12 para preservar
+      // el mismo cálculo PMT que tenía cuando se guardó.
+      ...(() => {
+        if (typeof data.tasa_calculo_pct === "string") {
+          return {
+            tasa_calculo_pct: data.tasa_calculo_pct,
+            tasa_calculo_modo: data.tasa_calculo_modo === "ea" ? "ea" as const : "nmv" as const,
+          };
+        }
+        if (typeof data.tasa_calculo_anual_pct === "string") {
+          const v = parseFloat(data.tasa_calculo_anual_pct);
+          const nmv = Number.isFinite(v) ? (v / 12).toString() : "0";
+          return { tasa_calculo_pct: nmv, tasa_calculo_modo: "nmv" as const };
+        }
+        return { tasa_calculo_pct: "0", tasa_calculo_modo: "nmv" as const };
+      })(),
       tipo_amortizacion: data.tipo_amortizacion ?? "francesa",
       prioridad_pequenos: !!data.prioridad_pequenos,
       m_cuotas_pequenos: data.m_cuotas_pequenos ?? "",
@@ -731,7 +770,8 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     propForm.periodo_gracia_meses,
     propForm.tasa_tipo,
     propForm.tasa_valor,
-    propForm.tasa_calculo_anual_pct,
+    propForm.tasa_calculo_pct,
+    propForm.tasa_calculo_modo,
     propForm.tipo_amortizacion,
     propForm.prioridad_pequenos,
     propForm.m_cuotas_pequenos,
@@ -2114,20 +2154,45 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs text-gray-600 mb-1">
-                          Tasa anual nominal para cálculo (%)
+                          Tasa de cálculo (%)
                         </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          value={propForm.tasa_calculo_anual_pct}
-                          onChange={(e) => setPropForm({ ...propForm, tasa_calculo_anual_pct: e.target.value })}
-                          placeholder="Ej: 12 para 12% anual"
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
-                        />
-                        <p className="text-[11px] text-gray-500 mt-1">
-                          Solo para cálculo de cuotas (PMT). El texto descriptivo arriba (ej. &quot;DTF + 2%&quot;) queda en la propuesta.
-                        </p>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            value={propForm.tasa_calculo_pct}
+                            onChange={(e) => setPropForm({ ...propForm, tasa_calculo_pct: e.target.value })}
+                            placeholder={propForm.tasa_calculo_modo === "ea" ? "Ej: 19.56" : "Ej: 1.5"}
+                            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
+                          />
+                          <select
+                            value={propForm.tasa_calculo_modo}
+                            onChange={(e) => setPropForm({ ...propForm, tasa_calculo_modo: e.target.value as "nmv" | "ea" })}
+                            className="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
+                          >
+                            <option value="nmv">NMV</option>
+                            <option value="ea">EA</option>
+                          </select>
+                        </div>
+                        {(() => {
+                          const v = parseFloat(propForm.tasa_calculo_pct || "");
+                          if (!Number.isFinite(v) || v <= 0) {
+                            return (
+                              <p className="text-[11px] text-gray-500 mt-1">
+                                NMV = nominal mensual vencida · EA = efectiva anual.
+                              </p>
+                            );
+                          }
+                          const equiv = propForm.tasa_calculo_modo === "ea"
+                            ? `≈ ${eaANMV(v).toFixed(2)}% NMV`
+                            : `≈ ${nmvAEA(v).toFixed(2)}% EA`;
+                          return (
+                            <p className="text-[11px] text-gray-500 mt-1">
+                              {equiv} · solo para cálculo de cuotas (PMT). El texto descriptivo arriba (ej. &quot;DTF + 2%&quot;) queda en la propuesta.
+                            </p>
+                          );
+                        })()}
                       </div>
                       <div>
                         <label className="block text-xs text-gray-600 mb-1">Tipo de amortización</label>
