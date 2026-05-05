@@ -132,11 +132,17 @@ type ModalidadPago = (typeof MODALIDADES_PAGO)[number]["v"];
 type Periodicidad = (typeof PERIODICIDADES)[number]["v"];
 type TipoTasa = (typeof TIPOS_TASA)[number]["v"];
 
+type ModoCalculo = "plazo_fijo" | "cuota_disponible";
+
 interface PropuestaForm {
   titulo: string;
   modalidad: ModalidadPago;
   periodicidad: Periodicidad;
+  // Modo de cálculo: "plazo_fijo" → defines plazo y se calcula cuota PMT;
+  // "cuota_disponible" → defines la cuota mensual total que paga el deudor y se calcula el N° de cuotas.
+  modo_calculo: ModoCalculo;
   plazo_meses: string;
+  cuota_disponible_total: string;
   periodo_gracia_meses: string;
   tasa_tipo: TipoTasa;
   tasa_valor: string;
@@ -145,6 +151,7 @@ interface PropuestaForm {
   tasa_calculo_anual_pct: string;
   tipo_amortizacion: TipoAmortizacion;
   // Quinta clase: priorización de pequeños acreedores (Art. 553 Ley 2445).
+  // Solo aplica en modo plazo_fijo.
   prioridad_pequenos: boolean;
   m_cuotas_pequenos: string;
   condonaciones: {
@@ -155,9 +162,6 @@ interface PropuestaForm {
   detalle_condonaciones: string;
   notas_libres: string;
   incluir_resumen_cuotas: boolean;
-  // Override manual de cuota mensual por acreencia. Si está presente, pisa el cálculo PMT.
-  // El input se guarda como string para que el campo vacío no fuerce 0.
-  cuota_overrides: Record<string, string>;
   descripcion: string;
   descripcionEditadaManualmente: boolean;
 }
@@ -166,7 +170,9 @@ const PROP_FORM_INICIAL: PropuestaForm = {
   titulo: "",
   modalidad: "cuotas_fijas",
   periodicidad: "mensual",
+  modo_calculo: "plazo_fijo",
   plazo_meses: "12",
+  cuota_disponible_total: "",
   periodo_gracia_meses: "0",
   tasa_tipo: "cero",
   tasa_valor: "",
@@ -178,7 +184,6 @@ const PROP_FORM_INICIAL: PropuestaForm = {
   detalle_condonaciones: "",
   notas_libres: "",
   incluir_resumen_cuotas: true,
-  cuota_overrides: {},
   descripcion: "",
   descripcionEditadaManualmente: false,
 };
@@ -213,14 +218,12 @@ interface CuotaCalculadaPorAcreencia {
   clase: ClaseCredito;
   capital: number;
   cuota_inicial: number;
-  cuota_calculada: number; // siempre la PMT, aunque haya override
-  cuota_override?: number; // si el operador escribió una cuota personalizada
   total_pagar: number;
   total_intereses: number;
   numero_cuotas: number;
   porcentaje_prorrata?: number;
   tramo?: "pequeno" | "otro"; // solo cuando prioridad_pequenos
-  cuota_insuficiente?: boolean; // override × N° cuotas no alcanza a cubrir el capital
+  cuota_insuficiente?: boolean; // en modo cuota_disponible: la cuota asignada no cubre los intereses → no amortiza
 }
 
 interface ResultadoCalculoCuotas {
@@ -250,10 +253,6 @@ function calcularCuotasPropuesta(
   if (conCapital.length === 0) {
     return { ...VACIO, mensaje: "No hay acreencias con capital conciliado." };
   }
-  const plazo = parseInt(form.plazo_meses || "0", 10);
-  if (!plazo || plazo <= 0) {
-    return { ...VACIO, mensaje: "Indica un plazo en meses para calcular las cuotas." };
-  }
   const tasaAnualPct = parseFloat(form.tasa_calculo_anual_pct || "");
   if (!Number.isFinite(tasaAnualPct) || tasaAnualPct < 0) {
     return { ...VACIO, mensaje: "Ingresa la tasa anual nominal (%) para calcular las cuotas." };
@@ -261,6 +260,94 @@ function calcularCuotasPropuesta(
   const gracia = parseInt(form.periodo_gracia_meses || "0", 10) || 0;
   const tasaMensualPct = tasaAnualPct / 12;
   const tipo = form.tipo_amortizacion;
+
+  // ─── Modo "cuota disponible" ─────────────────────────────────────────
+  if (form.modo_calculo === "cuota_disponible") {
+    const cuotaDisponible = parseFloat(form.cuota_disponible_total || "");
+    if (!Number.isFinite(cuotaDisponible) || cuotaDisponible <= 0) {
+      return { ...VACIO, mensaje: "Indica la cuota mensual total disponible para calcular." };
+    }
+    const acreenciasConClase = conCapital.filter((a) => a.clase_credito);
+    if (acreenciasConClase.length === 0) {
+      return { ...VACIO, mensaje: "Las acreencias deben tener clase de crédito asignada." };
+    }
+    const capitalTotal = acreenciasConClase.reduce((s, a) => s + Number(a.con_capital), 0);
+    const filas: CuotaCalculadaPorAcreencia[] = [];
+
+    for (const ac of acreenciasConClase) {
+      const capital = Number(ac.con_capital);
+      const proporcion = capitalTotal > 0 ? capital / capitalTotal : 0;
+      const cuotaAcreedor = cuotaDisponible * proporcion;
+      const tasaMensualFraction = tasaMensualPct / 100;
+      const interesMin = capital * tasaMensualFraction;
+
+      // Cuota insuficiente: no cubre los intereses → la deuda no se amortiza.
+      if (tasaMensualFraction > 0 && cuotaAcreedor <= interesMin) {
+        filas.push({
+          acreencia_id: ac.id,
+          acreedor_nombre: ac.acreedor_nombre,
+          clase: ac.clase_credito,
+          capital,
+          cuota_inicial: cuotaAcreedor,
+          total_pagar: 0,
+          total_intereses: 0,
+          numero_cuotas: 0,
+          porcentaje_prorrata: ac.clase_credito === "quinta" ? round2(proporcion * 100) : undefined,
+          cuota_insuficiente: true,
+        });
+        continue;
+      }
+
+      // Calcular N° de cuotas con la fórmula inversa de PMT.
+      let numeroCuotas: number;
+      if (tasaMensualFraction === 0) {
+        numeroCuotas = Math.ceil(capital / cuotaAcreedor);
+      } else {
+        const n = -Math.log(1 - (tasaMensualFraction * capital) / cuotaAcreedor) / Math.log(1 + tasaMensualFraction);
+        numeroCuotas = Math.max(1, Math.ceil(n));
+      }
+
+      // Generar cronograma con N° calculado para obtener cuota PMT real (puede diferir
+      // unos centavos del prorrateo por redondeo del N°).
+      const cron = generarCronograma({
+        capital,
+        tasaMensualPct,
+        numeroCuotas,
+        mesesGracia: gracia,
+        tipo,
+      });
+      const t = totalesDeCronograma(cron);
+      const cuotaPMT = cron.length > 0 ? cron[0].cuota_total : cuotaAcreedor;
+      filas.push({
+        acreencia_id: ac.id,
+        acreedor_nombre: ac.acreedor_nombre,
+        clase: ac.clase_credito,
+        capital,
+        cuota_inicial: cuotaPMT,
+        total_pagar: t.total,
+        total_intereses: t.intereses,
+        numero_cuotas: cron.length,
+        porcentaje_prorrata: ac.clase_credito === "quinta" ? round2(proporcion * 100) : undefined,
+      });
+    }
+
+    const totales = filas.reduce(
+      (acc, f) => ({
+        capital: acc.capital + f.capital,
+        a_pagar: acc.a_pagar + f.total_pagar,
+        intereses: acc.intereses + f.total_intereses,
+        plazo_max: Math.max(acc.plazo_max, f.numero_cuotas + (gracia || 0)),
+      }),
+      { capital: 0, a_pagar: 0, intereses: 0, plazo_max: 0 },
+    );
+    return { ok: true, filas, totales };
+  }
+
+  // ─── Modo "plazo fijo" (legacy) ──────────────────────────────────────
+  const plazo = parseInt(form.plazo_meses || "0", 10);
+  if (!plazo || plazo <= 0) {
+    return { ...VACIO, mensaje: "Indica un plazo en meses para calcular las cuotas." };
+  }
 
   const filas: CuotaCalculadaPorAcreencia[] = [];
 
@@ -275,7 +362,7 @@ function calcularCuotasPropuesta(
         mesesGracia: gracia,
         tipo,
       });
-      filas.push(filaDesdeCronograma(ac, clase, cron, form.cuota_overrides));
+      filas.push(filaDesdeCronograma(ac, clase, cron));
     }
   }
 
@@ -303,7 +390,7 @@ function calcularCuotasPropuesta(
       });
       for (const r of resultados) {
         const ac = quintos[r.acreedor_index];
-        const fila = filaDesdeCronograma(ac, "quinta", r.cronograma, form.cuota_overrides);
+        const fila = filaDesdeCronograma(ac, "quinta", r.cronograma);
         fila.porcentaje_prorrata = r.porcentaje_prorrata;
         fila.tramo = idxPequenos.has(r.acreedor_index) ? "pequeno" : "otro";
         filas.push(fila);
@@ -317,7 +404,7 @@ function calcularCuotasPropuesta(
       });
       for (const r of resultados) {
         const ac = quintos[r.acreedor_index];
-        const fila = filaDesdeCronograma(ac, "quinta", r.cronograma, form.cuota_overrides);
+        const fila = filaDesdeCronograma(ac, "quinta", r.cronograma);
         fila.porcentaje_prorrata = r.porcentaje_prorrata;
         filas.push(fila);
       }
@@ -345,45 +432,22 @@ function filaDesdeCronograma(
   ac: SgccAcreencia,
   clase: ClaseCredito,
   cron: CuotaCronograma[],
-  overrides: Record<string, string>,
 ): CuotaCalculadaPorAcreencia {
   const t = totalesDeCronograma(cron);
-  const calculada = cron.length > 0 ? cron[0].cuota_total : 0;
-  const capital = Number(ac.con_capital);
-  const numCuotas = cron.length;
-
-  const overrideRaw = overrides?.[ac.id];
-  const overrideNum = overrideRaw ? parseFloat(overrideRaw) : NaN;
-  const tieneOverride = Number.isFinite(overrideNum) && overrideNum > 0;
-
-  if (tieneOverride) {
-    const totalPagar = overrideNum * numCuotas;
-    return {
-      acreencia_id: ac.id,
-      acreedor_nombre: ac.acreedor_nombre,
-      clase,
-      capital,
-      cuota_inicial: overrideNum,
-      cuota_calculada: calculada,
-      cuota_override: overrideNum,
-      total_pagar: totalPagar,
-      total_intereses: Math.max(0, totalPagar - capital),
-      numero_cuotas: numCuotas,
-      cuota_insuficiente: totalPagar < capital,
-    };
-  }
-
   return {
     acreencia_id: ac.id,
     acreedor_nombre: ac.acreedor_nombre,
     clase,
-    capital,
-    cuota_inicial: calculada,
-    cuota_calculada: calculada,
+    capital: Number(ac.con_capital),
+    cuota_inicial: cron.length > 0 ? cron[0].cuota_total : 0,
     total_pagar: t.total,
     total_intereses: t.intereses,
-    numero_cuotas: numCuotas,
+    numero_cuotas: cron.length,
   };
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
 function resumenCuotasParaDescripcion(r: ResultadoCalculoCuotas): string {
@@ -423,15 +487,24 @@ function generarDescripcionAutomatica(f: PropuestaForm, acreencias: SgccAcreenci
   const periodicidad = f.modalidad !== "unico_pago" ? ` con periodicidad ${periodicidadLabel(f.periodicidad).toLowerCase()}` : "";
   partes.push(`Se propone el pago bajo la modalidad de ${modalidadLabel(f.modalidad).toLowerCase()}${periodicidad}.`);
 
-  const plazo = f.plazo_meses ? parseInt(f.plazo_meses, 10) : 0;
-  if (plazo > 0) partes.push(`El plazo total de la propuesta es de ${plazo} meses.`);
+  if (f.modo_calculo === "cuota_disponible") {
+    const cuotaTotal = parseFloat(f.cuota_disponible_total || "");
+    if (Number.isFinite(cuotaTotal) && cuotaTotal > 0) {
+      partes.push(
+        `El deudor destinará la suma de ${fmt(cuotaTotal)} mensuales para el pago de las acreencias, distribuida a prorrata por capital entre los acreedores.`,
+      );
+    }
+  } else {
+    const plazo = f.plazo_meses ? parseInt(f.plazo_meses, 10) : 0;
+    if (plazo > 0) partes.push(`El plazo total de la propuesta es de ${plazo} meses.`);
+  }
 
   const gracia = f.periodo_gracia_meses ? parseInt(f.periodo_gracia_meses, 10) : 0;
   if (gracia > 0) partes.push(`Se contempla un período de gracia de ${gracia} meses, durante los cuales no se realizarán pagos al capital.`);
 
   partes.push(`La tasa de interés aplicable será ${tasaATexto(f.tasa_tipo, f.tasa_valor)}.`);
 
-  if (f.prioridad_pequenos) {
+  if (f.modo_calculo === "plazo_fijo" && f.prioridad_pequenos) {
     const m = parseInt(f.m_cuotas_pequenos || "0", 10);
     const mTxt = m > 0 ? ` durante las primeras ${m} cuotas` : "";
     partes.push(
@@ -465,6 +538,8 @@ function serializarEstructura(f: PropuestaForm): string {
     [ESTRUCTURA_TAG]: 1,
     modalidad: f.modalidad,
     periodicidad: f.periodicidad,
+    modo_calculo: f.modo_calculo,
+    cuota_disponible_total: f.cuota_disponible_total,
     tasa_tipo: f.tasa_tipo,
     tasa_valor: f.tasa_valor,
     tasa_calculo_anual_pct: f.tasa_calculo_anual_pct,
@@ -475,7 +550,6 @@ function serializarEstructura(f: PropuestaForm): string {
     detalle_condonaciones: f.detalle_condonaciones,
     notas_libres: f.notas_libres,
     incluir_resumen_cuotas: f.incluir_resumen_cuotas,
-    cuota_overrides: f.cuota_overrides,
     descripcion_editada_manualmente: f.descripcionEditadaManualmente,
   });
 }
@@ -490,6 +564,8 @@ function parseEstructura(notas: string | null | undefined): Partial<PropuestaFor
     return {
       modalidad: data.modalidad,
       periodicidad: data.periodicidad,
+      modo_calculo: data.modo_calculo === "cuota_disponible" ? "cuota_disponible" : "plazo_fijo",
+      cuota_disponible_total: data.cuota_disponible_total ?? "",
       tasa_tipo: data.tasa_tipo,
       tasa_valor: data.tasa_valor ?? "",
       tasa_calculo_anual_pct: data.tasa_calculo_anual_pct ?? "0",
@@ -500,7 +576,6 @@ function parseEstructura(notas: string | null | undefined): Partial<PropuestaFor
       detalle_condonaciones: data.detalle_condonaciones ?? "",
       notas_libres: data.notas_libres ?? "",
       incluir_resumen_cuotas: data.incluir_resumen_cuotas ?? false,
-      cuota_overrides: (data.cuota_overrides && typeof data.cuota_overrides === "object") ? data.cuota_overrides : {},
       descripcionEditadaManualmente: !!data.descripcion_editada_manualmente,
     };
   } catch {
@@ -646,7 +721,8 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     propForm.detalle_condonaciones,
     propForm.notas_libres,
     propForm.incluir_resumen_cuotas,
-    propForm.cuota_overrides,
+    propForm.modo_calculo,
+    propForm.cuota_disponible_total,
     acreencias,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ]);
@@ -1905,18 +1981,71 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                       )}
                     </div>
 
-                    {/* Plazo y gracia */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">Plazo (meses)</label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={propForm.plazo_meses}
-                          onChange={(e) => setPropForm({ ...propForm, plazo_meses: e.target.value })}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
-                        />
+                    {/* Modo de cálculo */}
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                      <p className="text-xs font-medium text-gray-700 mb-2">Modo de cálculo</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <label className={`flex items-start gap-2 cursor-pointer rounded p-2 border ${propForm.modo_calculo === "plazo_fijo" ? "border-[#1B4F9B] bg-white" : "border-gray-200 bg-white/60"}`}>
+                          <input
+                            type="radio"
+                            name="modo_calculo"
+                            value="plazo_fijo"
+                            checked={propForm.modo_calculo === "plazo_fijo"}
+                            onChange={() => setPropForm({ ...propForm, modo_calculo: "plazo_fijo" })}
+                            className="mt-0.5"
+                          />
+                          <div>
+                            <p className="text-xs font-medium text-gray-800">Por plazo fijo</p>
+                            <p className="text-[11px] text-gray-500">Defines el plazo en meses; el sistema calcula la cuota de cada acreedor (PMT).</p>
+                          </div>
+                        </label>
+                        <label className={`flex items-start gap-2 cursor-pointer rounded p-2 border ${propForm.modo_calculo === "cuota_disponible" ? "border-[#1B4F9B] bg-white" : "border-gray-200 bg-white/60"}`}>
+                          <input
+                            type="radio"
+                            name="modo_calculo"
+                            value="cuota_disponible"
+                            checked={propForm.modo_calculo === "cuota_disponible"}
+                            onChange={() => setPropForm({ ...propForm, modo_calculo: "cuota_disponible" })}
+                            className="mt-0.5"
+                          />
+                          <div>
+                            <p className="text-xs font-medium text-gray-800">Por cuota disponible</p>
+                            <p className="text-[11px] text-gray-500">Defines lo que el deudor puede pagar al mes; el sistema reparte y calcula el N° de cuotas de cada acreedor.</p>
+                          </div>
+                        </label>
                       </div>
+                    </div>
+
+                    {/* Plazo / Cuota disponible + gracia */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {propForm.modo_calculo === "plazo_fijo" ? (
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Plazo (meses)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={propForm.plazo_meses}
+                            onChange={(e) => setPropForm({ ...propForm, plazo_meses: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">
+                            Cuota mensual total disponible (deudor)
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            step="1000"
+                            value={propForm.cuota_disponible_total}
+                            onChange={(e) => setPropForm({ ...propForm, cuota_disponible_total: e.target.value })}
+                            placeholder="Ej: 500000"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 outline-none"
+                          />
+                          <p className="text-[11px] text-gray-500 mt-1">Se reparte a prorrata por capital. Cada acreedor obtiene su N° de cuotas con la tasa.</p>
+                        </div>
+                      )}
                       <div>
                         <label className="block text-xs text-gray-600 mb-1">Período de gracia (meses)</label>
                         <input
@@ -1993,8 +2122,9 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                       </div>
                     </div>
 
-                    {/* Prioridad pequeños acreedores */}
+                    {/* Prioridad pequeños acreedores — solo en modo plazo fijo */}
                     {(() => {
+                      if (propForm.modo_calculo !== "plazo_fijo") return null;
                       const hayQuintaClase = acreencias.some((a) => a.clase_credito === "quinta" && Number(a.con_capital) > 0);
                       if (!hayQuintaClase) return null;
                       const plazoNum = parseInt(propForm.plazo_meses || "0", 10) || 0;
@@ -2043,15 +2173,6 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                       acreencias={acreencias}
                       incluirEnDescripcion={propForm.incluir_resumen_cuotas}
                       onToggleIncluir={(v) => setPropForm({ ...propForm, incluir_resumen_cuotas: v })}
-                      onChangeOverride={(acreenciaId, valor) => {
-                        const next = { ...propForm.cuota_overrides };
-                        if (!valor.trim()) {
-                          delete next[acreenciaId];
-                        } else {
-                          next[acreenciaId] = valor;
-                        }
-                        setPropForm({ ...propForm, cuota_overrides: next });
-                      }}
                     />
 
                     {/* Condonaciones */}
@@ -3019,25 +3140,25 @@ function CuotasCalculadasPanel({
   acreencias,
   incluirEnDescripcion,
   onToggleIncluir,
-  onChangeOverride,
 }: {
   form: PropuestaForm;
   acreencias: SgccAcreencia[];
   incluirEnDescripcion: boolean;
   onToggleIncluir: (v: boolean) => void;
-  onChangeOverride: (acreenciaId: string, valor: string) => void;
 }) {
   const resultado = useMemo(() => calcularCuotasPropuesta(form, acreencias), [form, acreencias]);
   const algunaInsuficiente = resultado.filas.some((f) => f.cuota_insuficiente);
+
+  const subtitulo = form.modo_calculo === "cuota_disponible"
+    ? "La cuota disponible se reparte a prorrata por capital. Para cada acreedor, el sistema calcula el N° de cuotas necesarias con la tasa."
+    : "Se calculan con plazo, gracia, tasa y tipo de amortización. La quinta clase se prorratea.";
 
   return (
     <div className="rounded-lg border border-[#1B4F9B]/20 bg-[#1B4F9B]/5 p-3">
       <div className="flex items-start justify-between gap-3 mb-2">
         <div>
           <p className="text-xs font-semibold text-[#0D2340]">Cuotas calculadas por acreedor</p>
-          <p className="text-[11px] text-gray-600">
-            Se calculan con plazo, gracia, tasa y tipo de amortización. La quinta clase se prorratea. Puedes <b>sobrescribir</b> la cuota de cualquier acreedor en la columna &quot;Cuota personalizada&quot;.
-          </p>
+          <p className="text-[11px] text-gray-600">{subtitulo}</p>
         </div>
         <label className="flex items-center gap-2 text-[11px] text-gray-700 cursor-pointer whitespace-nowrap">
           <input
@@ -3064,14 +3185,12 @@ function CuotasCalculadasPanel({
           </div>
           {algunaInsuficiente && (
             <p className="text-[11px] text-red-700 bg-red-50 border border-red-200 rounded p-2 mb-2">
-              Hay cuotas personalizadas que, multiplicadas por el N° de cuotas, no alcanzan a cubrir el capital del acreedor (marcadas en rojo).
+              Hay acreedores cuya cuota asignada no alcanza a cubrir los intereses mensuales (marcados en rojo). Aumenta la cuota disponible o baja la tasa.
             </p>
           )}
           <TablaCuotasPorClase
             filas={resultado.filas}
             prioridad={form.prioridad_pequenos}
-            overrides={form.cuota_overrides}
-            onChangeOverride={onChangeOverride}
           />
         </>
       )}
@@ -3091,13 +3210,9 @@ function Kpi({ label, value }: { label: string; value: string }) {
 function TablaCuotasPorClase({
   filas,
   prioridad,
-  overrides,
-  onChangeOverride,
 }: {
   filas: CuotaCalculadaPorAcreencia[];
   prioridad: boolean;
-  overrides: Record<string, string>;
-  onChangeOverride: (acreenciaId: string, valor: string) => void;
 }) {
   const ORDEN: ClaseCredito[] = ["primera", "segunda", "tercera", "cuarta", "quinta"];
   const porClase = new Map<ClaseCredito, CuotaCalculadaPorAcreencia[]>();
@@ -3127,78 +3242,51 @@ function TablaCuotasPorClase({
                     <th className="text-left px-3 py-1.5">Acreedor</th>
                     <th className="text-right px-2">Capital</th>
                     {clase === "quinta" && <th className="text-right px-2">Prorrata</th>}
-                    <th className="text-right px-2">Cuota calc.</th>
-                    <th className="text-right px-2">Cuota personalizada</th>
-                    <th className="text-right px-2">N°</th>
+                    <th className="text-right px-2">Cuota</th>
+                    <th className="text-right px-2">N° cuotas</th>
                     <th className="text-right px-2">Total</th>
                     <th className="text-right px-3">Intereses</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {ordenado.map((f) => {
-                    const tieneOverride = f.cuota_override != null;
-                    return (
-                      <tr key={f.acreencia_id} className={`border-b border-gray-100 last:border-0 ${f.cuota_insuficiente ? "bg-red-50/50" : ""}`}>
-                        <td className="px-3 py-1.5">
-                          <span className="text-gray-800">{f.acreedor_nombre || "(sin nombre)"}</span>
-                          {f.tramo === "pequeno" && (
-                            <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded">
-                              pequeño
-                            </span>
-                          )}
-                          {f.tramo === "otro" && (
-                            <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
-                              otros 5ª
-                            </span>
-                          )}
-                        </td>
-                        <td className="text-right px-2">{fmt(f.capital)}</td>
-                        {clase === "quinta" && (
-                          <td className="text-right px-2 text-gray-600">
-                            {f.porcentaje_prorrata != null ? `${f.porcentaje_prorrata}%` : "—"}
-                          </td>
+                  {ordenado.map((f) => (
+                    <tr key={f.acreencia_id} className={`border-b border-gray-100 last:border-0 ${f.cuota_insuficiente ? "bg-red-50/50" : ""}`}>
+                      <td className="px-3 py-1.5">
+                        <span className="text-gray-800">{f.acreedor_nombre || "(sin nombre)"}</span>
+                        {f.tramo === "pequeno" && (
+                          <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded">
+                            pequeño
+                          </span>
                         )}
-                        <td className={`text-right px-2 ${tieneOverride ? "text-gray-400 line-through" : "font-medium"}`}>
-                          {fmt(f.cuota_calculada)}
+                        {f.tramo === "otro" && (
+                          <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                            otros 5ª
+                          </span>
+                        )}
+                        {f.cuota_insuficiente && (
+                          <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-red-100 text-red-700 rounded">
+                            cuota insuficiente
+                          </span>
+                        )}
+                      </td>
+                      <td className="text-right px-2">{fmt(f.capital)}</td>
+                      {clase === "quinta" && (
+                        <td className="text-right px-2 text-gray-600">
+                          {f.porcentaje_prorrata != null ? `${f.porcentaje_prorrata}%` : "—"}
                         </td>
-                        <td className="px-2 py-1">
-                          <div className="flex items-center justify-end gap-1">
-                            <input
-                              type="number"
-                              step="0.01"
-                              min={0}
-                              value={overrides[f.acreencia_id] ?? ""}
-                              onChange={(e) => onChangeOverride(f.acreencia_id, e.target.value)}
-                              placeholder="—"
-                              title="Deja vacío para usar la cuota calculada"
-                              className={`w-24 border rounded px-1.5 py-0.5 text-right text-[11px] focus:ring-1 focus:ring-[#1B4F9B]/40 outline-none ${
-                                tieneOverride
-                                  ? f.cuota_insuficiente
-                                    ? "border-red-300 bg-red-50 text-red-700 font-medium"
-                                    : "border-amber-300 bg-amber-50 text-amber-800 font-medium"
-                                  : "border-gray-200 bg-white text-gray-700"
-                              }`}
-                            />
-                            {tieneOverride && (
-                              <button
-                                type="button"
-                                onClick={() => onChangeOverride(f.acreencia_id, "")}
-                                title="Volver a la cuota calculada"
-                                className="text-gray-400 hover:text-gray-600 text-[10px] px-1"
-                              >
-                                ✕
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                        <td className="text-right px-2 text-gray-600">{f.numero_cuotas}</td>
-                        <td className={`text-right px-2 ${f.cuota_insuficiente ? "text-red-700 font-medium" : ""}`}>
-                          {fmt(f.total_pagar)}
-                        </td>
-                        <td className="text-right px-3 text-gray-600">{fmt(f.total_intereses)}</td>
-                      </tr>
-                    );
-                  })}
+                      )}
+                      <td className="text-right px-2 font-medium">{fmt(f.cuota_inicial)}</td>
+                      <td className="text-right px-2 text-gray-600">
+                        {f.cuota_insuficiente ? "—" : f.numero_cuotas}
+                      </td>
+                      <td className={`text-right px-2 ${f.cuota_insuficiente ? "text-red-700" : ""}`}>
+                        {f.cuota_insuficiente ? "—" : fmt(f.total_pagar)}
+                      </td>
+                      <td className="text-right px-3 text-gray-600">
+                        {f.cuota_insuficiente ? "—" : fmt(f.total_intereses)}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
