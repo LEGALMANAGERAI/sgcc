@@ -3,7 +3,8 @@ export const dynamic = "force-dynamic";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { PageHeader } from "@/components/ui/PageHeader";
-import Link from "next/link";
+import { AgendaGrid } from "./AgendaGrid";
+import type { AgendaItem } from "./AgendaItemModal";
 
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 8); // 8am - 6pm
 const DAY_LABELS = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"];
@@ -11,8 +12,8 @@ const TZ = "America/Bogota";
 
 function getWeekStart(dateStr?: string): Date {
   const d = dateStr ? new Date(dateStr + "T00:00:00") : new Date();
-  const day = d.getDay(); // 0=dom, 1=lun...
-  const diff = day === 0 ? -6 : 1 - day; // lunes de la semana
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
   d.setHours(0, 0, 0, 0);
   return d;
@@ -41,7 +42,6 @@ function getBogotaParts(iso: string) {
   const parts = fmt.formatToParts(new Date(iso));
   const map: Record<string, string> = {};
   for (const p of parts) map[p.type] = p.value;
-  // "24" aparece a medianoche en es-CO; normalizamos a "00"
   const hourStr = map.hour === "24" ? "00" : map.hour;
   return {
     date: `${map.year}-${map.month}-${map.day}`,
@@ -63,14 +63,15 @@ export default async function AgendaPage({ searchParams }: Props) {
 
   const weekStart = getWeekStart(params.week);
   const weekEnd = addDays(weekStart, 7);
+  const weekStartStr = formatDate(weekStart);
+  const weekEndStr = formatDate(weekEnd);
 
   const prevWeek = formatDate(addDays(weekStart, -7));
   const nextWeek = formatDate(addDays(weekStart, 7));
   const today = formatDate(getWeekStart());
 
-  // Audiencias de la semana — filtramos por centro via join a sgcc_cases
-  // y excluimos audiencias de expedientes archivados (soft delete).
-  let query = supabaseAdmin
+  // Audiencias de la semana
+  let hearingsQuery = supabaseAdmin
     .from("sgcc_hearings")
     .select(`
       id, fecha_hora, duracion_min, estado, tipo, notas_previas,
@@ -84,8 +85,6 @@ export default async function AgendaPage({ searchParams }: Props) {
     .lt("fecha_hora", weekEnd.toISOString())
     .order("fecha_hora", { ascending: true });
 
-  // Si es conciliador, solo sus audiencias. Usamos todos los staff_ids que
-  // comparten email en el centro (cubre duplicados por capitalización).
   if (sgccRol === "conciliador") {
     const email = (session!.user as any).email as string | undefined;
     const ids = new Set<string>();
@@ -98,13 +97,68 @@ export default async function AgendaPage({ searchParams }: Props) {
         .eq("center_id", centerId);
       for (const s of staffRows ?? []) ids.add(s.id);
     }
-    query = query.in("conciliador_id", Array.from(ids));
+    hearingsQuery = hearingsQuery.in("conciliador_id", Array.from(ids));
   }
 
-  const { data: audiencias } = await query;
-  const hearings = audiencias ?? [];
+  // Items de agenda (compromisos / pendientes)
+  let itemsQuery = supabaseAdmin
+    .from("sgcc_agenda_items")
+    .select(
+      `id, tipo, titulo, descripcion, fecha, hora_inicio, duracion_min, caso_id,
+       completado, completado_at, staff_id, created_at, updated_at`
+    )
+    .eq("center_id", centerId)
+    .gte("fecha", weekStartStr)
+    .lt("fecha", weekEndStr);
 
-  // Organizar audiencias por dia y hora (en zona horaria Bogotá)
+  if (sgccRol === "conciliador") {
+    itemsQuery = itemsQuery.eq("staff_id", userId);
+  }
+
+  // Casos del centro para el dropdown del modal
+  const casosQuery = supabaseAdmin
+    .from("sgcc_cases")
+    .select("id, numero_radicado")
+    .eq("center_id", centerId)
+    .is("archivado_at", null)
+    .order("numero_radicado", { ascending: false })
+    .limit(200);
+
+  const [{ data: audiencias }, { data: itemsRaw }, { data: casos }] = await Promise.all([
+    hearingsQuery,
+    itemsQuery,
+    casosQuery,
+  ]);
+
+  // Normalizar audiencias: aplanar y derivar fecha+hora locales
+  const hearings = (audiencias ?? []).map((h: any) => {
+    const { date, hour, timeStr } = getBogotaParts(h.fecha_hora as string);
+    return {
+      id: h.id as string,
+      caso_id: (h.caso?.id as string | null) ?? null,
+      caso_radicado: (h.caso?.numero_radicado as string | null) ?? null,
+      conciliador_nombre: (h.conciliador?.nombre as string | null) ?? null,
+      sala_nombre: (h.sala?.nombre as string | null) ?? null,
+      estado: h.estado as string,
+      _dateKey: date,
+      _hour: hour,
+      _timeStr: timeStr,
+    };
+  });
+
+  const items: AgendaItem[] = (itemsRaw ?? []).map((it: any) => ({
+    id: it.id,
+    tipo: it.tipo,
+    titulo: it.titulo,
+    descripcion: it.descripcion,
+    fecha: it.fecha,
+    hora_inicio: it.hora_inicio,
+    duracion_min: it.duracion_min,
+    caso_id: it.caso_id,
+    completado: it.completado,
+    staff_id: it.staff_id,
+  }));
+
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(weekStart, i);
     return {
@@ -115,38 +169,17 @@ export default async function AgendaPage({ searchParams }: Props) {
     };
   });
 
-  type HearingRow = (typeof hearings)[number] & {
-    _dateKey: string;
-    _hour: number;
-    _timeStr: string;
-  };
-
-  const hearingMap: Record<string, HearingRow[]> = {};
-  for (const h of hearings) {
-    const { date, hour, timeStr } = getBogotaParts(h.fecha_hora as string);
-    const key = `${date}_${hour}`;
-    const row: HearingRow = { ...(h as any), _dateKey: date, _hour: hour, _timeStr: timeStr };
-    if (!hearingMap[key]) hearingMap[key] = [];
-    hearingMap[key].push(row);
-  }
-
-  // Colores por estado
-  const stateColors: Record<string, string> = {
-    programada: "bg-blue-100 border-blue-300 text-blue-900",
-    en_curso: "bg-purple-100 border-purple-300 text-purple-900",
-    suspendida: "bg-orange-100 border-orange-300 text-orange-900",
-    finalizada: "bg-green-100 border-green-300 text-green-900",
-    cancelada: "bg-red-100 border-red-300 text-red-900",
-  };
-
   return (
     <div>
       <PageHeader
         title="Agenda"
-        subtitle={sgccRol === "conciliador" ? "Mis audiencias" : "Todas las audiencias"}
+        subtitle={
+          sgccRol === "conciliador"
+            ? "Mis audiencias y compromisos"
+            : "Audiencias, compromisos y pendientes del centro"
+        }
       />
 
-      {/* Navegacion semanal */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <a
@@ -170,88 +203,28 @@ export default async function AgendaPage({ searchParams }: Props) {
         </div>
         <div className="text-sm text-gray-600 font-medium">
           {weekStart.toLocaleDateString("es-CO", { day: "numeric", month: "long" })} —{" "}
-          {addDays(weekStart, 6).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })}
-        </div>
-      </div>
-
-      {/* Grid semanal */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* Encabezado dias */}
-        <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-gray-200">
-          <div className="p-2 bg-gray-50" />
-          {weekDays.map((day) => {
-            const isToday = day.date === formatDate(new Date());
-            return (
-              <div
-                key={day.date}
-                className={`p-3 text-center border-l border-gray-100 ${
-                  isToday ? "bg-[#0D2340] text-white" : "bg-gray-50"
-                }`}
-              >
-                <div className={`text-xs font-semibold ${isToday ? "text-white/80" : "text-gray-500"}`}>
-                  {day.label}
-                </div>
-                <div className={`text-lg font-bold ${isToday ? "text-white" : "text-gray-800"}`}>
-                  {day.dayNum}
-                </div>
-                <div className={`text-xs ${isToday ? "text-white/60" : "text-gray-400"}`}>
-                  {day.month}
-                </div>
-              </div>
-            );
+          {addDays(weekStart, 6).toLocaleDateString("es-CO", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
           })}
         </div>
-
-        {/* Filas por hora */}
-        {HOURS.map((hour) => (
-          <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-gray-50 min-h-[60px]">
-            {/* Hora */}
-            <div className="p-2 text-xs text-gray-400 font-mono text-right pr-3 pt-3 border-r border-gray-100">
-              {hour.toString().padStart(2, "0")}:00
-            </div>
-
-            {/* Celdas por dia */}
-            {weekDays.map((day) => {
-              const key = `${day.date}_${hour}`;
-              const cellHearings = hearingMap[key] ?? [];
-
-              return (
-                <div key={key} className="border-l border-gray-50 p-1 min-h-[60px]">
-                  {cellHearings.map((h) => (
-                    <Link
-                      key={h.id}
-                      href={`/casos/${(h as any).caso?.id}`}
-                      className={`block rounded-md border p-1.5 mb-1 text-xs cursor-pointer hover:shadow-sm transition-shadow ${
-                        stateColors[h.estado] ?? "bg-gray-100 border-gray-200 text-gray-800"
-                      }`}
-                    >
-                      <div className="font-semibold truncate">
-                        {h._timeStr} — {(h as any).caso?.numero_radicado ?? "Sin radicado"}
-                      </div>
-                      <div className="truncate opacity-75">
-                        {(h as any).conciliador?.nombre ?? "Sin conciliador"}
-                      </div>
-                      {(h as any).sala?.nombre && (
-                        <div className="truncate opacity-60">{(h as any).sala.nombre}</div>
-                      )}
-                    </Link>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        ))}
       </div>
 
-      {/* Resumen debajo */}
-      <div className="mt-6 flex gap-4 text-xs">
-        {Object.entries(stateColors).map(([estado, cls]) => (
-          <div key={estado} className="flex items-center gap-1.5">
-            <div className={`w-3 h-3 rounded ${cls.split(" ")[0]}`} />
-            <span className="text-gray-600 capitalize">{estado.replace(/_/g, " ")}</span>
-          </div>
-        ))}
-      </div>
+      <p className="text-xs text-gray-500 mb-3">
+        Haz clic en una celda vacía para agregar un compromiso o pendiente. Click sobre uno
+        existente para editarlo.
+      </p>
+
+      <AgendaGrid
+        weekDays={weekDays}
+        hours={HOURS}
+        hearings={hearings}
+        items={items}
+        casos={(casos ?? []) as any}
+        currentStaffId={userId}
+        todayKey={formatDate(new Date())}
+      />
     </div>
   );
 }
