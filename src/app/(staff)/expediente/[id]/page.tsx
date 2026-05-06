@@ -14,6 +14,7 @@ import { ContadorTermino } from "@/components/modules/expediente/ContadorTermino
 import { CrearActaInsolvencia } from "@/components/modules/expediente/CrearActaInsolvencia";
 import { CrearActaConciliacion } from "@/components/modules/expediente/CrearActaConciliacion";
 import { CrearActaAcuerdoApoyo } from "@/components/modules/expediente/CrearActaAcuerdoApoyo";
+import { ProgramarAudienciaInlineCard } from "@/components/modules/expediente/ProgramarAudienciaInlineCard";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { HerramientaAcreencias } from "@/components/modules/insolvencia/HerramientaAcreencias";
@@ -498,14 +499,13 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
       )}
 
       {activeTab === "acta" && hearings.length === 0 && (
-        <div className="mt-6 bg-white border border-gray-200 rounded-xl p-8 text-center">
-          <p className="text-sm text-gray-600 mb-2">
-            No hay audiencias programadas para este caso.
-          </p>
-          <p className="text-xs text-gray-400">
-            Programa una audiencia desde la vista del caso para poder generar el acta.
-          </p>
-        </div>
+        <ProgramarAudienciaInlineCard
+          caseId={id}
+          conciliadores={conciliadoresList}
+          salas={salasList}
+          defaultConciliadorId={caso.conciliador_id ?? null}
+          tipoTramite={caso.tipo_tramite}
+        />
       )}
 
       {activeTab === "acreencias" && caso.tipo_tramite === "insolvencia" && (
