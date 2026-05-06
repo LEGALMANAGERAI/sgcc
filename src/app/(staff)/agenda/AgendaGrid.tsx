@@ -1,9 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { Plus } from "lucide-react";
-import { AgendaItemModal, type AgendaItem, type CasoOption } from "./AgendaItemModal";
+import {
+  AgendaItemModal,
+  type AgendaItem,
+  type CasoOption,
+  type ConciliadorOption,
+  type SalaOption,
+} from "./AgendaItemModal";
+import {
+  AudienciaDetalleModal,
+  type AudienciaResumen,
+} from "./AudienciaDetalleModal";
 
 interface WeekDay {
   date: string;
@@ -19,6 +28,8 @@ interface HearingRow {
   conciliador_nombre: string | null;
   sala_nombre: string | null;
   estado: string;
+  fecha_iso: string;
+  duracion_min: number;
   _dateKey: string;
   _hour: number;
   _timeStr: string;
@@ -30,7 +41,8 @@ interface Props {
   hearings: HearingRow[];
   items: AgendaItem[];
   casos: CasoOption[];
-  /** ID del staff autenticado, para saber si puede editar/borrar items. */
+  conciliadores: ConciliadorOption[];
+  salas: SalaOption[];
   currentStaffId: string;
   todayKey: string;
 }
@@ -54,6 +66,8 @@ export function AgendaGrid({
   hearings,
   items,
   casos,
+  conciliadores,
+  salas,
   currentStaffId,
   todayKey,
 }: Props) {
@@ -61,6 +75,9 @@ export function AgendaGrid({
   const [editingItem, setEditingItem] = useState<AgendaItem | null>(null);
   const [prefillFecha, setPrefillFecha] = useState<string | undefined>();
   const [prefillHora, setPrefillHora] = useState<string | undefined>();
+
+  const [audModalOpen, setAudModalOpen] = useState(false);
+  const [audSeleccionada, setAudSeleccionada] = useState<AudienciaResumen | null>(null);
 
   // Agrupar audiencias por fecha+hora
   const hearingMap = useMemo(() => {
@@ -107,6 +124,20 @@ export function AgendaGrid({
     setPrefillFecha(undefined);
     setPrefillHora(undefined);
     setModalOpen(true);
+  }
+
+  function abrirAudiencia(h: HearingRow) {
+    setAudSeleccionada({
+      id: h.id,
+      case_id: h.caso_id,
+      caso_radicado: h.caso_radicado,
+      conciliador_nombre: h.conciliador_nombre,
+      sala_nombre: h.sala_nombre,
+      estado: h.estado,
+      fecha_iso: h.fecha_iso,
+      duracion_min: h.duracion_min,
+    });
+    setAudModalOpen(true);
   }
 
   return (
@@ -194,10 +225,14 @@ export function AgendaGrid({
                   }}
                 >
                   {cellHearings.map((h) => (
-                    <Link
+                    <button
+                      type="button"
                       key={h.id}
-                      href={`/casos/${h.caso_id}`}
-                      className={`block rounded-md border p-1.5 mb-1 text-xs cursor-pointer hover:shadow-sm transition-shadow ${
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        abrirAudiencia(h);
+                      }}
+                      className={`block w-full text-left rounded-md border p-1.5 mb-1 text-xs cursor-pointer hover:shadow-sm transition-shadow ${
                         stateColors[h.estado] ?? "bg-gray-100 border-gray-200 text-gray-800"
                       }`}
                     >
@@ -208,7 +243,7 @@ export function AgendaGrid({
                         {h.conciliador_nombre ?? "Sin conciliador"}
                       </div>
                       {h.sala_nombre && <div className="truncate opacity-60">{h.sala_nombre}</div>}
-                    </Link>
+                    </button>
                   ))}
                   {cellItems.map((it) => (
                     <button
@@ -271,6 +306,15 @@ export function AgendaGrid({
         horaInicial={prefillHora}
         esCreador={editingItem ? editingItem.staff_id === currentStaffId : true}
         casos={casos}
+        conciliadores={conciliadores}
+        salas={salas}
+        currentStaffId={currentStaffId}
+      />
+
+      <AudienciaDetalleModal
+        open={audModalOpen}
+        onClose={() => setAudModalOpen(false)}
+        audiencia={audSeleccionada}
       />
     </>
   );
