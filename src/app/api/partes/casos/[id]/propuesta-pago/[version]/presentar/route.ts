@@ -84,7 +84,7 @@ export async function POST(
     if (conciliador?.email) {
       try {
         await getResend().emails.send({
-          from: "SGCC <notificaciones@sgcc.app>",
+          from: "SIGECC <notificaciones@sgcc.app>",
           to: conciliador.email,
           subject: `Nueva versión de propuesta de pago — caso ${id.slice(0, 8)}`,
           html: `

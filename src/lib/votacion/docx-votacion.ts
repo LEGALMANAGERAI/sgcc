@@ -102,7 +102,7 @@ export async function generarVotacionDocx(input: VotacionExportInput): Promise<B
         : "1B4F9B";
 
   const docInst = new Document({
-    creator: "SGCC",
+    creator: "SIGECC",
     title: `Acta de votación — ${caso.numero_radicado}`,
     sections: [
       {

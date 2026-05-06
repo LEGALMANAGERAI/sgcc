@@ -44,7 +44,7 @@ export async function notify(opts: NotifyOptions) {
     if ((canal === "email" || canal === "both") && r.email) {
       try {
         const result = await getResend().emails.send({
-          from: "SGCC <notificaciones@sgcc.app>",
+          from: "SIGECC <notificaciones@sgcc.app>",
           to: r.email,
           subject: opts.titulo,
           html: buildEmailHtml(opts.titulo, opts.mensaje, opts.attachmentUrl),
@@ -72,7 +72,7 @@ function buildEmailHtml(titulo: string, mensaje: string, url?: string): string {
     <html>
     <body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
       <div style="background: #0D2340; padding: 20px; border-radius: 8px 8px 0 0;">
-        <h2 style="color: white; margin: 0; font-size: 18px;">SGCC — Centro de Conciliación</h2>
+        <h2 style="color: white; margin: 0; font-size: 18px;">SIGECC — Centro de Conciliación</h2>
       </div>
       <div style="background: #f9f9f9; padding: 24px; border-radius: 0 0 8px 8px; border: 1px solid #e0e0e0; border-top: none;">
         <h3 style="color: #0D2340; margin-top: 0;">${titulo}</h3>

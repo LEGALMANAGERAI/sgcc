@@ -182,7 +182,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         const linkFirma = `${APP_URL}/firmar/${siguienteFirmante.token}`;
         try {
           await getResend().emails.send({
-            from: "SGCC <notificaciones@sgcc.app>",
+            from: "SIGECC <notificaciones@sgcc.app>",
             to: siguienteFirmante.email,
             subject: `Documento pendiente de firma — ${documento.nombre}`,
             html: `

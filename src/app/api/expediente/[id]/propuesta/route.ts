@@ -233,7 +233,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
             : "";
           try {
             await getResend().emails.send({
-              from: "SGCC <notificaciones@sgcc.app>",
+              from: "SIGECC <notificaciones@sgcc.app>",
               to: party.email,
               subject: `Votación — Proceso de Insolvencia`,
               html: `

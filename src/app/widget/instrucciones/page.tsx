@@ -25,7 +25,7 @@ export default function InstruccionesPage() {
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <h1 style={{ color: navy, fontSize: 32, fontWeight: 800, marginBottom: 8 }}>
-            Integra SGCC en tu página web
+            Integra SIGECC en tu página web
           </h1>
           <p style={{ color: "#6b7280", fontSize: 16, lineHeight: 1.6, maxWidth: 560, margin: "0 auto" }}>
             Permite que los ciudadanos soliciten conciliaciones directamente desde tu sitio web
@@ -44,7 +44,7 @@ export default function InstruccionesPage() {
               <h2 style={{ color: navy, fontSize: 18, fontWeight: 700, margin: 0 }}>Obtén tu Center ID</h2>
             </div>
             <p style={{ color: "#6b7280", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-              Ve a <strong>Configuración</strong> en tu panel de administración de SGCC.
+              Ve a <strong>Configuración</strong> en tu panel de administración de SIGECC.
               Tu Center ID aparece en la sección de datos del centro. Es un identificador
               único tipo UUID (ej: <code style={{ background: "#f3f4f6", padding: "2px 6px", borderRadius: 4, fontSize: 13 }}>a1b2c3d4-e5f6-7890-abcd-ef1234567890</code>).
             </p>
@@ -191,7 +191,7 @@ export default function InstruccionesPage() {
                 El widget funciona en cualquier sitio web: WordPress, Wix, HTML estático, etc.
               </li>
               <li>
-                Las solicitudes recibidas aparecerán en tu panel de SGCC con estado &quot;solicitud&quot;.
+                Las solicitudes recibidas aparecerán en tu panel de SIGECC con estado &quot;solicitud&quot;.
               </li>
             </ul>
           </div>

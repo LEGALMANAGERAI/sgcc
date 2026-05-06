@@ -35,13 +35,13 @@ export async function crearYEnviarOtp(
       const { Resend } = await import("resend");
       const resend = new Resend(process.env.RESEND_API_KEY || "");
       await resend.emails.send({
-        from: "SGCC <notificaciones@sgcc.app>",
+        from: "SIGECC <notificaciones@sgcc.app>",
         to: email,
-        subject: "Código de verificación — SGCC",
+        subject: "Código de verificación — SIGECC",
         html: `
           <div style="font-family:sans-serif;max-width:400px;margin:0 auto;padding:20px;">
             <div style="background:#0D2340;padding:20px;border-radius:8px 8px 0 0;text-align:center;">
-              <h2 style="color:white;margin:0;">SGCC — Firma Electrónica</h2>
+              <h2 style="color:white;margin:0;">SIGECC — Firma Electrónica</h2>
             </div>
             <div style="background:#f9f9f9;padding:24px;border-radius:0 0 8px 8px;border:1px solid #e0e0e0;text-align:center;">
               <p style="color:#333;margin-bottom:16px;">Tu código de verificación es:</p>

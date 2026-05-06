@@ -46,7 +46,7 @@ export async function sellarDocumento(opts: {
     color: white,
   });
   page.drawText(
-    "Sistema de Gestión de Centros de Conciliación — SGCC",
+    "Sistema de Gestión de Centros de Conciliación — SIGECC",
     {
       x: 50,
       y: 782,

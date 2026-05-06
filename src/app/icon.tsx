@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 /**
- * Favicon dinámico — símbolo SGCC (grid 2×2 sin letras, para favicons pequeños).
+ * Favicon dinámico — símbolo SIGECC (grid 2×2 sin letras, para favicons pequeños).
  */
 
 export const size = { width: 128, height: 128 };

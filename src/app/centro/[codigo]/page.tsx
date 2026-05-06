@@ -107,7 +107,7 @@ export default async function CentroLandingPage({ params }: Props) {
         </div>
       </main>
 
-      {/* Footer SGCC */}
+      {/* Footer SIGECC */}
       <footer className="py-6 flex justify-center">
         <a
           href="https://sgcc-rouge.vercel.app"

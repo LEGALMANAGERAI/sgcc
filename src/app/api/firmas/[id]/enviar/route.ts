@@ -57,13 +57,13 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     try {
       await getResend().emails.send({
-        from: "SGCC <notificaciones@sgcc.app>",
+        from: "SIGECC <notificaciones@sgcc.app>",
         to: firmante.email,
         subject: `Documento pendiente de firma: ${documento.nombre}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background:#0D2340;padding:20px;border-radius:8px 8px 0 0;text-align:center;">
-              <h2 style="color:white;margin:0;">Firma Electrónica — SGCC</h2>
+              <h2 style="color:white;margin:0;">Firma Electrónica — SIGECC</h2>
             </div>
             <div style="padding: 24px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px;">
               <p>Estimado/a <strong>${firmante.nombre}</strong>,</p>
