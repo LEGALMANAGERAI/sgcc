@@ -78,7 +78,7 @@ export default async function VerificarPage({ params }: PageProps) {
         <div className="max-w-[700px] mx-auto px-4 flex items-center justify-center gap-3">
           <Scale className="w-7 h-7 text-[#1B4F9B]" />
           <div className="text-center">
-            <p className="text-white font-bold text-lg">SGCC</p>
+            <p className="text-white font-bold text-lg">SIGECC</p>
             <p className="text-white/50 text-xs">Verificaci&#243;n de Firma Electr&#243;nica</p>
           </div>
         </div>
@@ -194,7 +194,7 @@ export default async function VerificarPage({ params }: PageProps) {
             siempre que se cumplan los requisitos de autenticidad e integridad del mensaje de datos.
           </p>
           <p className="text-xs text-gray-400 mt-3">
-            Verificado por SGCC &#8212; Sistema de Gesti&#243;n de Centros de Conciliaci&#243;n
+            Verificado por SIGECC &#8212; Sistema de Gesti&#243;n de Centros de Conciliaci&#243;n
           </p>
         </div>
       </main>

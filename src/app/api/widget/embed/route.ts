@@ -6,7 +6,7 @@ export async function GET(req: Request) {
   const js = `(function() {
   var script = document.currentScript;
   var centerId = script.getAttribute('data-center-id');
-  if (!centerId) { console.error('SGCC Widget: falta data-center-id'); return; }
+  if (!centerId) { console.error('SIGECC Widget: falta data-center-id'); return; }
   var baseUrl = script.getAttribute('data-url') || '${origin}';
 
   // Estilos

@@ -31,7 +31,7 @@ import { SgccLogo } from "@/components/ui/SgccLogo";
  * StaffSidebar — shell del producto.
  *
  * - Background paper claro #FDFCFA, width 240px
- * - Logo: símbolo SGCC compacto
+ * - Logo: símbolo SIGECC compacto
  * - Nav: Space Grotesk 13px, padding 8px 10px, radius md
  * - Active: ink bg + paper text + dot flow a la izquierda
  * - Badges: mono 10px, pill paper-warm

@@ -44,7 +44,7 @@ export default function RegistroSelectorPage() {
               <Scale className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h1 className="text-white text-2xl font-bold">SGCC</h1>
+          <h1 className="text-white text-2xl font-bold">SIGECC</h1>
           <p className="text-white/60 text-sm mt-1">
             Selecciona el tipo de registro
           </p>

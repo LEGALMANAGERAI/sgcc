@@ -53,7 +53,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     try {
       await getResend().emails.send({
-        from: "SGCC <notificaciones@sgcc.app>",
+        from: "SIGECC <notificaciones@sgcc.app>",
         to: firmante.email,
         subject: `Recordatorio: Documento pendiente de firma - ${documento.nombre}`,
         html: `

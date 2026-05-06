@@ -25,7 +25,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SGCC — Sistema de Gestión para Centros de Conciliación",
+  title: "SIGECC — Sistema de Gestión para Centros de Conciliación",
   description:
     "Plataforma en la nube para centros de conciliación y notarías: conciliación, insolvencia PNNC y acuerdos de apoyo.",
 };

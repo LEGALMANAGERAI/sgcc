@@ -114,7 +114,7 @@ export default function RegistroCentroPage() {
             Registro de Centro de Conciliacion
           </h1>
           <p className="text-white/60 text-xs mt-1">
-            Completa la informacion para habilitar tu centro en el SGCC
+            Completa la informacion para habilitar tu centro en el SIGECC
           </p>
         </div>
 

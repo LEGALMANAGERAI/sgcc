@@ -8,7 +8,7 @@ export default function FirmarLayout({ children }: { children: React.ReactNode }
         <div className="max-w-[700px] mx-auto px-4 flex items-center justify-center gap-3">
           <Scale className="w-6 h-6 text-[#1B4F9B]" />
           <div className="text-center">
-            <p className="text-[#0D2340] font-bold text-lg leading-tight">SGCC</p>
+            <p className="text-[#0D2340] font-bold text-lg leading-tight">SIGECC</p>
             <p className="text-gray-500 text-xs">Firma Electr&#243;nica</p>
           </div>
         </div>

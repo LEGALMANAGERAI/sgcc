@@ -35,7 +35,7 @@ export function BotonWebClient({ codigo, nombreCentro, colorPrimario, colorSecun
     }
 
     // FAB (botón flotante)
-    return `<!-- SGCC: botón flotante de trámites en línea -->
+    return `<!-- SIGECC: botón flotante de trámites en línea -->
 <a id="sgcc-fab" href="${url}" target="_blank" rel="noopener"
    style="position:fixed;bottom:20px;right:20px;z-index:9999;display:inline-flex;align-items:center;gap:8px;padding:12px 18px;background:${colorPrimario};color:#fff;text-decoration:none;border-radius:999px;font-family:system-ui,-apple-system,sans-serif;font-size:14px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.18);transition:transform .15s,box-shadow .15s"
    onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.22)'"
