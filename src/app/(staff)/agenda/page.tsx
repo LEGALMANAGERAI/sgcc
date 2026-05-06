@@ -124,11 +124,37 @@ export default async function AgendaPage({ searchParams }: Props) {
     .order("numero_radicado", { ascending: false })
     .limit(200);
 
-  const [{ data: audiencias }, { data: itemsRaw }, { data: casos }] = await Promise.all([
+  // Staff conciliadores y salas para el form de audiencia
+  const conciliadoresQuery = supabaseAdmin
+    .from("sgcc_staff")
+    .select("id, nombre, rol")
+    .eq("center_id", centerId)
+    .eq("activo", true)
+    .order("nombre", { ascending: true });
+
+  const salasQuery = supabaseAdmin
+    .from("sgcc_rooms")
+    .select("id, nombre")
+    .eq("center_id", centerId)
+    .order("nombre", { ascending: true });
+
+  const [
+    { data: audiencias },
+    { data: itemsRaw },
+    { data: casos },
+    { data: staffRows },
+    { data: salas },
+  ] = await Promise.all([
     hearingsQuery,
     itemsQuery,
     casosQuery,
+    conciliadoresQuery,
+    salasQuery,
   ]);
+
+  const conciliadores = (staffRows ?? [])
+    .filter((s: any) => s.rol === "conciliador")
+    .map((s: any) => ({ id: s.id, nombre: s.nombre }));
 
   // Normalizar audiencias: aplanar y derivar fecha+hora locales
   const hearings = (audiencias ?? []).map((h: any) => {
@@ -140,6 +166,8 @@ export default async function AgendaPage({ searchParams }: Props) {
       conciliador_nombre: (h.conciliador?.nombre as string | null) ?? null,
       sala_nombre: (h.sala?.nombre as string | null) ?? null,
       estado: h.estado as string,
+      fecha_iso: h.fecha_hora as string,
+      duracion_min: (h.duracion_min as number) ?? 60,
       _dateKey: date,
       _hour: hour,
       _timeStr: timeStr,
@@ -222,6 +250,8 @@ export default async function AgendaPage({ searchParams }: Props) {
         hearings={hearings}
         items={items}
         casos={(casos ?? []) as any}
+        conciliadores={conciliadores}
+        salas={(salas ?? []) as any}
         currentStaffId={userId}
         todayKey={formatDate(new Date())}
       />

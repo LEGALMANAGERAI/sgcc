@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
       `id, tipo, titulo, descripcion, fecha, hora_inicio, duracion_min, caso_id,
        completado, completado_at, staff_id, created_at, updated_at,
        caso:sgcc_cases(id, numero_radicado),
-       creador:sgcc_staff!sgcc_agenda_items_staff_id_fkey(id, nombre, sgcc_rol)`
+       creador:sgcc_staff!sgcc_agenda_items_staff_id_fkey(id, nombre, rol)`
     )
     .eq("center_id", centerId)
     .gte("fecha", fmtFecha(inicio))
