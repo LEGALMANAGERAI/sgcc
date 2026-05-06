@@ -22,19 +22,25 @@ interface Props {
   tipoTramite: "conciliacion" | "insolvencia" | "acuerdo_apoyo" | string;
 }
 
+// El CHECK constraint de sgcc_hearings.tipo solo permite "inicial",
+// "continuacion" y "complementaria". El tipo de trámite del caso ya da el
+// contexto (insolvencia / conciliación / acuerdo de apoyo); aquí solo decimos
+// si es la primera audiencia, una continuación o una complementaria.
 const TIPOS_AUDIENCIA: Record<string, { v: string; l: string }[]> = {
   conciliacion: [
-    { v: "inicial", l: "Audiencia de conciliación" },
+    { v: "inicial", l: "Audiencia inicial de conciliación" },
     { v: "continuacion", l: "Continuación" },
+    { v: "complementaria", l: "Complementaria" },
   ],
   insolvencia: [
-    { v: "negociacion", l: "Negociación de deudas" },
-    { v: "validacion", l: "Validación de acuerdo" },
-    { v: "liquidacion", l: "Liquidación patrimonial" },
+    { v: "inicial", l: "Audiencia inicial (negociación de deudas)" },
+    { v: "continuacion", l: "Continuación" },
+    { v: "complementaria", l: "Complementaria (validación o liquidación)" },
   ],
   acuerdo_apoyo: [
-    { v: "inicial", l: "Audiencia de acuerdo de apoyo" },
+    { v: "inicial", l: "Audiencia inicial de acuerdo de apoyo" },
     { v: "continuacion", l: "Continuación" },
+    { v: "complementaria", l: "Complementaria" },
   ],
 };
 
