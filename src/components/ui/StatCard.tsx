@@ -91,7 +91,7 @@ export function StatCard({ label, value, icon: Icon, color = "navy", trend, href
       <Link
         href={href}
         className={clsx(
-          "block rounded-[16px] p-5 transition-all hover:brightness-95 hover:-translate-y-0.5",
+          "block rounded-[16px] p-5 transition-transform duration-150 ease-out hover:-translate-y-0.5",
           c.bg
         )}
         style={{ boxShadow: "var(--shadow-sm)" }}
