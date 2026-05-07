@@ -92,11 +92,11 @@ export function festivosColombiaConNombre(year: number): FestivoConNombre[] {
 
   // ── 1. Festivos fijos (no se trasladan) ──
   festivos.push({ fecha: createDate(year, 1, 1), nombre: "Año Nuevo" });
-  festivos.push({ fecha: createDate(year, 2, 17), nombre: "Día de la Rama Judicial" });
   festivos.push({ fecha: createDate(year, 5, 1), nombre: "Día del Trabajo" });
   festivos.push({ fecha: createDate(year, 7, 20), nombre: "Día de la Independencia" });
   festivos.push({ fecha: createDate(year, 8, 7), nombre: "Batalla de Boyacá" });
   festivos.push({ fecha: createDate(year, 12, 8), nombre: "Inmaculada Concepción" });
+  festivos.push({ fecha: createDate(year, 12, 17), nombre: "Día de la Rama Judicial" });
   festivos.push({ fecha: createDate(year, 12, 25), nombre: "Navidad" });
 
   // ── 2. Festivos trasladados al lunes (Ley Emiliani) ──
