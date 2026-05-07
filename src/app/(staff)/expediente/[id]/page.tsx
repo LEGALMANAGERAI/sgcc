@@ -328,7 +328,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
       {/* Header */}
       <PageHeader
         title={caso.numero_radicado}
-        subtitle={`${caso.materia} · ${new Date(caso.fecha_solicitud).toLocaleDateString("es-CO")}`}
+        subtitle={`${caso.materia} · ${new Date(caso.fecha_solicitud).toLocaleDateString("es-CO", { timeZone: "America/Bogota" })}`}
       >
         <span
           className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${tipoBadge.color}`}

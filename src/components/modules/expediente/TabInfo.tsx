@@ -330,6 +330,7 @@ function InfoField({ label, value }: { label: string; value: string }) {
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("es-CO", {
+    timeZone: "America/Bogota",
     day: "numeric",
     month: "short",
     year: "numeric",
