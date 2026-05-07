@@ -7,6 +7,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Users, ShieldCheck, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { ApoderadosActions } from "./ApoderadosActions";
+import { PoderesButton } from "./PoderesButton";
 import type { SgccAttorney } from "@/types";
 
 interface Props {
@@ -51,6 +52,32 @@ export default async function ApoderadosPage({ searchParams }: Props) {
     .in("id", attorneyIds);
 
   const allAttorneys = attorneys ?? [];
+
+  // Poderes (PDF) cargados por cada apoderado, agrupados por attorney_id.
+  const { data: poderesRaw } = await supabaseAdmin
+    .from("sgcc_case_attorneys")
+    .select(`
+      attorney_id, poder_url, created_at, activo,
+      caso:sgcc_cases!inner(numero_radicado, center_id)
+    `)
+    .in("attorney_id", attorneyIds)
+    .eq("caso.center_id", centerId)
+    .not("poder_url", "is", null)
+    .order("created_at", { ascending: false });
+
+  const poderesByAttorney: Record<
+    string,
+    { url: string; radicado: string; activo: boolean }[]
+  > = {};
+  for (const r of (poderesRaw ?? []) as any[]) {
+    if (!r.poder_url) continue;
+    const list = (poderesByAttorney[r.attorney_id] = poderesByAttorney[r.attorney_id] ?? []);
+    list.push({
+      url: r.poder_url,
+      radicado: r.caso?.numero_radicado ?? "Sin radicado",
+      activo: !!r.activo,
+    });
+  }
 
   // Contar casos activos por attorney
   const activeCaseCounts: Record<string, number> = {};
@@ -149,13 +176,14 @@ export default async function ApoderadosPage({ searchParams }: Props) {
               <th className="text-left px-5 py-3 font-semibold text-gray-600">Teléfono</th>
               <th className="text-left px-5 py-3 font-semibold text-gray-600">Verificado</th>
               <th className="text-left px-5 py-3 font-semibold text-gray-600">Casos activos</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-600">Poder</th>
               <th className="px-5 py-3 font-semibold text-gray-600">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {!filtered.length ? (
               <tr>
-                <td colSpan={8} className="px-5 py-10 text-center text-gray-400">
+                <td colSpan={9} className="px-5 py-10 text-center text-gray-400">
                   No hay apoderados con el filtro seleccionado
                 </td>
               </tr>
@@ -192,6 +220,9 @@ export default async function ApoderadosPage({ searchParams }: Props) {
                       <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#0D2340]/10 text-[#0D2340] font-semibold text-xs">
                         {casosActivos}
                       </span>
+                    </td>
+                    <td className="px-5 py-3">
+                      <PoderesButton poderes={poderesByAttorney[a.id] ?? []} />
                     </td>
                     <td className="px-5 py-3">
                       <ApoderadosActions
