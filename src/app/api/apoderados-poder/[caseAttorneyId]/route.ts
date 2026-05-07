@@ -87,3 +87,56 @@ export async function POST(
 
   return NextResponse.json({ ok: true, poder_url: urlData.publicUrl });
 }
+
+/**
+ * DELETE /api/apoderados-poder/[caseAttorneyId]
+ *
+ * Elimina el PDF del bucket "poderes" y limpia poder_url en
+ * sgcc_case_attorneys. No borra el case_attorney en sí — solo el archivo.
+ */
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ caseAttorneyId: string }> }
+) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const centerId = resolveCenterId(session);
+  if (!centerId) return NextResponse.json({ error: "Sin centro asignado" }, { status: 400 });
+
+  const { caseAttorneyId } = await params;
+
+  const { data: ca } = await supabaseAdmin
+    .from("sgcc_case_attorneys")
+    .select(`id, case_id, poder_url, caso:sgcc_cases!inner(center_id)`)
+    .eq("id", caseAttorneyId)
+    .maybeSingle();
+
+  if (!ca || (ca.caso as any)?.center_id !== centerId) {
+    return NextResponse.json({ error: "Apoderado no encontrado" }, { status: 404 });
+  }
+
+  const filePath = `${ca.case_id}/${caseAttorneyId}.pdf`;
+  // Borra el archivo del bucket. No fallar si el archivo no existe.
+  const { error: removeError } = await supabaseAdmin.storage.from("poderes").remove([filePath]);
+  if (removeError) {
+    console.error("[apoderados-poder] remove error:", removeError);
+    // Continuamos: aunque el storage falle, queremos limpiar la columna
+    // para que la UI no apunte a un archivo inválido.
+  }
+
+  const { error: updateError } = await supabaseAdmin
+    .from("sgcc_case_attorneys")
+    .update({ poder_url: null })
+    .eq("id", caseAttorneyId);
+
+  if (updateError) {
+    console.error("[apoderados-poder] update error:", updateError);
+    return NextResponse.json(
+      { error: `Error al limpiar el registro: ${updateError.message}` },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ ok: true });
+}
