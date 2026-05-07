@@ -73,7 +73,7 @@ export default async function ConciliadoresPage({ searchParams }: Props) {
 
   return (
     <div>
-      <PageHeader title="Conciliadores" subtitle={`${enriched.length} miembro${enriched.length !== 1 ? "s" : ""} del equipo`} />
+      <PageHeader title="Staff" subtitle={`${enriched.length} miembro${enriched.length !== 1 ? "s" : ""} del equipo`} />
 
       {/* Filtro por rol */}
       <form method="get" className="flex gap-3 mb-6">
