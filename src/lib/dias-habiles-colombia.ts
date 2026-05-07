@@ -71,57 +71,73 @@ export function calcularPascua(year: number): Date {
 
 // ─── Festivos de Colombia ──────────────────────────────────────────────────
 
+export interface FestivoConNombre {
+  fecha: Date;
+  nombre: string;
+}
+
 /**
  * Retorna todos los festivos de Colombia para un anio dado.
  * Incluye festivos fijos, trasladados (Ley Emiliani) y dependientes de Pascua.
  */
 export function festivosColombia(year: number): Date[] {
-  const festivos: Date[] = [];
+  return festivosColombiaConNombre(year).map((f) => f.fecha);
+}
+
+/**
+ * Retorna festivos de Colombia con su nombre legible para mostrar en UI.
+ */
+export function festivosColombiaConNombre(year: number): FestivoConNombre[] {
+  const festivos: FestivoConNombre[] = [];
 
   // ── 1. Festivos fijos (no se trasladan) ──
-  festivos.push(createDate(year, 1, 1)); // Anio Nuevo
-  festivos.push(createDate(year, 5, 1)); // Dia del Trabajo
-  festivos.push(createDate(year, 7, 20)); // Dia de la Independencia
-  festivos.push(createDate(year, 8, 7)); // Batalla de Boyaca
-  festivos.push(createDate(year, 12, 8)); // Inmaculada Concepcion
-  festivos.push(createDate(year, 12, 25)); // Navidad
+  festivos.push({ fecha: createDate(year, 1, 1), nombre: "Año Nuevo" });
+  festivos.push({ fecha: createDate(year, 5, 1), nombre: "Día del Trabajo" });
+  festivos.push({ fecha: createDate(year, 7, 20), nombre: "Día de la Independencia" });
+  festivos.push({ fecha: createDate(year, 8, 7), nombre: "Batalla de Boyacá" });
+  festivos.push({ fecha: createDate(year, 12, 8), nombre: "Inmaculada Concepción" });
+  festivos.push({ fecha: createDate(year, 12, 25), nombre: "Navidad" });
 
   // ── 2. Festivos trasladados al lunes (Ley Emiliani) ──
-  festivos.push(trasladarAlLunes(createDate(year, 1, 6))); // Reyes Magos
-  festivos.push(trasladarAlLunes(createDate(year, 3, 19))); // San Jose
-  festivos.push(trasladarAlLunes(createDate(year, 6, 29))); // San Pedro y San Pablo
-  festivos.push(trasladarAlLunes(createDate(year, 8, 15))); // Asuncion de la Virgen
-  festivos.push(trasladarAlLunes(createDate(year, 10, 12))); // Dia de la Raza
-  festivos.push(trasladarAlLunes(createDate(year, 11, 1))); // Todos los Santos
-  festivos.push(trasladarAlLunes(createDate(year, 11, 11))); // Independencia de Cartagena
+  festivos.push({ fecha: trasladarAlLunes(createDate(year, 1, 6)), nombre: "Reyes Magos" });
+  festivos.push({ fecha: trasladarAlLunes(createDate(year, 3, 19)), nombre: "San José" });
+  festivos.push({
+    fecha: trasladarAlLunes(createDate(year, 6, 29)),
+    nombre: "San Pedro y San Pablo",
+  });
+  festivos.push({
+    fecha: trasladarAlLunes(createDate(year, 8, 15)),
+    nombre: "Asunción de la Virgen",
+  });
+  festivos.push({ fecha: trasladarAlLunes(createDate(year, 10, 12)), nombre: "Día de la Raza" });
+  festivos.push({ fecha: trasladarAlLunes(createDate(year, 11, 1)), nombre: "Todos los Santos" });
+  festivos.push({
+    fecha: trasladarAlLunes(createDate(year, 11, 11)),
+    nombre: "Independencia de Cartagena",
+  });
 
   // ── 3. Festivos dependientes de Pascua ──
   const pascua = calcularPascua(year);
 
-  // Jueves Santo: Pascua - 3 dias
   const juevesSanto = cloneDate(pascua);
   juevesSanto.setDate(juevesSanto.getDate() - 3);
-  festivos.push(juevesSanto);
+  festivos.push({ fecha: juevesSanto, nombre: "Jueves Santo" });
 
-  // Viernes Santo: Pascua - 2 dias
   const viernesSanto = cloneDate(pascua);
   viernesSanto.setDate(viernesSanto.getDate() - 2);
-  festivos.push(viernesSanto);
+  festivos.push({ fecha: viernesSanto, nombre: "Viernes Santo" });
 
-  // Ascension del Senor: Pascua + 43 dias, trasladado al lunes
   const ascension = cloneDate(pascua);
   ascension.setDate(ascension.getDate() + 43);
-  festivos.push(trasladarAlLunes(ascension));
+  festivos.push({ fecha: trasladarAlLunes(ascension), nombre: "Ascensión del Señor" });
 
-  // Corpus Christi: Pascua + 64 dias, trasladado al lunes
   const corpus = cloneDate(pascua);
   corpus.setDate(corpus.getDate() + 64);
-  festivos.push(trasladarAlLunes(corpus));
+  festivos.push({ fecha: trasladarAlLunes(corpus), nombre: "Corpus Christi" });
 
-  // Sagrado Corazon: Pascua + 71 dias, trasladado al lunes
   const sagradoCorazon = cloneDate(pascua);
   sagradoCorazon.setDate(sagradoCorazon.getDate() + 71);
-  festivos.push(trasladarAlLunes(sagradoCorazon));
+  festivos.push({ fecha: trasladarAlLunes(sagradoCorazon), nombre: "Sagrado Corazón" });
 
   return festivos;
 }
@@ -141,9 +157,44 @@ function festivosDelAnio(year: number): Date[] {
 /**
  * Verifica si una fecha es festivo en Colombia.
  */
-function esFestivo(date: Date): boolean {
+export function esFestivo(date: Date): boolean {
   const festivos = festivosDelAnio(date.getFullYear());
   return festivos.some((f) => isSameDate(f, date));
+}
+
+/** Cache interno de festivos con nombre por año */
+const _cacheNombre = new Map<number, FestivoConNombre[]>();
+
+function festivosConNombreDelAnio(year: number): FestivoConNombre[] {
+  if (!_cacheNombre.has(year)) {
+    _cacheNombre.set(year, festivosColombiaConNombre(year));
+  }
+  return _cacheNombre.get(year)!;
+}
+
+/**
+ * Devuelve el nombre del festivo si la fecha es festivo en Colombia, null en otro caso.
+ */
+export function nombreFestivo(date: Date): string | null {
+  const festivos = festivosConNombreDelAnio(date.getFullYear());
+  const f = festivos.find((x) => isSameDate(x.fecha, date));
+  return f ? f.nombre : null;
+}
+
+/**
+ * Vacancia judicial colombiana (Ley 270 de 1996, art. 146):
+ * del 19 de diciembre al 10 de enero del año siguiente.
+ *
+ * En centros de conciliación no aplica con la misma fuerza que en la
+ * jurisdicción ordinaria, pero se observa por convención del centro y
+ * para no programar audiencias en ese rango.
+ */
+export function enVacanciaJudicial(date: Date): boolean {
+  const m = date.getMonth(); // 0=enero ... 11=diciembre
+  const d = date.getDate();
+  if (m === 11 && d >= 19) return true; // 19-31 diciembre
+  if (m === 0 && d <= 10) return true; // 1-10 enero
+  return false;
 }
 
 /**

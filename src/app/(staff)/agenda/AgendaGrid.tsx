@@ -35,6 +35,11 @@ interface HearingRow {
   _timeStr: string;
 }
 
+export interface DayMeta {
+  tipoEspecial: "festivo" | "vacancia" | null;
+  etiqueta: string | null;
+}
+
 interface Props {
   weekDays: WeekDay[];
   hours: number[];
@@ -45,6 +50,7 @@ interface Props {
   salas: SalaOption[];
   currentStaffId: string;
   todayKey: string;
+  dayMeta: Record<string, DayMeta>;
 }
 
 const stateColors: Record<string, string> = {
@@ -70,6 +76,7 @@ export function AgendaGrid({
   salas,
   currentStaffId,
   todayKey,
+  dayMeta,
 }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<AgendaItem | null>(null);
@@ -148,22 +155,44 @@ export function AgendaGrid({
           <div className="p-2 bg-gray-50" />
           {weekDays.map((day) => {
             const isToday = day.date === todayKey;
+            const meta = dayMeta[day.date];
+            const esFestivo = meta?.tipoEspecial === "festivo";
+            const esVacancia = meta?.tipoEspecial === "vacancia";
+
+            const headerBg = isToday
+              ? "bg-[#0D2340] text-white"
+              : esFestivo
+                ? "bg-red-50"
+                : esVacancia
+                  ? "bg-slate-100"
+                  : "bg-gray-50";
+
             return (
               <div
                 key={day.date}
-                className={`p-3 text-center border-l border-gray-100 ${
-                  isToday ? "bg-[#0D2340] text-white" : "bg-gray-50"
-                }`}
+                title={meta?.etiqueta ?? undefined}
+                className={`p-3 text-center border-l border-gray-100 ${headerBg}`}
               >
-                <div className={`text-xs font-semibold ${isToday ? "text-white/80" : "text-gray-500"}`}>
+                <div className={`text-xs font-semibold ${isToday ? "text-white/80" : esFestivo ? "text-red-700" : "text-gray-500"}`}>
                   {day.label}
                 </div>
-                <div className={`text-lg font-bold ${isToday ? "text-white" : "text-gray-800"}`}>
+                <div className={`text-lg font-bold ${isToday ? "text-white" : esFestivo ? "text-red-800" : "text-gray-800"}`}>
                   {day.dayNum}
                 </div>
-                <div className={`text-xs ${isToday ? "text-white/60" : "text-gray-400"}`}>
+                <div className={`text-xs ${isToday ? "text-white/60" : esFestivo ? "text-red-600" : "text-gray-400"}`}>
                   {day.month}
                 </div>
+                {meta?.etiqueta && !isToday && (
+                  <div
+                    className={`mt-1 text-[9px] px-1 py-0.5 rounded uppercase tracking-[0.05em] font-medium truncate ${
+                      esFestivo
+                        ? "bg-red-200 text-red-900"
+                        : "bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    {meta.etiqueta}
+                  </div>
+                )}
               </div>
             );
           })}
