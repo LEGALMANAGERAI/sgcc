@@ -22,6 +22,8 @@ import {
   Mail,
   Filter,
   UserCheck,
+  Paperclip,
+  Upload,
 } from "lucide-react";
 import type {
   SgccCase,
@@ -726,6 +728,25 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                                 <span title="Apoderado sin verificar">
                                   <ShieldAlert className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
                                 </span>
+                              )}
+                              {attorney.poder_url ? (
+                                <a
+                                  href={attorney.poder_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Ver poder (PDF)"
+                                  className="text-[#1B4F9B] hover:opacity-70"
+                                >
+                                  <Paperclip className="w-3.5 h-3.5 flex-shrink-0" />
+                                </a>
+                              ) : (
+                                <Link
+                                  href={`/expediente/${c.id}?tab=poderes`}
+                                  title="Subir poder"
+                                  className="text-amber-600 hover:opacity-70"
+                                >
+                                  <Upload className="w-3.5 h-3.5 flex-shrink-0" />
+                                </Link>
                               )}
                             </div>
                           ) : (
