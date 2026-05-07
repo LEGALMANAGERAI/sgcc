@@ -534,30 +534,35 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           icon={FolderOpen}
           color="navy"
           trend={`Conc: ${concCount} · Ins: ${insCount} · AA: ${aaCount}`}
+          href="/casos"
         />
         <StatCard
           label="Audiencias hoy"
           value={hearingsToday.length}
           icon={Calendar}
           color="blue"
+          href="/agenda"
         />
         <StatCard
           label="Alertas pendientes"
           value={totalAlerts}
           icon={AlertTriangle}
           color={totalAlerts > 0 ? "red" : "green"}
+          href="/dashboard?alertas=con_alertas"
         />
         <StatCard
           label="En audiencia"
           value={casesInAudiencia}
           icon={Gavel}
           color="purple"
+          href="/casos?estado=audiencia"
         />
         <StatCard
           label="Cerrados este mes"
           value={closedThisMonth}
           icon={CheckCircle2}
           color="green"
+          href="/casos?estado=cerrado"
         />
         <StatCard
           label="Mi equipo"
@@ -565,6 +570,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           icon={Users}
           color="gold"
           trend={team.length > 0 ? team.map((t) => t.nombre.split(" ")[0]).join(", ") : "Sin equipo"}
+          href="/conciliadores"
         />
       </div>
 
