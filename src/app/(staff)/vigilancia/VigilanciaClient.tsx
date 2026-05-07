@@ -514,7 +514,14 @@ function ProcessRow({
     <>
       <tr className="hover:bg-gray-50/50 transition-colors">
         <td className="px-4 py-3">
-          <span className="font-mono text-xs">{p.numero_proceso}</span>
+          <button
+            type="button"
+            onClick={() => onRamaOpen(p)}
+            title="Ver detalle del proceso"
+            className="font-mono text-xs text-[#1B4F9B] hover:underline cursor-pointer text-left"
+          >
+            {p.numero_proceso}
+          </button>
           {p.actuaciones_no_leidas > 0 && (
             <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold">
               {p.actuaciones_no_leidas}
