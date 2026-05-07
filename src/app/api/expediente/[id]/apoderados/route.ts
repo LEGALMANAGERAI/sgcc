@@ -163,10 +163,11 @@ export async function POST(
     }
   }
 
-  // Desactivar apoderado anterior de la misma parte en este caso
+  // Desactivar apoderado anterior de la misma parte en este caso.
+  // sgcc_case_attorneys no tiene columna updated_at (solo created_at).
   await supabaseAdmin
     .from("sgcc_case_attorneys")
-    .update({ activo: false, updated_at: now })
+    .update({ activo: false })
     .eq("case_id", caseId)
     .eq("party_id", party_id)
     .eq("activo", true);
@@ -187,7 +188,6 @@ export async function POST(
       registrado_por: userId,
       activo: true,
       created_at: now,
-      updated_at: now,
     })
     .select(
       "*, attorney:sgcc_attorneys(*), party:sgcc_parties(nombres, apellidos, razon_social)"

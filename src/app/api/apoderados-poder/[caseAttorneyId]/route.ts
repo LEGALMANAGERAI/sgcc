@@ -71,12 +71,10 @@ export async function POST(
 
   const { data: urlData } = supabaseAdmin.storage.from("poderes").getPublicUrl(filePath);
 
+  // sgcc_case_attorneys no tiene columna updated_at (solo created_at).
   const { error: updateError } = await supabaseAdmin
     .from("sgcc_case_attorneys")
-    .update({
-      poder_url: urlData.publicUrl,
-      updated_at: new Date().toISOString(),
-    })
+    .update({ poder_url: urlData.publicUrl })
     .eq("id", caseAttorneyId);
 
   if (updateError) {
