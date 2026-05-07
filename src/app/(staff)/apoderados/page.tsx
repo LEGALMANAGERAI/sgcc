@@ -116,18 +116,21 @@ export default async function ApoderadosPage({ searchParams }: Props) {
           value={allAttorneys.length}
           icon={Users}
           color="navy"
+          href="/apoderados"
         />
         <StatCard
           label="Verificados"
           value={totalVerificados}
           icon={ShieldCheck}
           color="green"
+          href="/apoderados?filtro=verificados"
         />
         <StatCard
           label="Sin verificar"
           value={totalSinVerificar}
           icon={AlertTriangle}
           color="gold"
+          href="/apoderados?filtro=sin-verificar"
         />
       </div>
 
