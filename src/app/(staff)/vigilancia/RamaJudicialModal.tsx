@@ -92,9 +92,22 @@ export function RamaJudicialModal({
           `/api/rama-judicial?radicado=${encodeURIComponent(radicadoInicial)}`,
           { cache: "no-store" }
         );
-        const data = await res.json();
+        // Parse defensivo: si el endpoint hace timeout (504) o crashea,
+        // Vercel devuelve HTML y res.json() rompe con "Unexpected token 'A'..."
+        const text = await res.text();
+        let data: any;
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch {
+          if (cancel) return;
+          throw new Error(
+            res.status === 504
+              ? "La consulta a la Rama Judicial tardó demasiado. Vuelve a intentar en unos segundos."
+              : `Error del servidor (${res.status}). Intenta de nuevo.`
+          );
+        }
         if (cancel) return;
-        if (!res.ok) throw new Error(data.error || "Error consultando la Rama Judicial");
+        if (!res.ok) throw new Error(data.error || `Error ${res.status} consultando la Rama Judicial`);
         setResultados(data.procesos);
         setSelectedIdx(0);
       } catch (err: any) {
@@ -120,8 +133,18 @@ export function RamaJudicialModal({
       const res = await fetch(`/api/vigilancia/${watchedProcessId}/sync-rama`, {
         method: "POST",
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al sincronizar");
+      const text = await res.text();
+      let data: any;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(
+          res.status === 504
+            ? "La sincronización tardó demasiado. Intenta de nuevo en unos segundos."
+            : `Error del servidor (${res.status}). Intenta de nuevo.`
+        );
+      }
+      if (!res.ok) throw new Error(data.error || `Error ${res.status} al sincronizar`);
       setSyncResult({
         nuevas: data.nuevas ?? 0,
         total: data.total ?? 0,
@@ -137,7 +160,7 @@ export function RamaJudicialModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Consultar Rama Judicial" size="lg">
+    <Modal open={open} onClose={onClose} title="Consultar Rama Judicial" size="xl">
       <ModalBody>
         {loading && (
           <div className="text-center py-8">
