@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Modal, ModalBody, ModalFooter } from "@/components/ui/Modal";
@@ -32,6 +32,13 @@ export function AudienciaDetalleModal({ open, onClose, audiencia }: Props) {
   const [nuevaFecha, setNuevaFecha] = useState("");
   const [nuevaHora, setNuevaHora] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const reprogramarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (reprogramar && reprogramarRef.current) {
+      reprogramarRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [reprogramar]);
 
   useEffect(() => {
     if (!open || !audiencia) return;
@@ -141,8 +148,13 @@ export function AudienciaDetalleModal({ open, onClose, audiencia }: Props) {
           </div>
 
           {reprogramar && (
-            <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 mt-3">
-              <p className="text-xs text-blue-900 mb-2">Selecciona la nueva fecha y hora.</p>
+            <div
+              ref={reprogramarRef}
+              className="rounded-lg border-2 border-blue-400 bg-blue-50 p-3 mt-3"
+            >
+              <p className="text-xs font-semibold text-blue-900 mb-2 uppercase tracking-[0.1em]">
+                Selecciona la nueva fecha y hora
+              </p>
               <div className="grid grid-cols-2 gap-3">
                 <Input
                   type="date"
