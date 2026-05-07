@@ -125,9 +125,12 @@ export function ProcesosImportadosPanel({ procesos }: Props) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {visibles.map((p) => (
-            <div
+            <button
               key={p.id}
-              className="border border-gray-200 rounded-lg p-3 bg-white hover:border-[#0D2340]/30 transition-colors"
+              type="button"
+              onClick={() => openModal(p)}
+              title="Ver detalle del proceso en Rama Judicial"
+              className="text-left border border-gray-200 rounded-lg p-3 bg-white hover:border-[#0D2340] hover:shadow-sm cursor-pointer transition-all"
             >
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="min-w-0 flex-1">
@@ -147,13 +150,12 @@ export function ProcesosImportadosPanel({ procesos }: Props) {
                     </p>
                   )}
                 </div>
-                <button
-                  onClick={() => openModal(p)}
-                  title="Sincronizar con Rama Judicial"
-                  className="flex-shrink-0 p-1.5 rounded-lg hover:bg-[#0D2340] hover:text-white text-gray-500 transition-colors"
+                <span
+                  title="Abrir y sincronizar"
+                  className="flex-shrink-0 p-1.5 rounded-lg text-gray-400"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                </button>
+                </span>
               </div>
 
               <div className="space-y-1 text-[11px] text-gray-500">
@@ -184,13 +186,14 @@ export function ProcesosImportadosPanel({ procesos }: Props) {
               {p.caso && (
                 <Link
                   href={`/expediente/${p.caso.id}`}
+                  onClick={(e) => e.stopPropagation()}
                   className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#1B4F9B] hover:underline"
                 >
                   <ExternalLink className="w-3 h-3" />
                   Caso {p.caso.numero_radicado}
                 </Link>
               )}
-            </div>
+            </button>
           ))}
         </div>
 
