@@ -59,6 +59,13 @@ export function ProcesosImportadosPanel({ procesos }: Props) {
     open: boolean;
     radicado: string;
     watchedProcessId: string;
+    procesoLocal?: {
+      despacho: string | null;
+      departamento: string | null;
+      sujetosProcesales: string | null;
+      ultimaActuacion: string | null;
+      ultimaActuacionFecha: string | null;
+    };
   }>({ open: false, radicado: "", watchedProcessId: "" });
 
   const total = procesos.length;
@@ -66,7 +73,19 @@ export function ProcesosImportadosPanel({ procesos }: Props) {
   const visibles = expandido ? procesos : procesos.slice(0, PREVIEW);
 
   function openModal(p: Importado) {
-    setModal({ open: true, radicado: p.numero_proceso, watchedProcessId: p.id });
+    setModal({
+      open: true,
+      radicado: p.numero_proceso,
+      watchedProcessId: p.id,
+      procesoLocal: {
+        despacho: p.despacho,
+        departamento: p.departamento,
+        sujetosProcesales: p.sujetos_procesales,
+        ultimaActuacion: p.ultima_actuacion,
+        ultimaActuacionFecha:
+          p.ultima_actuacion_fecha ?? p.rama_ultima_actuacion_fecha,
+      },
+    });
   }
 
   function closeModal() {
@@ -222,6 +241,7 @@ export function ProcesosImportadosPanel({ procesos }: Props) {
         onClose={closeModal}
         radicadoInicial={modal.radicado}
         watchedProcessId={modal.watchedProcessId}
+        procesoLocal={modal.procesoLocal}
       />
     </>
   );

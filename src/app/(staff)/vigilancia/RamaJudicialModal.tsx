@@ -35,6 +35,19 @@ interface Props {
   radicadoInicial: string;
   /** ID del sgcc_watched_processes. Si se pasa, habilita botón de sincronización. */
   watchedProcessId?: string;
+  /**
+   * Datos del proceso ya guardados localmente. Si la API de la Rama
+   * Judicial falla, los mostramos como fallback para que el usuario al
+   * menos vea la info que ya tenemos sincronizada en lugar de un error
+   * en blanco.
+   */
+  procesoLocal?: {
+    despacho: string | null;
+    departamento: string | null;
+    sujetosProcesales: string | null;
+    ultimaActuacion: string | null;
+    ultimaActuacionFecha: string | null;
+  };
 }
 
 function formatFechaRama(fechaStr: string) {
@@ -59,6 +72,7 @@ export function RamaJudicialModal({
   onClose,
   radicadoInicial,
   watchedProcessId,
+  procesoLocal,
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -171,9 +185,65 @@ export function RamaJudicialModal({
         )}
 
         {error && (
-          <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 mb-4">
+          <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 mb-4">
             <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <span>{error}</span>
+            <div className="flex-1">
+              <p className="font-medium">{error}</p>
+              {procesoLocal && (
+                <p className="text-xs mt-0.5 opacity-80">
+                  Mostrando los datos guardados de la última sincronización exitosa.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Fallback con datos locales cuando la API falla */}
+        {error && procesoLocal && !loading && (
+          <div className="space-y-4">
+            <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 space-y-2">
+              <div className="text-sm font-bold text-[#0D2340] mb-1">
+                Información del proceso (datos locales)
+              </div>
+              <div className="grid grid-cols-1 gap-1 text-xs">
+                <div>
+                  <span className="font-semibold text-gray-600">Radicado: </span>
+                  <span className="font-mono text-gray-800">{radicadoInicial}</span>
+                </div>
+                {procesoLocal.despacho && (
+                  <div>
+                    <span className="font-semibold text-gray-600">Despacho: </span>
+                    <span className="text-gray-800">{procesoLocal.despacho}</span>
+                  </div>
+                )}
+                {procesoLocal.departamento && (
+                  <div>
+                    <span className="font-semibold text-gray-600">Departamento: </span>
+                    <span className="text-gray-800">{procesoLocal.departamento}</span>
+                  </div>
+                )}
+                {procesoLocal.sujetosProcesales && (
+                  <div>
+                    <span className="font-semibold text-gray-600">Sujetos procesales: </span>
+                    <span className="text-gray-800">{procesoLocal.sujetosProcesales}</span>
+                  </div>
+                )}
+                {procesoLocal.ultimaActuacion && (
+                  <div>
+                    <span className="font-semibold text-gray-600">Última actuación: </span>
+                    <span className="text-gray-800">{procesoLocal.ultimaActuacion}</span>
+                    {procesoLocal.ultimaActuacionFecha && (
+                      <span className="text-gray-500 ml-1">
+                        ({formatFechaRama(procesoLocal.ultimaActuacionFecha)})
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 italic">
+              Cierra este modal y vuelve a intentarlo más tarde para ver las últimas actuaciones desde la Rama Judicial.
+            </p>
           </div>
         )}
 
