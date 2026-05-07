@@ -79,7 +79,7 @@ const sections: NavSection[] = [
       { label: "Firmas", href: "/firmas", icon: PenTool },
       { label: "Partes", href: "/partes", icon: Users },
       {
-        label: "Conciliadores",
+        label: "Staff",
         href: "/conciliadores",
         icon: UserCog,
         rolesPermitidos: ["admin", "secretario"],
