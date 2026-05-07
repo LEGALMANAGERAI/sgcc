@@ -94,13 +94,14 @@ export function Modal({
         aria-label={typeof title === "string" ? title : undefined}
         className={clsx(
           "w-full rounded-[24px] bg-white text-[color:var(--color-ink)]",
+          "max-h-[90vh] flex flex-col",
           sizeClass[size],
           className
         )}
         style={{ boxShadow: "var(--shadow-xl)" }}
       >
         {title && (
-          <div className="flex items-start justify-between px-6 pt-5 pb-3 border-b border-[color:var(--color-rule)]">
+          <div className="flex-shrink-0 flex items-start justify-between px-6 pt-5 pb-3 border-b border-[color:var(--color-rule)]">
             <h3 className="text-lg font-semibold tracking-[-0.01em] leading-tight">
               {title}
             </h3>
@@ -122,14 +123,22 @@ export function Modal({
 }
 
 export function ModalBody({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={clsx("px-6 py-5 text-sm leading-[1.55]", className)} {...rest} />;
+  return (
+    <div
+      className={clsx(
+        "flex-1 min-h-0 overflow-y-auto px-6 py-5 text-sm leading-[1.55]",
+        className
+      )}
+      {...rest}
+    />
+  );
 }
 
 export function ModalFooter({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={clsx(
-        "px-6 pb-5 pt-3 flex items-center justify-end gap-2",
+        "flex-shrink-0 px-6 pb-5 pt-3 flex items-center justify-end gap-2 flex-wrap",
         "border-t border-[color:var(--color-rule)]",
         className
       )}
