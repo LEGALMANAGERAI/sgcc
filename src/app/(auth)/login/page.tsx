@@ -77,7 +77,7 @@ function LoginContent() {
     const cb = params.get("callbackUrl");
     if (!cb) return fallback;
     // Zonas de staff y party no se cruzan
-    const zonasStaff = ["/dashboard", "/casos", "/agenda", "/partes", "/conciliadores", "/salas", "/plantillas", "/reportes", "/configuracion", "/expediente", "/apoderados", "/vigilancia", "/firmas"];
+    const zonasStaff = ["/dashboard", "/casos", "/agenda", "/partes", "/conciliadores", "/salas", "/plantillas", "/configuracion", "/expediente", "/apoderados", "/vigilancia", "/firmas"];
     const zonasParty = ["/mis-casos", "/perfil", "/nueva-solicitud", "/mis-solicitudes"];
     if (t === "staff" && zonasStaff.some((z) => cb.startsWith(z))) return cb;
     if (t === "party" && zonasParty.some((z) => cb.startsWith(z))) return cb;

@@ -40,7 +40,6 @@ export default auth((req) => {
     pathname.startsWith("/conciliadores") ||
     pathname.startsWith("/salas") ||
     pathname.startsWith("/plantillas") ||
-    pathname.startsWith("/reportes") ||
     pathname.startsWith("/configuracion") ||
     pathname.startsWith("/expediente") ||
     pathname.startsWith("/apoderados") ||
