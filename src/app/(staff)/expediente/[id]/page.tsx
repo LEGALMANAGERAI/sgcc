@@ -103,7 +103,6 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
     { data: rawDocumentos },
     { data: rawActas },
     { data: rawTimeline },
-    { data: rawCorrespondencia },
   ] = await Promise.all([
     // 2. Partes del caso
     supabaseAdmin
@@ -145,13 +144,6 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
       .select("*")
       .eq("case_id", id)
       .order("created_at", { ascending: true }),
-
-    // 10. Correspondencia vinculada
-    supabaseAdmin
-      .from("sgcc_correspondence")
-      .select("*, responsable:sgcc_staff(nombre)")
-      .eq("case_id", id)
-      .order("fecha_radicacion", { ascending: false }),
   ]);
 
   const parties = rawParties ?? [];
@@ -159,7 +151,6 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
   const hearings = rawHearings ?? [];
   const documentos = rawDocumentos ?? [];
   const timeline = rawTimeline ?? [];
-  const correspondencia = rawCorrespondencia ?? [];
 
   // 8. Checklists del centro para el tipo_tramite del caso
   const { data: rawChecklists } = await supabaseAdmin
@@ -442,7 +433,6 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
         <TabDocumentos
           caseId={id}
           documentos={documentos}
-          correspondencia={correspondencia}
         />
       )}
 

@@ -397,7 +397,6 @@ export type NotifTipo =
   | "acta_firmada"
   | "caso_cerrado"
   | "vigilancia"
-  | "correspondencia_vencida"
   | "documento_subido"
   | "ticket_nuevo"
   | "ticket_respondido"
@@ -547,39 +546,7 @@ export interface SgccChecklistResponse {
   completed_at: string | null;
 }
 
-// ─── Correspondencia ───────────────────────────────────────────────────────
-
-export type CorrespondenciaTipo = "tutela" | "derecho_peticion" | "requerimiento" | "oficio";
-export type CorrespondenciaEstado = "recibido" | "en_tramite" | "respondido" | "vencido";
-
-export interface SgccCorrespondence {
-  id: string;
-  center_id: string;
-  case_id: string | null;
-  tipo: CorrespondenciaTipo;
-  asunto: string;
-  remitente: string;
-  destinatario: string;
-  fecha_radicacion: string;
-  fecha_limite_respuesta: string | null;
-  estado: CorrespondenciaEstado;
-  responsable_staff_id: string | null;
-  notas: string | null;
-  created_at: string;
-  // joined
-  responsable?: SgccStaff;
-  documentos?: SgccCorrespondenceDoc[];
-}
-
-export interface SgccCorrespondenceDoc {
-  id: string;
-  correspondence_id: string;
-  tipo: "escrito_recibido" | "respuesta" | "anexo";
-  nombre: string;
-  storage_path: string;
-  url: string | null;
-  created_at: string;
-}
+// ─── Correspondencia: módulo eliminado ────────────────────────────────────
 
 // ─── Vigilancia Judicial ───────────────────────────────────────────────────
 
