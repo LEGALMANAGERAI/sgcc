@@ -6,6 +6,29 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { AgendaGrid } from "./AgendaGrid";
 import { AgendaMonthGrid } from "./AgendaMonthGrid";
 import type { AgendaItem } from "./AgendaItemModal";
+import { nombreFestivo, enVacanciaJudicial } from "@/lib/dias-habiles-colombia";
+
+export interface DayMeta {
+  tipoEspecial: "festivo" | "vacancia" | null;
+  etiqueta: string | null;
+}
+
+function buildDayMetaMap(fechas: string[]): Record<string, DayMeta> {
+  const out: Record<string, DayMeta> = {};
+  for (const f of fechas) {
+    const [y, m, d] = f.split("-").map(Number);
+    const date = new Date(y, m - 1, d);
+    const fest = nombreFestivo(date);
+    if (fest) {
+      out[f] = { tipoEspecial: "festivo", etiqueta: fest };
+    } else if (enVacanciaJudicial(date)) {
+      out[f] = { tipoEspecial: "vacancia", etiqueta: "Vacancia judicial" };
+    } else {
+      out[f] = { tipoEspecial: null, etiqueta: null };
+    }
+  }
+  return out;
+}
 
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 8); // 8am - 6pm
 const DAY_LABELS = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"];
@@ -353,6 +376,7 @@ export default async function AgendaPage({ searchParams }: Props) {
             salas={(salas ?? []) as any}
             currentStaffId={userId}
             todayKey={formatDate(new Date())}
+            dayMeta={buildDayMetaMap(weekDays.map((d) => d.date))}
           />
         </>
       ) : (
@@ -361,6 +385,7 @@ export default async function AgendaPage({ searchParams }: Props) {
           hearings={hearings}
           items={items}
           todayKey={formatDate(new Date())}
+          dayMeta={buildDayMetaMap(monthDays.map((d) => d.date))}
         />
       )}
     </div>

@@ -14,6 +14,11 @@ interface MonthDay {
   inMonth: boolean;    // false para los días del mes anterior/siguiente que rellenan la grilla
 }
 
+export interface DayMeta {
+  tipoEspecial: "festivo" | "vacancia" | null;
+  etiqueta: string | null;
+}
+
 interface HearingRow {
   id: string;
   caso_id: string | null;
@@ -33,6 +38,7 @@ interface Props {
   hearings: HearingRow[];
   items: AgendaItem[];
   todayKey: string;
+  dayMeta: Record<string, DayMeta>;
 }
 
 const DAY_LABELS = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"];
@@ -45,7 +51,7 @@ const stateColorsBg: Record<string, string> = {
   cancelada: "bg-red-500",
 };
 
-export function AgendaMonthGrid({ monthDays, hearings, items, todayKey }: Props) {
+export function AgendaMonthGrid({ monthDays, hearings, items, todayKey, dayMeta }: Props) {
   const router = useRouter();
   const [audModalOpen, setAudModalOpen] = useState(false);
   const [audSeleccionada, setAudSeleccionada] = useState<AudienciaResumen | null>(null);
@@ -114,34 +120,56 @@ export function AgendaMonthGrid({ monthDays, hearings, items, todayKey }: Props)
             const previewItems = dayItems.slice(0, Math.max(0, 3 - previewHearings.length));
             const restantes = totalEntries - previewHearings.length - previewItems.length;
 
+            const meta = dayMeta[day.date];
+            const esFestivo = meta?.tipoEspecial === "festivo";
+            const esVacancia = meta?.tipoEspecial === "vacancia";
+
+            const cellBg = !day.inMonth
+              ? "bg-gray-50/50 opacity-60"
+              : esFestivo
+                ? "bg-red-50/70"
+                : esVacancia
+                  ? "bg-slate-100/70"
+                  : "bg-white";
+
             return (
               <div
                 key={day.date}
-                className={`min-h-[110px] border-l border-t border-gray-100 first:border-l-0 p-1.5 ${
-                  day.inMonth ? "bg-white" : "bg-gray-50/50 opacity-60"
-                } hover:bg-gray-50 transition-colors cursor-pointer`}
+                title={meta?.etiqueta ?? undefined}
+                className={`min-h-[110px] border-l border-t border-gray-100 first:border-l-0 p-1.5 ${cellBg} hover:brightness-95 transition-colors cursor-pointer`}
                 onClick={(e) => {
                   if (e.target !== e.currentTarget) return;
                   navegarASemana(day.date);
                 }}
               >
                 <div
-                  className={`flex items-center justify-between mb-1 ${
-                    isToday ? "" : ""
-                  }`}
+                  className="flex items-center justify-between mb-1"
                   onClick={() => navegarASemana(day.date)}
                 >
                   <span
                     className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold ${
                       isToday
                         ? "bg-[#0D2340] text-white"
-                        : day.inMonth
-                          ? "text-gray-800"
-                          : "text-gray-400"
+                        : esFestivo && day.inMonth
+                          ? "text-red-700"
+                          : day.inMonth
+                            ? "text-gray-800"
+                            : "text-gray-400"
                     }`}
                   >
                     {day.dayNum}
                   </span>
+                  {meta?.etiqueta && day.inMonth && (
+                    <span
+                      className={`text-[9px] px-1 py-0.5 rounded font-medium uppercase tracking-[0.05em] truncate max-w-[80px] ${
+                        esFestivo
+                          ? "bg-red-100 text-red-800"
+                          : "bg-slate-200 text-slate-700"
+                      }`}
+                    >
+                      {meta.etiqueta}
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-1">
