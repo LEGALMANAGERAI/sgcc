@@ -19,14 +19,16 @@ export default async function ApoderadosPage({ searchParams }: Props) {
   const session = await auth();
   const centerId = (session!.user as any).centerId;
 
-  // Obtener todos los attorneys vinculados a casos del centro
+  // Obtener attorneys con al menos UNA vinculación activa en el centro.
+  // Apoderados con todas sus vinculaciones inactivas (eliminados) no aparecen.
   const { data: caseAttorneys } = await supabaseAdmin
     .from("sgcc_case_attorneys")
     .select(`
       attorney_id,
       case:sgcc_cases!inner(id, center_id, estado)
     `)
-    .eq("case.center_id", centerId);
+    .eq("case.center_id", centerId)
+    .eq("activo", true);
 
   // IDs únicos de apoderados del centro
   const attorneyIds = [...new Set((caseAttorneys ?? []).map((ca: any) => ca.attorney_id))];
