@@ -198,20 +198,42 @@ export async function POST(
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
-  // Upload poder si viene archivo
-  if (poderFile) {
+  // Upload poder si viene archivo. Si falla, devolvemos error visible
+  // (el case_attorney ya se creó pero queda sin poder_url; es preferible
+  // que el usuario lo sepa para reintentar y no que falle silenciosamente).
+  if (poderFile && poderFile.size > 0) {
     const buffer = Buffer.from(await poderFile.arrayBuffer());
     const filePath = `${caseId}/${caseAttorneyId}.pdf`;
     const { error: uploadError } = await supabaseAdmin.storage
       .from("poderes")
       .upload(filePath, buffer, { contentType: "application/pdf", upsert: true });
 
-    if (!uploadError) {
-      const { data: urlData } = supabaseAdmin.storage.from("poderes").getPublicUrl(filePath);
-      await supabaseAdmin
-        .from("sgcc_case_attorneys")
-        .update({ poder_url: urlData.publicUrl })
-        .eq("id", caseAttorneyId);
+    if (uploadError) {
+      console.error("[expediente/apoderados] upload error:", uploadError);
+      return NextResponse.json(
+        {
+          error: `El apoderado fue registrado pero el PDF no se pudo subir: ${uploadError.message}. Súbelo desde la lista de apoderados.`,
+          caseAttorneyId,
+        },
+        { status: 500 }
+      );
+    }
+
+    const { data: urlData } = supabaseAdmin.storage.from("poderes").getPublicUrl(filePath);
+    const { error: updateError } = await supabaseAdmin
+      .from("sgcc_case_attorneys")
+      .update({ poder_url: urlData.publicUrl })
+      .eq("id", caseAttorneyId);
+
+    if (updateError) {
+      console.error("[expediente/apoderados] update poder_url error:", updateError);
+      return NextResponse.json(
+        {
+          error: `El PDF se subió pero no se pudo asociar al registro: ${updateError.message}`,
+          caseAttorneyId,
+        },
+        { status: 500 }
+      );
     }
   }
 

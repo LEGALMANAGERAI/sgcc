@@ -53,27 +53,28 @@ export default async function ApoderadosPage({ searchParams }: Props) {
 
   const allAttorneys = attorneys ?? [];
 
-  // Poderes (PDF) cargados por cada apoderado, agrupados por attorney_id.
-  const { data: poderesRaw } = await supabaseAdmin
+  // Case_attorneys de cada apoderado en este centro (con o sin poder_url).
+  // Permite mostrar todos los casos donde participa y dejar subir poder
+  // a los que aún no lo tienen.
+  const { data: caRaw } = await supabaseAdmin
     .from("sgcc_case_attorneys")
     .select(`
-      attorney_id, poder_url, created_at, activo,
+      id, attorney_id, poder_url, created_at, activo,
       caso:sgcc_cases!inner(numero_radicado, center_id)
     `)
     .in("attorney_id", attorneyIds)
-    .eq("caso.center_id", centerId)
-    .not("poder_url", "is", null)
     .order("created_at", { ascending: false });
 
   const poderesByAttorney: Record<
     string,
-    { url: string; radicado: string; activo: boolean }[]
+    { caseAttorneyId: string; url: string | null; radicado: string; activo: boolean }[]
   > = {};
-  for (const r of (poderesRaw ?? []) as any[]) {
-    if (!r.poder_url) continue;
+  for (const r of (caRaw ?? []) as any[]) {
+    if (r.caso?.center_id !== centerId) continue;
     const list = (poderesByAttorney[r.attorney_id] = poderesByAttorney[r.attorney_id] ?? []);
     list.push({
-      url: r.poder_url,
+      caseAttorneyId: r.id,
+      url: r.poder_url ?? null,
       radicado: r.caso?.numero_radicado ?? "Sin radicado",
       activo: !!r.activo,
     });
