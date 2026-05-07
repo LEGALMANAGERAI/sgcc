@@ -12,7 +12,6 @@ import {
   UserCog,
   DoorOpen,
   FileText,
-  BarChart3,
   Settings,
   LogOut,
   Briefcase,
@@ -87,7 +86,6 @@ const sections: NavSection[] = [
       { label: "Salas", href: "/salas", icon: DoorOpen },
       { label: "Plantillas", href: "/plantillas", icon: FileText },
       { label: "Tickets", href: "/tickets", icon: LifeBuoy },
-      { label: "Reportes", href: "/reportes", icon: BarChart3 },
     ],
   },
   {
