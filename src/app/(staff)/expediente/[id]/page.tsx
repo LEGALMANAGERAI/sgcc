@@ -10,6 +10,7 @@ import { TabDocumentos } from "@/components/modules/expediente/TabDocumentos";
 import { TabChecklistAdmision } from "@/components/modules/expediente/TabChecklistAdmision";
 import { TabChecklistPoderes } from "@/components/modules/expediente/TabChecklistPoderes";
 import { TabAsistencia } from "@/components/modules/expediente/TabAsistencia";
+import { TabProcesos } from "@/components/modules/expediente/TabProcesos";
 import { ContadorTermino } from "@/components/modules/expediente/ContadorTermino";
 import { CrearActaInsolvencia } from "@/components/modules/expediente/CrearActaInsolvencia";
 import { CrearActaConciliacion } from "@/components/modules/expediente/CrearActaConciliacion";
@@ -44,9 +45,10 @@ const BASE_TABS = [
   { key: "poderes", label: "Poderes" },
   { key: "asistencia", label: "Asistencia" },
   { key: "acta", label: "Acta" },
+  { key: "procesos", label: "Procesos" },
 ];
 
-type TabKey = "info" | "documentos" | "admision" | "poderes" | "asistencia" | "acta" | "acreencias";
+type TabKey = "info" | "documentos" | "admision" | "poderes" | "asistencia" | "acta" | "acreencias" | "procesos";
 
 /* ─── Page ──────────────────────────────────────────────────────────────── */
 
@@ -151,6 +153,27 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
   const hearings = rawHearings ?? [];
   const documentos = rawDocumentos ?? [];
   const timeline = rawTimeline ?? [];
+
+  // Procesos vigilados vinculados a este caso (con conteo de actuaciones no leídas)
+  const { data: rawWatched } = await supabaseAdmin
+    .from("sgcc_watched_processes")
+    .select(
+      `id, numero_proceso, despacho, departamento, sujetos_procesales,
+       ultima_actuacion, ultima_actuacion_fecha, rama_ultima_actuacion_fecha,
+       rama_id_proceso,
+       updates:sgcc_process_updates(id, leida)`
+    )
+    .eq("case_id", id)
+    .order("created_at", { ascending: false });
+
+  const procesosVinculados = (rawWatched ?? []).map((p: any) => {
+    const noLeidas = (p.updates ?? []).filter((u: any) => !u.leida).length;
+    const { updates, ...rest } = p;
+    return { ...rest, actuaciones_no_leidas: noLeidas };
+  });
+
+  // Documentos del proceso (tipo "vigilancia") — son los que aparecen en la pestaña Procesos
+  const documentosVigilancia = documentos.filter((d: any) => d.tipo === "vigilancia");
 
   // 8. Checklists del centro para el tipo_tramite del caso
   const { data: rawChecklists } = await supabaseAdmin
@@ -509,6 +532,21 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
               nombre: p.party.razon_social ?? [p.party.nombres, p.party.apellidos].filter(Boolean).join(" "),
               documento: p.party.numero_doc ?? p.party.nit_empresa ?? "",
             }))}
+        />
+      )}
+
+      {activeTab === "procesos" && (
+        <TabProcesos
+          caseId={id}
+          procesos={procesosVinculados}
+          documentos={documentosVigilancia.map((d: any) => ({
+            id: d.id,
+            nombre: d.nombre,
+            url: d.url,
+            storage_path: d.storage_path,
+            created_at: d.created_at,
+            descripcion: d.descripcion,
+          }))}
         />
       )}
     </div>
