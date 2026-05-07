@@ -238,29 +238,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 5c. Correspondencia próxima a vencer
-    if (caseIds.length > 0) {
-      const { data: corresp } = await supabaseAdmin
-        .from("sgcc_correspondence")
-        .select("id, tipo, fecha_limite, case_id, asunto")
-        .in("case_id", caseIds)
-        .eq("estado", "pendiente")
-        .not("fecha_limite", "is", null)
-        .lte("fecha_limite", addDays(new Date(), 5));
-
-      if (corresp) {
-        for (const c of corresp) {
-          const esTutela = c.tipo === "tutela";
-          alertas.push({
-            tipo: "correspondencia_vencer",
-            mensaje: `${esTutela ? "Tutela" : "Correspondencia"}: "${c.asunto}" vence el ${c.fecha_limite}`,
-            caso_id: c.case_id,
-            urgencia: esTutela ? "critica" : "alta",
-          });
-        }
-      }
-    }
-
     // 5d. Checklists de admisión incompletas en casos activos
     if (caseIds.length > 0) {
       const casosActivos = allCasos

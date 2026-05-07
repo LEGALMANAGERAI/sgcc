@@ -10,7 +10,6 @@ import {
   Filter,
   ChevronDown,
   ChevronUp,
-  Mail,
   Loader2,
   X,
 } from "lucide-react";
@@ -20,7 +19,6 @@ import {
 interface TabDocumentosProps {
   caseId: string;
   documentos: any[];
-  correspondencia: any[];
 }
 
 /* ─── Constantes ────────────────────────────────────────────────────────── */
@@ -52,19 +50,11 @@ const TIPO_BADGE_COLORS: Record<string, string> = {
   otro: "bg-gray-100 text-gray-600",
 };
 
-const CORR_ESTADO_COLORS: Record<string, string> = {
-  recibido: "bg-blue-100 text-blue-800",
-  en_tramite: "bg-yellow-100 text-yellow-800",
-  respondido: "bg-green-100 text-green-800",
-  vencido: "bg-red-100 text-red-800",
-};
-
 /* ─── Component ─────────────────────────────────────────────────────────── */
 
 export function TabDocumentos({
   caseId,
   documentos,
-  correspondencia,
 }: TabDocumentosProps) {
   const [filtroTipo, setFiltroTipo] = useState("todos");
   const [showUpload, setShowUpload] = useState(false);
@@ -367,75 +357,6 @@ export function TabDocumentos({
         </div>
       </section>
 
-      {/* ── Correspondencia vinculada ─────────────────────────────────── */}
-      {correspondencia.length > 0 && (
-        <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h3 className="font-semibold text-[#0D2340] mb-4 text-base flex items-center gap-2">
-            <Mail className="w-4.5 h-4.5 text-[#1B4F9B]" />
-            Correspondencia vinculada
-          </h3>
-          <div className="space-y-3">
-            {correspondencia.map((c: any) => {
-              const estadoColor =
-                CORR_ESTADO_COLORS[c.estado] ?? "bg-gray-100 text-gray-600";
-
-              return (
-                <div
-                  key={c.id}
-                  className="flex items-start justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${estadoColor}`}
-                      >
-                        {c.estado.replace(/_/g, " ")}
-                      </span>
-                      <span className="text-xs text-gray-500 capitalize">
-                        {c.tipo.replace(/_/g, " ")}
-                      </span>
-                    </div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {c.asunto}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      De: {c.remitente} — Para: {c.destinatario}
-                    </p>
-                    {c.responsable && (
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        Responsable: {c.responsable.nombre}
-                      </p>
-                    )}
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-xs text-gray-500">
-                      {new Date(c.fecha_radicacion).toLocaleDateString("es-CO", {
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </p>
-                    {c.fecha_limite_respuesta && (
-                      <p
-                        className={`text-xs mt-0.5 ${
-                          new Date(c.fecha_limite_respuesta) < new Date()
-                            ? "text-red-600 font-medium"
-                            : "text-gray-400"
-                        }`}
-                      >
-                        Límite:{" "}
-                        {new Date(c.fecha_limite_respuesta).toLocaleDateString(
-                          "es-CO",
-                          { day: "numeric", month: "short" }
-                        )}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

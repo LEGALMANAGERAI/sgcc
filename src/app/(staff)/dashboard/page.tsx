@@ -31,7 +31,6 @@ import type {
   TipoTramite,
   CaseEstado,
   SgccCaseAttorney,
-  SgccCorrespondence,
   SgccProcessUpdate,
   SgccStaff,
   SgccHearing,
@@ -143,7 +142,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     { data: rawHearingsToday },
     { data: rawHearingsUpcoming },
     { data: rawTeam },
-    { data: rawCorrespondence },
     { data: rawProcessUpdates },
   ] = await Promise.all([
     // Partes de los casos
@@ -198,30 +196,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       .eq("supervisor_id", userId)
       .eq("activo", true),
 
-    // Correspondencia próxima a vencer.
-    // Para conciliador: solo la vinculada a sus casos. Para admin/secretario:
-    // todo el centro (incluyendo correspondencia sin caso asociado).
-    isConciliador
-      ? (caseIds.length > 0
-          ? supabaseAdmin
-              .from("sgcc_correspondence")
-              .select("*, responsable:sgcc_staff(nombre)")
-              .eq("center_id", centerId)
-              .in("case_id", caseIds)
-              .neq("estado", "respondido")
-              .not("fecha_limite_respuesta", "is", null)
-              .order("fecha_limite_respuesta", { ascending: true })
-              .limit(20)
-          : Promise.resolve({ data: [] }))
-      : supabaseAdmin
-          .from("sgcc_correspondence")
-          .select("*, responsable:sgcc_staff(nombre)")
-          .eq("center_id", centerId)
-          .neq("estado", "respondido")
-          .not("fecha_limite_respuesta", "is", null)
-          .order("fecha_limite_respuesta", { ascending: true })
-          .limit(20),
-
     // Actuaciones judiciales no leídas.
     // Para conciliador: solo de procesos vigilados vinculados a sus casos.
     // Para admin/secretario: todas las del centro.
@@ -248,7 +222,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const hearingsToday = (rawHearingsToday ?? []) as HearingWithJoins[];
   const hearingsUpcoming = (rawHearingsUpcoming ?? []) as HearingWithJoins[];
   const team = (rawTeam ?? []) as SgccStaff[];
-  const correspondence = (rawCorrespondence ?? []) as SgccCorrespondence[];
   const processUpdates = (rawProcessUpdates ?? []) as (SgccProcessUpdate & {
     watched: { case_id: string | null; numero_proceso: string } | null;
   })[];
@@ -407,40 +380,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     }
   }
 
-  // Correspondencia tipo tutela próxima a vencer
-  for (const c of correspondence) {
-    if (c.tipo === "tutela" && c.fecha_limite_respuesta) {
-      const daysLeft = Math.ceil(
-        (new Date(c.fecha_limite_respuesta).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      if (daysLeft <= 5 && daysLeft >= 0) {
-        alerts.push({
-          id: `corr-${c.id}`,
-          icon: "red",
-          text: `Tutela "${c.asunto}" vence en ${daysLeft} día${daysLeft !== 1 ? "s" : ""}`,
-          link: c.case_id ? `/expediente/${c.case_id}` : "/correspondencia",
-        });
-      }
-    }
-  }
-
-  // Correspondencia general próxima a vencer
-  for (const c of correspondence) {
-    if (c.tipo !== "tutela" && c.fecha_limite_respuesta) {
-      const daysLeft = Math.ceil(
-        (new Date(c.fecha_limite_respuesta).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      if (daysLeft <= 3 && daysLeft >= 0) {
-        alerts.push({
-          id: `corr-${c.id}`,
-          icon: "yellow",
-          text: `${c.tipo} "${c.asunto}" vence en ${daysLeft} día${daysLeft !== 1 ? "s" : ""}`,
-          link: c.case_id ? `/expediente/${c.case_id}` : "/correspondencia",
-        });
-      }
-    }
-  }
-
   // Actuaciones judiciales nuevas
   for (const pu of processUpdates) {
     alerts.push({
@@ -490,14 +429,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     if (ca.attorney && !ca.attorney.verificado) caseIdsWithAlerts.add(ca.case_id);
     if (ca.poder_vigente_hasta && ca.poder_vigente_hasta <= in7Days && ca.poder_vigente_hasta > now.toISOString()) {
       caseIdsWithAlerts.add(ca.case_id);
-    }
-  }
-  for (const c of correspondence) {
-    if (c.case_id && c.fecha_limite_respuesta) {
-      const daysLeft = Math.ceil(
-        (new Date(c.fecha_limite_respuesta).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      if (daysLeft <= 5 && daysLeft >= 0) caseIdsWithAlerts.add(c.case_id);
     }
   }
   // Agregar cambios de apoderado y checklists incompletas al set de alertas
