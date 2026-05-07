@@ -24,12 +24,12 @@ interface Props {
 type Tone = { bg: string; text: string; icon: string; iconBg: string };
 
 const tones: Record<NonNullable<Props["color"]>, Tone> = {
-  // Emphasis (ink) — default KPI principal
+  // Ink suave — KPI principal (combina visualmente con los demás tonos suaves)
   navy: {
-    bg: "bg-[color:var(--color-ink)]",
-    text: "text-[color:var(--color-paper)]",
+    bg: "bg-[rgba(10,22,40,0.06)]",
+    text: "text-[color:var(--color-ink)]",
     icon: "text-[color:var(--color-flow)]",
-    iconBg: "bg-white/10",
+    iconBg: "bg-[rgba(10,22,40,0.10)]",
   },
   // Amber — warnings / plazos próximos
   gold: {
