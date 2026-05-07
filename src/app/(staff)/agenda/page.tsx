@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AgendaGrid } from "./AgendaGrid";
+import { AgendaMonthGrid } from "./AgendaMonthGrid";
 import type { AgendaItem } from "./AgendaItemModal";
 
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 8); // 8am - 6pm
@@ -51,7 +52,40 @@ function getBogotaParts(iso: string) {
 }
 
 interface Props {
-  searchParams: Promise<{ week?: string }>;
+  searchParams: Promise<{ week?: string; month?: string; view?: string }>;
+}
+
+function parseMonthParam(monthParam?: string): { year: number; month: number } {
+  // monthParam = YYYY-MM. Si no viene, usa el mes actual.
+  if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
+    const [y, m] = monthParam.split("-").map(Number);
+    return { year: y, month: m - 1 };
+  }
+  const now = new Date();
+  return { year: now.getFullYear(), month: now.getMonth() };
+}
+
+function buildMonthDays(year: number, month: number) {
+  // Primer día del mes y su offset hasta lunes (lun=0)
+  const firstOfMonth = new Date(year, month, 1);
+  const firstDow = firstOfMonth.getDay(); // 0=dom, 1=lun
+  const offsetToMonday = firstDow === 0 ? 6 : firstDow - 1;
+  const gridStart = new Date(year, month, 1 - offsetToMonday);
+
+  // Último día del mes y celdas restantes hasta completar 6 semanas (42 celdas)
+  const days: { date: string; dayNum: number; inMonth: boolean }[] = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(gridStart);
+    d.setDate(gridStart.getDate() + i);
+    days.push({
+      date: formatDate(d),
+      dayNum: d.getDate(),
+      inMonth: d.getMonth() === month,
+    });
+  }
+  // Si la última fila completa solo tiene celdas fuera del mes, recortar a 5 semanas (35).
+  const lastRowAllOut = days.slice(35).every((d) => !d.inMonth);
+  return lastRowAllOut ? days.slice(0, 35) : days;
 }
 
 export default async function AgendaPage({ searchParams }: Props) {
@@ -61,16 +95,38 @@ export default async function AgendaPage({ searchParams }: Props) {
   const sgccRol = (session!.user as any).sgccRol;
   const userId = (session!.user as any).id;
 
+  const view = params.view === "month" ? "month" : "week";
+
   const weekStart = getWeekStart(params.week);
   const weekEnd = addDays(weekStart, 7);
-  const weekStartStr = formatDate(weekStart);
-  const weekEndStr = formatDate(weekEnd);
+
+  // Para vista mensual, calcular rango del mes (incluye días de relleno)
+  const { year: monthYear, month: monthNum } = parseMonthParam(params.month);
+  const monthDays = view === "month" ? buildMonthDays(monthYear, monthNum) : [];
+  const monthRangeStart = view === "month" ? new Date(monthDays[0].date + "T00:00:00") : weekStart;
+  const monthRangeEnd =
+    view === "month"
+      ? addDays(new Date(monthDays[monthDays.length - 1].date + "T00:00:00"), 1)
+      : weekEnd;
+
+  // Rangos efectivos según vista
+  const rangeStart = view === "month" ? monthRangeStart : weekStart;
+  const rangeEnd = view === "month" ? monthRangeEnd : weekEnd;
+  const rangeStartStr = formatDate(rangeStart);
+  const rangeEndStr = formatDate(rangeEnd);
 
   const prevWeek = formatDate(addDays(weekStart, -7));
   const nextWeek = formatDate(addDays(weekStart, 7));
   const today = formatDate(getWeekStart());
 
-  // Audiencias de la semana
+  // Mes anterior / siguiente
+  const prevMonthDate = new Date(monthYear, monthNum - 1, 1);
+  const nextMonthDate = new Date(monthYear, monthNum + 1, 1);
+  const prevMonth = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, "0")}`;
+  const nextMonth = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, "0")}`;
+  const todayMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+
+  // Audiencias del rango (semana o mes)
   let hearingsQuery = supabaseAdmin
     .from("sgcc_hearings")
     .select(`
@@ -81,8 +137,8 @@ export default async function AgendaPage({ searchParams }: Props) {
     `)
     .eq("caso.center_id", centerId)
     .is("caso.archivado_at", null)
-    .gte("fecha_hora", weekStart.toISOString())
-    .lt("fecha_hora", weekEnd.toISOString())
+    .gte("fecha_hora", rangeStart.toISOString())
+    .lt("fecha_hora", rangeEnd.toISOString())
     .order("fecha_hora", { ascending: true });
 
   if (sgccRol === "conciliador") {
@@ -100,7 +156,7 @@ export default async function AgendaPage({ searchParams }: Props) {
     hearingsQuery = hearingsQuery.in("conciliador_id", Array.from(ids));
   }
 
-  // Items de agenda (compromisos / pendientes)
+  // Items de agenda (compromisos / pendientes) del rango
   let itemsQuery = supabaseAdmin
     .from("sgcc_agenda_items")
     .select(
@@ -108,8 +164,8 @@ export default async function AgendaPage({ searchParams }: Props) {
        completado, completado_at, staff_id, created_at, updated_at`
     )
     .eq("center_id", centerId)
-    .gte("fecha", weekStartStr)
-    .lt("fecha", weekEndStr);
+    .gte("fecha", rangeStartStr)
+    .lt("fecha", rangeEndStr);
 
   if (sgccRol === "conciliador") {
     itemsQuery = itemsQuery.eq("staff_id", userId);
@@ -208,53 +264,105 @@ export default async function AgendaPage({ searchParams }: Props) {
         }
       />
 
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           <a
-            href={`/agenda?week=${prevWeek}`}
+            href={
+              view === "month"
+                ? `/agenda?view=month&month=${prevMonth}`
+                : `/agenda?week=${prevWeek}`
+            }
             className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
           >
             ← Anterior
           </a>
           <a
-            href={`/agenda?week=${today}`}
+            href={
+              view === "month" ? `/agenda?view=month&month=${todayMonth}` : `/agenda?week=${today}`
+            }
             className="bg-[#0D2340] text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-[#0d2340dd] transition-colors"
           >
             Hoy
           </a>
           <a
-            href={`/agenda?week=${nextWeek}`}
+            href={
+              view === "month"
+                ? `/agenda?view=month&month=${nextMonth}`
+                : `/agenda?week=${nextWeek}`
+            }
             className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
           >
             Siguiente →
           </a>
+
+          {/* Toggle de vista */}
+          <div className="ml-2 inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden">
+            <a
+              href={`/agenda?week=${today}`}
+              className={`px-3 py-2 text-sm font-medium transition-colors ${
+                view === "week"
+                  ? "bg-[#0D2340] text-white"
+                  : "text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Semana
+            </a>
+            <a
+              href={`/agenda?view=month&month=${todayMonth}`}
+              className={`px-3 py-2 text-sm font-medium border-l border-gray-200 transition-colors ${
+                view === "month"
+                  ? "bg-[#0D2340] text-white"
+                  : "text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Mes
+            </a>
+          </div>
         </div>
+
         <div className="text-sm text-gray-600 font-medium">
-          {weekStart.toLocaleDateString("es-CO", { day: "numeric", month: "long" })} —{" "}
-          {addDays(weekStart, 6).toLocaleDateString("es-CO", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}
+          {view === "month"
+            ? new Date(monthYear, monthNum, 1).toLocaleDateString("es-CO", {
+                month: "long",
+                year: "numeric",
+              })
+            : `${weekStart.toLocaleDateString("es-CO", {
+                day: "numeric",
+                month: "long",
+              })} — ${addDays(weekStart, 6).toLocaleDateString("es-CO", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}`}
         </div>
       </div>
 
-      <p className="text-xs text-gray-500 mb-3">
-        Haz clic en una celda vacía para agregar un compromiso o pendiente. Click sobre uno
-        existente para editarlo.
-      </p>
-
-      <AgendaGrid
-        weekDays={weekDays}
-        hours={HOURS}
-        hearings={hearings}
-        items={items}
-        casos={(casos ?? []) as any}
-        conciliadores={conciliadores}
-        salas={(salas ?? []) as any}
-        currentStaffId={userId}
-        todayKey={formatDate(new Date())}
-      />
+      {view === "week" ? (
+        <>
+          <p className="text-xs text-gray-500 mb-3">
+            Haz clic en una celda vacía para agregar un compromiso o pendiente. Click sobre uno
+            existente para editarlo.
+          </p>
+          <AgendaGrid
+            weekDays={weekDays}
+            hours={HOURS}
+            hearings={hearings}
+            items={items}
+            casos={(casos ?? []) as any}
+            conciliadores={conciliadores}
+            salas={(salas ?? []) as any}
+            currentStaffId={userId}
+            todayKey={formatDate(new Date())}
+          />
+        </>
+      ) : (
+        <AgendaMonthGrid
+          monthDays={monthDays}
+          hearings={hearings}
+          items={items}
+          todayKey={formatDate(new Date())}
+        />
+      )}
     </div>
   );
 }
