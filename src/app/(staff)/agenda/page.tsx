@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AgendaGrid } from "./AgendaGrid";
 import { AgendaMonthGrid } from "./AgendaMonthGrid";
+import { MonthPicker } from "./MonthPicker";
 import type { AgendaItem } from "./AgendaItemModal";
 import { nombreFestivo, enVacanciaJudicial } from "@/lib/dias-habiles-colombia";
 
@@ -343,20 +344,27 @@ export default async function AgendaPage({ searchParams }: Props) {
           </div>
         </div>
 
-        <div className="text-sm text-gray-600 font-medium">
-          {view === "month"
-            ? new Date(monthYear, monthNum, 1).toLocaleDateString("es-CO", {
-                month: "long",
-                year: "numeric",
-              })
-            : `${weekStart.toLocaleDateString("es-CO", {
-                day: "numeric",
-                month: "long",
-              })} — ${addDays(weekStart, 6).toLocaleDateString("es-CO", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}`}
+        <div className="flex items-center gap-3">
+          {view === "month" && (
+            <MonthPicker
+              value={`${monthYear}-${String(monthNum + 1).padStart(2, "0")}`}
+            />
+          )}
+          <div className="text-sm text-gray-600 font-medium">
+            {view === "month"
+              ? new Date(monthYear, monthNum, 1).toLocaleDateString("es-CO", {
+                  month: "long",
+                  year: "numeric",
+                })
+              : `${weekStart.toLocaleDateString("es-CO", {
+                  day: "numeric",
+                  month: "long",
+                })} — ${addDays(weekStart, 6).toLocaleDateString("es-CO", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}`}
+          </div>
         </div>
       </div>
 
