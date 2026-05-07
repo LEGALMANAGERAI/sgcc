@@ -1,12 +1,15 @@
 import { clsx } from "clsx";
+import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 
 /**
  * StatCard — KPI card alineado con "Card emphasis" del brief (§4.3).
  *
  * Mantengo la API pública (prop `color`) pero mapeo los nombres legacy
- * (navy/gold/green/red/blue/purple) a la paleta SGCC para no romper
+ * (navy/gold/green/red/blue/purple) a la paleta SIGECC para no romper
  * llamadores existentes.
+ *
+ * Si `href` está presente, la tarjeta entera se vuelve clickeable y navega.
  */
 
 interface Props {
@@ -15,6 +18,7 @@ interface Props {
   icon: LucideIcon;
   color?: "navy" | "gold" | "green" | "red" | "blue" | "purple";
   trend?: string;
+  href?: string;
 }
 
 type Tone = { bg: string; text: string; icon: string; iconBg: string };
@@ -64,22 +68,42 @@ const tones: Record<NonNullable<Props["color"]>, Tone> = {
   },
 };
 
-export function StatCard({ label, value, icon: Icon, color = "navy", trend }: Props) {
+export function StatCard({ label, value, icon: Icon, color = "navy", trend, href }: Props) {
   const c = tones[color];
+
+  const content = (
+    <div className="flex items-start justify-between">
+      <div>
+        <p className={clsx("text-sm font-medium opacity-70", c.text)}>{label}</p>
+        <p className={clsx("text-3xl font-bold mt-1 tracking-[-0.02em]", c.text)}>
+          {value}
+        </p>
+        {trend && <p className={clsx("text-xs mt-1 opacity-60", c.text)}>{trend}</p>}
+      </div>
+      <div className={clsx("p-2 rounded-[10px]", c.iconBg)}>
+        <Icon className={clsx("w-6 h-6", c.icon)} />
+      </div>
+    </div>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={clsx(
+          "block rounded-[16px] p-5 transition-transform duration-150 ease-out hover:-translate-y-0.5",
+          c.bg
+        )}
+        style={{ boxShadow: "var(--shadow-sm)" }}
+      >
+        {content}
+      </Link>
+    );
+  }
+
   return (
     <div className={clsx("rounded-[16px] p-5", c.bg)} style={{ boxShadow: "var(--shadow-sm)" }}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className={clsx("text-sm font-medium opacity-70", c.text)}>{label}</p>
-          <p className={clsx("text-3xl font-bold mt-1 tracking-[-0.02em]", c.text)}>
-            {value}
-          </p>
-          {trend && <p className={clsx("text-xs mt-1 opacity-60", c.text)}>{trend}</p>}
-        </div>
-        <div className={clsx("p-2 rounded-[10px]", c.iconBg)}>
-          <Icon className={clsx("w-6 h-6", c.icon)} />
-        </div>
-      </div>
+      {content}
     </div>
   );
 }
