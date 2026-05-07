@@ -10,12 +10,19 @@ import { Users, UserCheck, Clock } from "lucide-react";
 import Link from "next/link";
 import type { CaseEstado } from "@/types";
 
-export default async function PartesPage() {
+interface PageProps {
+  searchParams: Promise<{ filtro?: string }>;
+}
+
+export default async function PartesPage({ searchParams }: PageProps) {
   const session = await auth();
   if (!session) redirect("/login");
 
   const centerId = resolveCenterId(session);
   if (!centerId) redirect("/login");
+
+  const { filtro: filtroParam } = await searchParams;
+  const filtro = filtroParam === "con-cuenta" || filtroParam === "sin-cuenta" ? filtroParam : null;
 
   // Obtener todas las partes vinculadas a casos del centro
   const { data: caseParties } = await supabaseAdmin
@@ -76,9 +83,9 @@ export default async function PartesPage() {
       <PageHeader title="Partes" subtitle="Convocantes y convocados vinculados a los casos del centro" />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <StatCard label="Total partes" value={totalPartes} icon={Users} color="navy" />
-        <StatCard label="Con cuenta activa" value={conCuenta} icon={UserCheck} color="green" />
-        <StatCard label="Sin cuenta" value={sinCuenta} icon={Clock} color="gold" />
+        <StatCard label="Total partes" value={totalPartes} icon={Users} color="navy" href="/partes" />
+        <StatCard label="Con cuenta activa" value={conCuenta} icon={UserCheck} color="green" href="/partes?filtro=con-cuenta" />
+        <StatCard label="Sin cuenta" value={sinCuenta} icon={Clock} color="gold" href="/partes?filtro=sin-cuenta" />
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -95,7 +102,13 @@ export default async function PartesPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {allParties.map((p: any) => {
+            {allParties
+              .filter((p: any) => {
+                if (filtro === "con-cuenta") return p.email_verified;
+                if (filtro === "sin-cuenta") return !p.email_verified;
+                return true;
+              })
+              .map((p: any) => {
               const casos = casosActivosByParty[p.id] ?? { convocante: 0, convocado: 0 };
               const totalCasos = casos.convocante + casos.convocado;
 

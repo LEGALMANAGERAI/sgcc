@@ -88,24 +88,28 @@ export default async function VigilanciaPage({ searchParams }: Props) {
           value={total}
           icon={Eye}
           color="navy"
+          href="/vigilancia"
         />
         <StatCard
           label="Activos"
           value={activos}
           icon={Activity}
           color="green"
+          href="/vigilancia?estado=activo"
         />
         <StatCard
           label="Importados de Rama"
           value={importados}
           icon={Scale}
           color="blue"
+          href="/vigilancia"
         />
         <StatCard
           label="Con actuaciones nuevas"
           value={conNuevas}
           icon={BellRing}
           color="red"
+          href="/vigilancia"
         />
       </div>
 

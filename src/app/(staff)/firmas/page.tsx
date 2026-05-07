@@ -30,9 +30,23 @@ const estadoConfig: Record<FirmaEstado, { label: string; bg: string; text: strin
 
 /* ─── Page ───────────────────────────────────────────────────────────── */
 
-export default async function FirmasPage() {
+interface PageProps {
+  searchParams: Promise<{ filtro?: string }>;
+}
+
+const FILTROS: Record<string, FirmaEstado[]> = {
+  pendientes: ["pendiente", "enviado"],
+  en_proceso: ["en_proceso"],
+  completados: ["completado"],
+  rechazados: ["rechazado"],
+};
+
+export default async function FirmasPage({ searchParams }: PageProps) {
   const session = await auth();
   if (!session?.user) redirect("/login");
+
+  const params = await searchParams;
+  const filtro = params.filtro && FILTROS[params.filtro] ? params.filtro : null;
 
   const user = session.user as any;
   const centerId = user.centerId;
@@ -45,17 +59,23 @@ export default async function FirmasPage() {
     .eq("center_id", centerId)
     .order("created_at", { ascending: false });
 
-  const docs = (rawDocs ?? []) as (SgccFirmaDocumento & {
+  const allDocs = (rawDocs ?? []) as (SgccFirmaDocumento & {
     caso: { id: string; numero_radicado: string } | null;
   })[];
 
-  /* ─── Stats ──────────────────────────────────────────────────────── */
+  /* ─── Stats — siempre sobre el total, no sobre el filtro ─────────── */
 
-  const total = docs.length;
-  const pendientes = docs.filter((d) => d.estado === "pendiente" || d.estado === "enviado").length;
-  const enProceso = docs.filter((d) => d.estado === "en_proceso").length;
-  const completados = docs.filter((d) => d.estado === "completado").length;
-  const rechazados = docs.filter((d) => d.estado === "rechazado").length;
+  const total = allDocs.length;
+  const pendientes = allDocs.filter((d) => d.estado === "pendiente" || d.estado === "enviado").length;
+  const enProceso = allDocs.filter((d) => d.estado === "en_proceso").length;
+  const completados = allDocs.filter((d) => d.estado === "completado").length;
+  const rechazados = allDocs.filter((d) => d.estado === "rechazado").length;
+
+  /* ─── Filtrar tabla según query param ────────────────────────────── */
+
+  const docs = filtro
+    ? allDocs.filter((d) => FILTROS[filtro].includes(d.estado))
+    : allDocs;
 
   /* ─── Render ─────────────────────────────────────────────────────── */
 
@@ -73,11 +93,11 @@ export default async function FirmasPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-        <StatCard label="Total documentos" value={total} icon={FileText} color="navy" />
-        <StatCard label="Pendientes" value={pendientes} icon={Clock} color="gold" />
-        <StatCard label="En proceso" value={enProceso} icon={Loader2} color="blue" />
-        <StatCard label="Completados" value={completados} icon={CheckCircle2} color="green" />
-        <StatCard label="Rechazados" value={rechazados} icon={XCircle} color="red" />
+        <StatCard label="Total documentos" value={total} icon={FileText} color="navy" href="/firmas" />
+        <StatCard label="Pendientes" value={pendientes} icon={Clock} color="gold" href="/firmas?filtro=pendientes" />
+        <StatCard label="En proceso" value={enProceso} icon={Loader2} color="blue" href="/firmas?filtro=en_proceso" />
+        <StatCard label="Completados" value={completados} icon={CheckCircle2} color="green" href="/firmas?filtro=completados" />
+        <StatCard label="Rechazados" value={rechazados} icon={XCircle} color="red" href="/firmas?filtro=rechazados" />
       </div>
 
       {/* Tabla */}
