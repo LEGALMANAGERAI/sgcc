@@ -33,7 +33,7 @@ interface ModalProps {
   onClose: () => void;
   title?: ReactNode;
   children: ReactNode;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   /** Si es false, clicks en el overlay no cierran (útil para flows de confirmación). */
   closeOnOverlayClick?: boolean;
   /** className extra para el contenedor del dialog (no del overlay). */
@@ -44,6 +44,7 @@ const sizeClass = {
   sm: "max-w-[420px]",
   md: "max-w-[560px]",
   lg: "max-w-[720px]",
+  xl: "max-w-[1024px]",
 };
 
 export function Modal({
