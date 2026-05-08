@@ -516,7 +516,7 @@ function ProcessRow({
         <td className="px-4 py-3">
           <button
             type="button"
-            onClick={() => onRamaOpen(p)}
+            onClick={onRamaOpen}
             title="Ver detalle del proceso"
             className="font-mono text-xs text-[#1B4F9B] hover:underline cursor-pointer text-left"
           >
