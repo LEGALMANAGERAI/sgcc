@@ -1,11 +1,35 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { clsx } from "clsx";
-import { Check, FileText, Users, Bell, Mic, ClipboardCheck, Archive, Pencil } from "lucide-react";
+import {
+  Check,
+  FileText,
+  Users,
+  Bell,
+  Mic,
+  ClipboardCheck,
+  Archive,
+  Pencil,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+} from "lucide-react";
 import type { CaseEstado, TimelineEtapa } from "@/types";
 import { EditarEtapaModal } from "./EditarEtapaModal";
 import { ClientDate } from "@/components/ui/ClientDate";
+
+const ESTADOS_FLUJO: CaseEstado[] = ["solicitud", "admitido", "citado", "audiencia", "cerrado"];
+
+const ESTADO_LABEL: Record<CaseEstado, string> = {
+  solicitud: "Solicitud",
+  admitido: "Admitido",
+  citado: "Citado",
+  audiencia: "En audiencia",
+  cerrado: "Cerrado",
+  rechazado: "Rechazado",
+};
 
 const STEPS: { etapa: TimelineEtapa; label: string; icon: React.ElementType; activatesAt: CaseEstado[] }[] = [
   { etapa: "solicitud", label: "Solicitud", icon: FileText, activatesAt: ["solicitud", "admitido", "citado", "audiencia", "cerrado"] },
@@ -30,10 +54,50 @@ interface Props {
 }
 
 export function CasoTimeline({ caseId, estado, events, caso, partes, audiencias, actas, conciliadores, secretarios, salas }: Props) {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const eventMap = Object.fromEntries(events.map((e) => [e.etapa, e]));
   const [editingEtapa, setEditingEtapa] = useState<TimelineEtapa | null>(null);
+  const [moviendo, setMoviendo] = useState<"siguiente" | "anterior" | null>(null);
+  const [errorMover, setErrorMover] = useState<string | null>(null);
+
+  const idxFlujo = ESTADOS_FLUJO.indexOf(estado as any);
+  const enFlujo = idxFlujo !== -1;
+  const puedeAvanzar = enFlujo && idxFlujo < ESTADOS_FLUJO.length - 1;
+  const puedeRetroceder = enFlujo && idxFlujo > 0;
+  const siguienteEstado = puedeAvanzar ? ESTADOS_FLUJO[idxFlujo + 1] : null;
+  const anteriorEstado = puedeRetroceder ? ESTADOS_FLUJO[idxFlujo - 1] : null;
+
+  async function mover(direccion: "siguiente" | "anterior") {
+    if (
+      !confirm(
+        direccion === "siguiente"
+          ? `¿Avanzar el caso a "${ESTADO_LABEL[siguienteEstado!]}"?`
+          : `¿Retroceder el caso a "${ESTADO_LABEL[anteriorEstado!]}"?`
+      )
+    ) {
+      return;
+    }
+    setErrorMover(null);
+    setMoviendo(direccion);
+    try {
+      const res = await fetch(`/api/casos/${caseId}/avanzar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ direccion }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Error al mover el caso");
+      }
+      router.refresh();
+    } catch (e: any) {
+      setErrorMover(e.message ?? "Error");
+    } finally {
+      setMoviendo(null);
+    }
+  }
 
   if (!mounted) {
     return (
@@ -45,10 +109,57 @@ export function CasoTimeline({ caseId, estado, events, caso, partes, audiencias,
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-      <div className="flex items-center justify-between mb-5">
-        <h3 className="text-sm font-semibold text-gray-700">Flujo del caso</h3>
+      <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h3 className="text-sm font-semibold text-gray-700">Flujo del caso</h3>
+          {enFlujo && (
+            <div className="inline-flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => mover("anterior")}
+                disabled={!puedeRetroceder || moviendo !== null}
+                title={
+                  puedeRetroceder
+                    ? `Retroceder a "${ESTADO_LABEL[anteriorEstado!]}"`
+                    : "Ya está en el primer estado"
+                }
+                className="inline-flex items-center justify-center w-7 h-7 rounded-md text-gray-500 hover:text-[#0D2340] hover:bg-[#0D2340]/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                aria-label="Retroceder etapa"
+              >
+                {moviendo === "anterior" ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ChevronLeft className="w-4 h-4" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => mover("siguiente")}
+                disabled={!puedeAvanzar || moviendo !== null}
+                title={
+                  puedeAvanzar
+                    ? `Avanzar a "${ESTADO_LABEL[siguienteEstado!]}"`
+                    : "Ya está en el último estado"
+                }
+                className="inline-flex items-center gap-1 px-2.5 h-7 rounded-md text-xs font-medium bg-[#0D2340] text-white hover:bg-[#0d2340dd] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {moviendo === "siguiente" ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5" />
+                )}
+                {puedeAvanzar ? `Avanzar a ${ESTADO_LABEL[siguienteEstado!]}` : "Final"}
+              </button>
+            </div>
+          )}
+        </div>
         <p className="text-[11px] text-gray-400">Click en ✏️ para editar cada etapa</p>
       </div>
+      {errorMover && (
+        <div className="mb-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+          {errorMover}
+        </div>
+      )}
       <div className="flex items-start gap-0">
         {STEPS.map((step, idx) => {
           const isCompleted = eventMap[step.etapa]?.completado ?? false;
