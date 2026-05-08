@@ -152,7 +152,30 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
   const attorneys = rawAttorneys ?? [];
   const hearings = rawHearings ?? [];
   const documentos = rawDocumentos ?? [];
-  const timeline = rawTimeline ?? [];
+  const timelineRaw = rawTimeline ?? [];
+
+  // El "Flujo del caso" usa eventos de sgcc_case_timeline, pero las fechas
+  // canónicas de cada etapa viven en columnas del propio caso (fecha_solicitud,
+  // fecha_admision, etc.). Fusionamos: si timeline tiene registro de la etapa,
+  // usamos ese; si no, sintetizamos con la fecha del caso.
+  const timelineMap = new Map<string, any>(timelineRaw.map((e: any) => [e.etapa, e]));
+  const FECHAS_ETAPA: Array<{ etapa: string; fecha: string | null }> = [
+    { etapa: "solicitud", fecha: (caso as any).fecha_solicitud ?? null },
+    { etapa: "admision", fecha: (caso as any).fecha_admision ?? null },
+    { etapa: "citacion", fecha: (caso as any).fecha_limite_citacion ?? null },
+    { etapa: "audiencia", fecha: (caso as any).fecha_audiencia ?? null },
+    { etapa: "archivo", fecha: (caso as any).fecha_cierre ?? null },
+  ];
+  for (const { etapa, fecha } of FECHAS_ETAPA) {
+    if (!fecha) continue;
+    const existing = timelineMap.get(etapa);
+    if (!existing) {
+      timelineMap.set(etapa, { etapa, fecha, completado: false });
+    } else if (!existing.fecha) {
+      timelineMap.set(etapa, { ...existing, fecha });
+    }
+  }
+  const timeline = Array.from(timelineMap.values());
 
   // Procesos vigilados vinculados a este caso (con conteo de actuaciones no leídas)
   const { data: rawWatched } = await supabaseAdmin
