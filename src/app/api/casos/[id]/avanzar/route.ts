@@ -7,15 +7,13 @@ import { randomUUID } from "crypto";
 /**
  * POST /api/casos/[id]/avanzar
  *
- * Avance rápido del flujo del caso: pasa al siguiente estado sin requerir
- * los datos completos que piden los endpoints específicos por etapa
- * (/admision, /citacion, /acta). Útil para casos donde el centro ya tiene
- * la información offline o solo quiere mover el caso adelante.
+ * Avance/retroceso rápido del flujo del caso: mueve a un estado destino
+ * sin requerir los datos completos que piden los endpoints específicos
+ * por etapa (/admision, /citacion, /acta).
  *
- * También crea/actualiza un evento en sgcc_case_timeline marcando la
- * etapa actual como completada.
- *
- * Body opcional: { direccion?: "siguiente" | "anterior" } (default: "siguiente")
+ * Body (uno de los dos):
+ *  - { etapa: "solicitud" | "admision" | "citacion" | "audiencia" | "acta" | "archivo" }
+ *  - { direccion: "siguiente" | "anterior" } (legacy)
  */
 
 const ESTADOS_FLUJO = [
@@ -36,6 +34,18 @@ const ETAPA_POR_ESTADO: Record<EstadoFlujo, string> = {
   cerrado: "archivo",
 };
 
+const ETAPAS = ["solicitud", "admision", "citacion", "audiencia", "acta", "archivo"] as const;
+type Etapa = (typeof ETAPAS)[number];
+
+const ESTADO_POR_ETAPA: Record<Etapa, EstadoFlujo> = {
+  solicitud: "solicitud",
+  admision: "admitido",
+  citacion: "citado",
+  audiencia: "audiencia",
+  acta: "cerrado",
+  archivo: "cerrado",
+};
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -53,7 +63,6 @@ export async function POST(
   } catch {
     body = {};
   }
-  const direccion: "siguiente" | "anterior" = body.direccion === "anterior" ? "anterior" : "siguiente";
 
   // Cargar el caso para conocer el estado actual
   const { data: caso } = await supabaseAdmin
@@ -68,27 +77,43 @@ export async function POST(
   const estadoActual = caso.estado as EstadoFlujo;
   if (!ESTADOS_FLUJO.includes(estadoActual)) {
     return NextResponse.json(
-      { error: `El caso está en estado "${estadoActual}" y no se puede avanzar desde ahí` },
+      { error: `El caso está en estado "${estadoActual}" y no se puede mover desde ahí` },
       { status: 400 }
     );
   }
 
-  const idxActual = ESTADOS_FLUJO.indexOf(estadoActual);
-  const idxSiguiente = direccion === "siguiente" ? idxActual + 1 : idxActual - 1;
+  // Resolver estado destino: { etapa } tiene prioridad; si no, { direccion }.
+  let nuevoEstado: EstadoFlujo;
+  let direccion: "siguiente" | "anterior";
 
-  if (idxSiguiente < 0 || idxSiguiente >= ESTADOS_FLUJO.length) {
-    return NextResponse.json(
-      {
-        error:
-          direccion === "siguiente"
-            ? "El caso ya está en el último estado del flujo"
-            : "El caso ya está en el primer estado del flujo",
-      },
-      { status: 400 }
-    );
+  if (body.etapa && (ETAPAS as readonly string[]).includes(body.etapa)) {
+    const etapaDestino = body.etapa as Etapa;
+    nuevoEstado = ESTADO_POR_ETAPA[etapaDestino];
+    if (nuevoEstado === estadoActual) {
+      return NextResponse.json({ ok: true, estadoAnterior: estadoActual, estadoNuevo: nuevoEstado });
+    }
+    direccion =
+      ESTADOS_FLUJO.indexOf(nuevoEstado) > ESTADOS_FLUJO.indexOf(estadoActual)
+        ? "siguiente"
+        : "anterior";
+  } else {
+    direccion = body.direccion === "anterior" ? "anterior" : "siguiente";
+    const idxActual = ESTADOS_FLUJO.indexOf(estadoActual);
+    const idxSiguiente = direccion === "siguiente" ? idxActual + 1 : idxActual - 1;
+    if (idxSiguiente < 0 || idxSiguiente >= ESTADOS_FLUJO.length) {
+      return NextResponse.json(
+        {
+          error:
+            direccion === "siguiente"
+              ? "El caso ya está en el último estado del flujo"
+              : "El caso ya está en el primer estado del flujo",
+        },
+        { status: 400 }
+      );
+    }
+    nuevoEstado = ESTADOS_FLUJO[idxSiguiente];
   }
 
-  const nuevoEstado = ESTADOS_FLUJO[idxSiguiente];
   const now = new Date().toISOString();
 
   // Actualizar el estado del caso
