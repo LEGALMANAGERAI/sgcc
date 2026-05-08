@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { clsx } from "clsx";
-import { Check, FileText, Users, Bell, Mic, ClipboardCheck, Archive, Pencil, Settings2 } from "lucide-react";
+import { Check, FileText, Users, Bell, Mic, ClipboardCheck, Archive, Pencil } from "lucide-react";
 import type { CaseEstado, TimelineEtapa } from "@/types";
 import { EditarEtapaModal } from "./EditarEtapaModal";
 import { ClientDate } from "@/components/ui/ClientDate";
@@ -30,50 +29,11 @@ interface Props {
   salas: Array<{ id: string; nombre: string; tipo: string }>;
 }
 
-function toInputValue(iso: string | null | undefined) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-}
-
 export function CasoTimeline({ caseId, estado, events, caso, partes, audiencias, actas, conciliadores, secretarios, salas }: Props) {
-  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const eventMap = Object.fromEntries(events.map((e) => [e.etapa, e]));
-  const [editingFecha, setEditingFecha] = useState<TimelineEtapa | null>(null);
   const [editingEtapa, setEditingEtapa] = useState<TimelineEtapa | null>(null);
-  const [value, setValue] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  function startEditFecha(etapa: TimelineEtapa) {
-    setError("");
-    setValue(toInputValue(eventMap[etapa]?.fecha));
-    setEditingFecha(etapa);
-  }
-
-  async function saveFecha() {
-    if (!editingFecha) return;
-    setSaving(true);
-    setError("");
-    try {
-      const res = await fetch(`/api/casos/${caseId}/fechas`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ etapa: editingFecha, fecha: value ? new Date(value).toISOString() : null }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "Error al guardar");
-        return;
-      }
-      setEditingFecha(null);
-      router.refresh();
-    } finally {
-      setSaving(false);
-    }
-  }
 
   if (!mounted) {
     return (
@@ -87,7 +47,7 @@ export function CasoTimeline({ caseId, estado, events, caso, partes, audiencias,
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
       <div className="flex items-center justify-between mb-5">
         <h3 className="text-sm font-semibold text-gray-700">Flujo del caso</h3>
-        <p className="text-[11px] text-gray-400">Click ✏️ para fecha · ⚙️ para editar la etapa completa</p>
+        <p className="text-[11px] text-gray-400">Click en ✏️ para editar cada etapa</p>
       </div>
       <div className="flex items-start gap-0">
         {STEPS.map((step, idx) => {
@@ -138,36 +98,20 @@ export function CasoTimeline({ caseId, estado, events, caso, partes, audiencias,
                 ) : (
                   <p className="text-[10px] text-gray-400">—</p>
                 )}
-                <button type="button" onClick={() => startEditFecha(step.etapa)} className="text-gray-300 hover:text-[#1B4F9B]" title="Editar solo fecha">
-                  <Pencil className="w-3 h-3" />
-                </button>
-                <button type="button" onClick={() => setEditingEtapa(step.etapa)} className="text-gray-300 hover:text-[#1B4F9B]" title="Editar etapa completa">
-                  <Settings2 className="w-3 h-3" />
+                <button
+                  type="button"
+                  onClick={() => setEditingEtapa(step.etapa)}
+                  className="inline-flex items-center justify-center w-7 h-7 rounded-md text-gray-400 hover:text-[#0D2340] hover:bg-[#0D2340]/10 hover:scale-110 transition-all"
+                  title="Editar etapa"
+                  aria-label="Editar etapa"
+                >
+                  <Pencil className="w-4 h-4" />
                 </button>
               </div>
             </div>
           );
         })}
       </div>
-
-      {editingFecha && (
-        <div className="mt-5 bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-gray-800">
-              Editar fecha — {STEPS.find((s) => s.etapa === editingFecha)?.label}
-            </p>
-            <button onClick={() => setEditingFecha(null)} className="text-xs text-gray-500 hover:underline">Cancelar</button>
-          </div>
-          <div className="flex items-center gap-3">
-            <input type="datetime-local" value={value} onChange={(e) => setValue(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]" />
-            <button onClick={saveFecha} disabled={saving} className="bg-[#0D2340] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#0d2340dd] disabled:opacity-50">
-              {saving ? "Guardando..." : "Guardar"}
-            </button>
-            <button onClick={() => setValue("")} disabled={saving} className="text-xs text-gray-500 hover:underline">Limpiar</button>
-          </div>
-          {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
-        </div>
-      )}
 
       {editingEtapa && (
         <EditarEtapaModal
