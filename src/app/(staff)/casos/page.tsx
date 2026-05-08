@@ -172,8 +172,14 @@ export default async function CasosPage({ searchParams }: Props) {
 
                 return (
                   <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-5 py-3 font-mono font-medium text-[#0D2340]">
-                      {c.numero_radicado}
+                    <td className="px-5 py-3 font-mono font-medium">
+                      <Link
+                        href={`/expediente/${c.id}`}
+                        title="Abrir expediente"
+                        className="text-[#1B4F9B] hover:underline"
+                      >
+                        {c.numero_radicado}
+                      </Link>
                     </td>
                     <td className="px-5 py-3 capitalize text-gray-700">{c.materia}</td>
                     <td className="px-5 py-3 text-gray-700 max-w-[200px] truncate">{cnombre}</td>
