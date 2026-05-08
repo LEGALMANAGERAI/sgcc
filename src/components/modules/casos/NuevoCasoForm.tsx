@@ -83,10 +83,26 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
   const [cuantiaIndet, setCuantiaIndet] = useState(false);
   const [conciliadorId, setConciliadorId] = useState("");
   const [salaId, setSalaId] = useState("");
-  const [convocante, setConvocante] = useState<ParteForm>(emptyParte("convocante"));
+  const [convocantes, setConvocantes] = useState<ParteForm[]>([emptyParte("convocante")]);
   const [convocados, setConvocados] = useState<ParteForm[]>([emptyParte("convocado")]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  function updateConvocante(idx: number, field: keyof ParteForm, value: string) {
+    setConvocantes((prev) => prev.map((c, i) => (i === idx ? { ...c, [field]: value } : c)));
+  }
+  function updateConvocanteApoderado(idx: number, field: keyof ApoderadoForm, value: string | boolean) {
+    setConvocantes((prev) => prev.map((c, i) => (i === idx ? { ...c, apoderado: { ...c.apoderado, [field]: value } } : c)));
+  }
+  function updateConvocantePoder(idx: number, file: File | null) {
+    setConvocantes((prev) => prev.map((c, i) => (i === idx ? { ...c, poderFile: file } : c)));
+  }
+  function addConvocante() {
+    setConvocantes((prev) => [...prev, emptyParte("convocante")]);
+  }
+  function removeConvocante(idx: number) {
+    setConvocantes((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   function updateConvocado(idx: number, field: keyof ParteForm, value: string) {
     setConvocados((prev) => prev.map((c, i) => (i === idx ? { ...c, [field]: value } : c)));
@@ -112,9 +128,16 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
     e.preventDefault();
     setError("");
 
-    const allPartes = tipoTramite === "insolvencia"
-      ? [{ ...convocante, rol: "convocante" as const }, ...convocados.map((c) => ({ ...c, rol: "convocado" as const }))]
-      : [convocante, ...convocados];
+    // En insolvencia hay un solo "insolvente" (primer convocante).
+    const convocantesParaEnviar =
+      tipoTramite === "insolvencia"
+        ? [{ ...convocantes[0], rol: "convocante" as const }]
+        : convocantes.map((c) => ({ ...c, rol: "convocante" as const }));
+
+    const allPartes = [
+      ...convocantesParaEnviar,
+      ...convocados.map((c) => ({ ...c, rol: "convocado" as const })),
+    ];
 
     // Validación: si se marcó "Tiene apoderado", exigir nombre y documento
     for (const [idx, p] of allPartes.entries()) {
@@ -122,7 +145,12 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
         const faltaNombre = !p.apoderado.nombre?.trim();
         const faltaDoc = !p.apoderado.numero_doc?.trim();
         if (faltaNombre || faltaDoc) {
-          const quien = p.rol === "convocante" ? "del convocante" : `del convocado ${idx}`;
+          const quien =
+            p.rol === "convocante"
+              ? convocantesParaEnviar.length > 1
+                ? `del convocante ${idx + 1}`
+                : "del convocante"
+              : `del convocado ${idx - convocantesParaEnviar.length + 1}`;
           const campos = [faltaNombre && "nombre", faltaDoc && "número de documento"].filter(Boolean).join(" y ");
           setError(`Falta ${campos} del apoderado ${quien}. Completa los datos o desmarca "Tiene apoderado".`);
           return;
@@ -357,10 +385,10 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
                 Persona natural no comerciante o pequeño comerciante
               </p>
               <ParteFields
-                parte={convocante}
-                onChange={(f, v) => setConvocante((p) => ({ ...p, [f]: v }))}
-                onApoderadoChange={(f, v) => setConvocante((p) => ({ ...p, apoderado: { ...p.apoderado, [f]: v } }))}
-                onPoderFile={(file) => setConvocante((p) => ({ ...p, poderFile: file }))}
+                parte={convocantes[0]}
+                onChange={(f, v) => updateConvocante(0, f, v)}
+                onApoderadoChange={(f, v) => updateConvocanteApoderado(0, f, v)}
+                onPoderFile={(file) => updateConvocantePoder(0, file)}
                 label="Insolvente"
               />
             </div>
@@ -402,16 +430,39 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
           </>
         ) : (
           <>
-            {/* Convocante */}
-            <div>
-              <p className="text-xs font-semibold text-[#0D2340] uppercase tracking-wide mb-3">Convocante</p>
-              <ParteFields
-                parte={convocante}
-                onChange={(f, v) => setConvocante((p) => ({ ...p, [f]: v }))}
-                onApoderadoChange={(f, v) => setConvocante((p) => ({ ...p, apoderado: { ...p.apoderado, [f]: v } }))}
-                onPoderFile={(file) => setConvocante((p) => ({ ...p, poderFile: file }))}
-                label="Convocante"
-              />
+            {/* Convocantes */}
+            <div className="space-y-4">
+              <p className="text-xs font-semibold text-[#0D2340] uppercase tracking-wide">
+                Convocante{convocantes.length > 1 ? "s" : ""}
+              </p>
+              {convocantes.map((c, idx) => (
+                <div key={idx} className="relative">
+                  <ParteFields
+                    parte={c}
+                    onChange={(f, v) => updateConvocante(idx, f, v)}
+                    onApoderadoChange={(f, v) => updateConvocanteApoderado(idx, f, v)}
+                    onPoderFile={(file) => updateConvocantePoder(idx, file)}
+                    label={`Convocante ${convocantes.length > 1 ? idx + 1 : ""}`}
+                  />
+                  {convocantes.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeConvocante(idx)}
+                      className="absolute top-4 right-4 text-red-400 hover:text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addConvocante}
+                className="flex items-center gap-2 text-sm text-[#1B4F9B] hover:underline"
+              >
+                <PlusCircle className="w-4 h-4" />
+                Agregar convocante
+              </button>
             </div>
 
             {/* Convocados */}
