@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
+import { randomUUID } from "crypto";
 
 type Etapa = "solicitud" | "admision" | "citacion" | "audiencia" | "acta" | "archivo";
 
@@ -104,13 +105,34 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     case "audiencia": {
       if (!Array.isArray(data.audiencias)) return NextResponse.json({ error: "audiencias requerido" }, { status: 400 });
       for (const h of data.audiencias) {
-        if (!h.id) continue;
-        const upd: Record<string, any> = { updated_at: now };
-        for (const f of ["fecha_hora", "duracion_min", "conciliador_id", "sala_id", "tipo", "notas_previas", "estado"]) {
-          if (h[f] !== undefined) upd[f] = h[f] || null;
-        }
-        if (Object.keys(upd).length > 1) {
-          await supabaseAdmin.from("sgcc_hearings").update(upd).eq("id", h.id).eq("case_id", caseId);
+        if (h.id) {
+          // Update audiencia existente
+          const upd: Record<string, any> = { updated_at: now };
+          for (const f of ["fecha_hora", "duracion_min", "conciliador_id", "sala_id", "tipo", "notas_previas", "estado"]) {
+            if (h[f] !== undefined) upd[f] = h[f] || null;
+          }
+          if (Object.keys(upd).length > 1) {
+            await supabaseAdmin.from("sgcc_hearings").update(upd).eq("id", h.id).eq("case_id", caseId);
+          }
+        } else if (h.fecha_hora) {
+          // Insert audiencia nueva (caso típico: continuación tras suspensión)
+          const dur = Number.isFinite(Number(h.duracion_min)) ? Number(h.duracion_min) : 60;
+          const ins: Record<string, any> = {
+            id: randomUUID(),
+            case_id: caseId,
+            fecha_hora: h.fecha_hora,
+            duracion_min: Math.max(15, Math.min(600, dur)),
+            estado: h.estado || "programada",
+            tipo: h.tipo || "continuacion",
+            conciliador_id: h.conciliador_id || null,
+            sala_id: h.sala_id || null,
+            notas_previas: h.notas_previas || null,
+            modalidad: h.modalidad || "presencial",
+            created_at: now,
+            updated_at: now,
+          };
+          const { error: insErr } = await supabaseAdmin.from("sgcc_hearings").insert(ins);
+          if (insErr) return NextResponse.json({ error: `Audiencia nueva: ${insErr.message}` }, { status: 500 });
         }
       }
       return NextResponse.json({ ok: true });
