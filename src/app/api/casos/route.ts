@@ -75,8 +75,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
   }
 
-  const convocante = partes.find((p: any) => p.rol === "convocante");
-  if (!convocante) {
+  // Soportamos múltiples convocantes (varios demandantes en un mismo trámite).
+  const convocantes = partes.filter((p: any) => p.rol === "convocante");
+  if (!convocantes.length) {
     return NextResponse.json({ error: "Se requiere al menos un convocante" }, { status: 400 });
   }
 
