@@ -182,6 +182,32 @@ export function EditarEtapaModal({ etapa, caso, partes, audiencias, actas, conci
     });
   }
 
+  function addAudiencia() {
+    setForm((prev: any) => ({
+      ...prev,
+      audiencias: [
+        ...prev.audiencias,
+        {
+          id: null,
+          fecha_hora: "",
+          duracion_min: 60,
+          tipo: "continuacion",
+          estado: "programada",
+          conciliador_id: prev.audiencias[0]?.conciliador_id ?? "",
+          sala_id: prev.audiencias[0]?.sala_id ?? "",
+          notas_previas: "",
+        },
+      ],
+    }));
+  }
+
+  function removeAudienciaNueva(idx: number) {
+    setForm((prev: any) => ({
+      ...prev,
+      audiencias: prev.audiencias.filter((_: any, i: number) => i !== idx),
+    }));
+  }
+
   async function handleSubmit() {
     setSaving(true);
     setError("");
@@ -357,8 +383,26 @@ export function EditarEtapaModal({ etapa, caso, partes, audiencias, actas, conci
             <>
               {form.audiencias.length === 0 && <p className="text-xs text-gray-400">No hay audiencias registradas.</p>}
               {form.audiencias.map((a: any, idx: number) => (
-                <div key={a.id} className="border border-gray-200 rounded-lg p-3 space-y-2">
-                  <p className="text-xs uppercase text-gray-500">Audiencia {idx + 1} · {a.tipo}</p>
+                <div
+                  key={a.id ?? `nueva-${idx}`}
+                  className={`border rounded-lg p-3 space-y-2 ${
+                    a.id ? "border-gray-200" : "border-blue-300 bg-blue-50/40"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase text-gray-500">
+                      {a.id ? `Audiencia ${idx + 1}` : `Nueva audiencia`} · {a.tipo}
+                    </p>
+                    {!a.id && (
+                      <button
+                        type="button"
+                        onClick={() => removeAudienciaNueva(idx)}
+                        className="text-xs text-red-500 hover:underline"
+                      >
+                        Quitar
+                      </button>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Field label="Fecha y hora">
                       <input type="datetime-local" className={inputCls} value={a.fecha_hora} onChange={(e) => updateListItem("audiencias", idx, "fecha_hora", e.target.value)} />
@@ -394,6 +438,17 @@ export function EditarEtapaModal({ etapa, caso, partes, audiencias, actas, conci
                   </Field>
                 </div>
               ))}
+              <button
+                type="button"
+                onClick={addAudiencia}
+                className="inline-flex items-center gap-1 text-sm text-[#1B4F9B] hover:underline"
+              >
+                + Agregar audiencia
+              </button>
+              <p className="text-[11px] text-gray-400">
+                Útil cuando una audiencia se suspende y necesitas programar la
+                continuación o una audiencia complementaria.
+              </p>
             </>
           )}
 
