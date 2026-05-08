@@ -104,7 +104,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     case "audiencia": {
       if (!Array.isArray(data.audiencias)) return NextResponse.json({ error: "audiencias requerido" }, { status: 400 });
-      for (const h of data.audiencias) {
+      let insertadas = 0;
+      let actualizadas = 0;
+      for (const [idx, h] of data.audiencias.entries()) {
         if (h.id) {
           // Update audiencia existente
           const upd: Record<string, any> = { updated_at: now };
@@ -112,10 +114,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             if (h[f] !== undefined) upd[f] = h[f] || null;
           }
           if (Object.keys(upd).length > 1) {
-            await supabaseAdmin.from("sgcc_hearings").update(upd).eq("id", h.id).eq("case_id", caseId);
+            const { error: updErr } = await supabaseAdmin
+              .from("sgcc_hearings")
+              .update(upd)
+              .eq("id", h.id)
+              .eq("case_id", caseId);
+            if (updErr) {
+              return NextResponse.json(
+                { error: `Audiencia ${idx + 1}: ${updErr.message}` },
+                { status: 500 }
+              );
+            }
+            actualizadas++;
           }
-        } else if (h.fecha_hora) {
-          // Insert audiencia nueva (caso típico: continuación tras suspensión)
+        } else {
+          // Audiencia nueva — fecha es obligatoria.
+          if (!h.fecha_hora) {
+            return NextResponse.json(
+              { error: `La audiencia nueva ${idx + 1} requiere fecha y hora.` },
+              { status: 400 }
+            );
+          }
           const dur = Number.isFinite(Number(h.duracion_min)) ? Number(h.duracion_min) : 60;
           const ins: Record<string, any> = {
             id: randomUUID(),
@@ -132,10 +151,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             updated_at: now,
           };
           const { error: insErr } = await supabaseAdmin.from("sgcc_hearings").insert(ins);
-          if (insErr) return NextResponse.json({ error: `Audiencia nueva: ${insErr.message}` }, { status: 500 });
+          if (insErr) {
+            return NextResponse.json(
+              { error: `Audiencia nueva ${idx + 1}: ${insErr.message}` },
+              { status: 500 }
+            );
+          }
+          insertadas++;
         }
       }
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true, insertadas, actualizadas });
     }
 
     case "acta": {
