@@ -96,7 +96,7 @@ export function CasoTimeline({ caseId, estado, events, caso, partes, audiencias,
                 {fecha ? (
                   <ClientDate iso={fecha} mode="date" className="text-[10px] text-gray-400" />
                 ) : (
-                  <p className="text-[10px] text-gray-400">—</p>
+                  <p className="text-[10px] text-gray-400 italic">Sin fecha</p>
                 )}
                 <button
                   type="button"
