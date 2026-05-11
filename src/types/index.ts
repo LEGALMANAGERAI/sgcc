@@ -609,7 +609,7 @@ export interface SgccHearingAttendance {
   hearing_id: string;
   party_id: string;
   attorney_id: string | null;
-  asistio: boolean;
+  asistio: boolean | null;
   representado_por_nombre: string | null;
   poder_verificado: boolean;
   notas: string | null;

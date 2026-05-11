@@ -6,7 +6,8 @@ import { resolveCenterId } from "@/lib/server-utils";
 interface AsistenciaItem {
   party_id: string;
   attorney_id?: string | null;
-  asistio: boolean;
+  // null = pendiente (no se ha marcado), true = asistió, false = no asistió
+  asistio: boolean | null;
   representado_por_nombre?: string | null;
   poder_verificado?: boolean;
   notas?: string | null;
@@ -56,7 +57,7 @@ export async function POST(
     hearing_id: hearingId,
     party_id: it.party_id,
     attorney_id: it.attorney_id ?? null,
-    asistio: it.asistio,
+    asistio: it.asistio ?? null,
     representado_por_nombre: it.representado_por_nombre ?? null,
     poder_verificado: it.poder_verificado ?? false,
     notas: it.notas ?? null,
@@ -74,7 +75,7 @@ export async function POST(
   for (const it of items) {
     await supabaseAdmin
       .from("sgcc_case_parties")
-      .update({ asistio: it.asistio })
+      .update({ asistio: it.asistio ?? null })
       .eq("case_id", caseId)
       .eq("party_id", it.party_id);
   }

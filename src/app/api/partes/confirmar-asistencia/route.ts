@@ -75,7 +75,8 @@ export async function POST(req: Request) {
         {
           hearing_id,
           party_id: userId,
-          asistio: false, // Solo confirmado, no asistió aún
+          // null = pendiente; el staff marca true/false el día de la audiencia
+          asistio: null,
           notas: "Asistencia confirmada por la parte",
         },
         { onConflict: "hearing_id,party_id" }
