@@ -362,27 +362,55 @@ export function TabAsistencia({
                           </td>
 
                           {/* Asistió */}
-                          <td className="px-3 py-3 text-center">
-                            <button
-                              onClick={() =>
-                                handleUpdate(
-                                  hearing.id,
-                                  cp.party_id,
-                                  "asistio",
-                                  !record.asistio
-                                )
-                              }
-                              disabled={isSaving}
-                              className="mx-auto flex items-center justify-center disabled:opacity-50"
-                            >
-                              {isSaving ? (
-                                <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
-                              ) : record.asistio ? (
-                                <UserCheck className="w-5 h-5 text-green-500" />
-                              ) : (
-                                <UserX className="w-5 h-5 text-gray-300 hover:text-red-400" />
-                              )}
-                            </button>
+                          <td className="px-3 py-3">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() =>
+                                  handleUpdate(
+                                    hearing.id,
+                                    cp.party_id,
+                                    "asistio",
+                                    record.asistio === true ? null : true
+                                  )
+                                }
+                                disabled={isSaving}
+                                title="Sí asistió"
+                                aria-pressed={record.asistio === true}
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-colors disabled:opacity-50 ${
+                                  record.asistio === true
+                                    ? "bg-green-100 text-green-700 border-green-300"
+                                    : "bg-white text-gray-400 border-gray-200 hover:bg-gray-50"
+                                }`}
+                              >
+                                {isSaving ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <UserCheck className="w-3.5 h-3.5" />
+                                )}
+                                Sí
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleUpdate(
+                                    hearing.id,
+                                    cp.party_id,
+                                    "asistio",
+                                    record.asistio === false ? null : false
+                                  )
+                                }
+                                disabled={isSaving}
+                                title="No asistió"
+                                aria-pressed={record.asistio === false}
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-colors disabled:opacity-50 ${
+                                  record.asistio === false
+                                    ? "bg-red-100 text-red-700 border-red-300"
+                                    : "bg-white text-gray-400 border-gray-200 hover:bg-gray-50"
+                                }`}
+                              >
+                                <UserX className="w-3.5 h-3.5" />
+                                No
+                              </button>
+                            </div>
                           </td>
 
                           {/* Representado por */}

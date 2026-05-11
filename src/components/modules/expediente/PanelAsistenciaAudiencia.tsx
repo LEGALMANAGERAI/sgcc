@@ -40,7 +40,7 @@ const MOTIVO_CAMBIO_LABEL: Record<string, string> = {
 interface AsistenciaLocal {
   party_id: string;
   attorney_id: string | null;
-  asistio: boolean;
+  asistio: boolean | null;
   representado_por_nombre: string | null;
   poder_verificado: boolean;
   notas: string | null;
@@ -96,7 +96,7 @@ export function PanelAsistenciaAudiencia({
         ? {
             party_id: cp.party_id,
             attorney_id: existente.attorney_id ?? apoderado?.attorney_id ?? null,
-            asistio: existente.asistio,
+            asistio: existente.asistio ?? null,
             representado_por_nombre:
               existente.representado_por_nombre ?? apoderado?.attorney?.nombre ?? null,
             poder_verificado: existente.poder_verificado,
@@ -105,7 +105,7 @@ export function PanelAsistenciaAudiencia({
         : {
             party_id: cp.party_id,
             attorney_id: apoderado?.attorney_id ?? null,
-            asistio: false,
+            asistio: null,
             representado_por_nombre: apoderado?.attorney?.nombre ?? null,
             poder_verificado: apoderado?.attorney?.verificado ?? false,
             notas: null,
@@ -123,10 +123,14 @@ export function PanelAsistenciaAudiencia({
     actualNombre?: string | null;
   } | null>(null);
 
-  function toggleAsistio(partyId: string) {
+  function setAsistio(partyId: string, value: boolean) {
     setRows((prev) => ({
       ...prev,
-      [partyId]: { ...prev[partyId], asistio: !prev[partyId].asistio },
+      [partyId]: {
+        ...prev[partyId],
+        // Re-clic en el botón activo vuelve a "pendiente"
+        asistio: prev[partyId].asistio === value ? null : value,
+      },
     }));
     setGuardadoOk(false);
   }
@@ -228,26 +232,39 @@ export function PanelAsistenciaAudiencia({
                   )}
                 </div>
 
-                <button
-                  onClick={() => toggleAsistio(cp.party_id)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    row.asistio
-                      ? "bg-green-100 text-green-700 hover:bg-green-200"
-                      : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                  }`}
-                >
-                  {row.asistio ? (
-                    <>
-                      <UserCheck className="w-3.5 h-3.5" />
-                      Asistió
-                    </>
-                  ) : (
-                    <>
-                      <UserX className="w-3.5 h-3.5" />
-                      No asistió
-                    </>
+                <div className="inline-flex items-center gap-1.5">
+                  <button
+                    onClick={() => setAsistio(cp.party_id, true)}
+                    className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                      row.asistio === true
+                        ? "bg-green-100 text-green-700 border-green-300"
+                        : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+                    }`}
+                    aria-pressed={row.asistio === true}
+                    title="Marcar que sí asistió"
+                  >
+                    <UserCheck className="w-3.5 h-3.5" />
+                    Sí asistió
+                  </button>
+                  <button
+                    onClick={() => setAsistio(cp.party_id, false)}
+                    className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                      row.asistio === false
+                        ? "bg-red-100 text-red-700 border-red-300"
+                        : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+                    }`}
+                    aria-pressed={row.asistio === false}
+                    title="Marcar que no asistió"
+                  >
+                    <UserX className="w-3.5 h-3.5" />
+                    No asistió
+                  </button>
+                  {row.asistio === null && (
+                    <span className="text-[10px] text-gray-400 italic ml-1">
+                      pendiente
+                    </span>
                   )}
-                </button>
+                </div>
               </div>
 
               <div className="mt-3 flex items-center justify-between flex-wrap gap-3 bg-gray-50 rounded-lg px-3 py-2">
