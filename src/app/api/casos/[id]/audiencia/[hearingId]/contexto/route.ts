@@ -33,7 +33,7 @@ export async function GET(
       conciliador:sgcc_staff!sgcc_cases_conciliador_id_fkey(id, nombre, tarjeta_profesional, email),
       centro:sgcc_centers!sgcc_cases_center_id_fkey(id, nombre, ciudad, codigo_corto),
       partes:sgcc_case_parties(
-        id, rol,
+        id, rol, party_id,
         party:sgcc_parties(
           id, tipo_persona, nombres, apellidos, razon_social,
           tipo_doc, numero_doc, nit_empresa, email, telefono
