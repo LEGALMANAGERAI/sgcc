@@ -99,67 +99,7 @@ export default async function ConciliadoresPage({ searchParams }: Props) {
         )}
       </form>
 
-      {/* Tabla */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto mb-6">
-        <table className="w-full min-w-[1100px] text-sm">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="text-left px-5 py-3 font-semibold text-gray-600">Nombre</th>
-              <th className="text-left px-5 py-3 font-semibold text-gray-600">Email</th>
-              <th className="text-left px-5 py-3 font-semibold text-gray-600">Telefono</th>
-              <th className="text-left px-5 py-3 font-semibold text-gray-600">T.P.</th>
-              <th className="text-left px-5 py-3 font-semibold text-gray-600">Rol</th>
-              <th className="text-left px-5 py-3 font-semibold text-gray-600">Secretario asignado</th>
-              <th className="text-left px-5 py-3 font-semibold text-gray-600">Casos activos</th>
-              <th className="text-left px-5 py-3 font-semibold text-gray-600">Estado</th>
-              <th className="px-5 py-3 font-semibold text-gray-600">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {!enriched.length ? (
-              <tr>
-                <td colSpan={9} className="px-5 py-10 text-center text-gray-400">
-                  No hay miembros del equipo registrados
-                </td>
-              </tr>
-            ) : (
-              enriched.map((s) => (
-                <tr key={s.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-5 py-3 font-medium text-[#0D2340]">{s.nombre}</td>
-                  <td className="px-5 py-3 text-gray-600">{s.email}</td>
-                  <td className="px-5 py-3 text-gray-600">{s.telefono ?? "—"}</td>
-                  <td className="px-5 py-3 text-gray-600 font-mono text-xs">{s.tarjeta_profesional ?? "—"}</td>
-                  <td className="px-5 py-3">
-                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 capitalize">
-                      {s.rol}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-gray-500">{s.supervisor_nombre}</td>
-                  <td className="px-5 py-3">
-                    <span className={`font-semibold ${s.casos_activos > 0 ? "text-[#1B4F9B]" : "text-gray-400"}`}>
-                      {s.casos_activos}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                        s.activo ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {s.activo ? "Activo" : "Inactivo"}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-right" id={`actions-${s.id}`}>
-                    {/* Acciones se manejan en ConciliadoresClient */}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Formulario y acciones client-side */}
+      {/* Tabla + acciones + formulario (todo client-side) */}
       <ConciliadoresClient staff={enriched} conciliadores={conciliadores} />
     </div>
   );
