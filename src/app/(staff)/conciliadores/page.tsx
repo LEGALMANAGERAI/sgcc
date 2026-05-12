@@ -100,8 +100,8 @@ export default async function ConciliadoresPage({ searchParams }: Props) {
       </form>
 
       {/* Tabla */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-        <table className="w-full text-sm">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto mb-6">
+        <table className="w-full min-w-[1100px] text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
               <th className="text-left px-5 py-3 font-semibold text-gray-600">Nombre</th>
