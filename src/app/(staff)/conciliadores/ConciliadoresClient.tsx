@@ -116,48 +116,89 @@ export function ConciliadoresClient({ staff, conciliadores }: Props) {
 
   return (
     <div>
-      {/* Acciones por fila */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-700">Acciones rapidas</h3>
-          <button
-            onClick={() => { resetForm(); setShowForm(!showForm); }}
-            className="bg-[#0D2340] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#0d2340dd] transition-colors"
-          >
-            {showForm ? "Cancelar" : "+ Agregar miembro"}
-          </button>
-        </div>
+      {/* Header con boton Agregar */}
+      <div className="flex items-center justify-end mb-4">
+        <button
+          onClick={() => { resetForm(); setShowForm(!showForm); }}
+          className="bg-[#0D2340] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#0d2340dd] transition-colors"
+        >
+          {showForm ? "Cancelar" : "+ Agregar miembro"}
+        </button>
+      </div>
 
-        {staff.length > 0 && (
-          <div className="divide-y divide-gray-50">
-            {staff.map((s) => (
-              <div key={s.id} className="px-5 py-3 flex items-center justify-between">
-                <div>
-                  <span className="font-medium text-gray-800">{s.nombre}</span>
-                  <span className="text-gray-400 text-xs ml-2 capitalize">({s.rol})</span>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => startEdit(s)}
-                    className="text-[#1B4F9B] hover:underline text-xs font-medium"
-                    disabled={loading}
-                  >
-                    Editar
-                  </button>
-                  {s.activo && (
+      {/* Tabla */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto mb-6">
+        <table className="w-full min-w-[1100px] text-sm">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-100">
+              <th className="text-left px-5 py-3 font-semibold text-gray-600">Nombre</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-600">Email</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-600">Telefono</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-600">T.P.</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-600">Rol</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-600">Secretario asignado</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-600">Casos activos</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-600">Estado</th>
+              <th className="text-right px-5 py-3 font-semibold text-gray-600">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {!staff.length ? (
+              <tr>
+                <td colSpan={9} className="px-5 py-10 text-center text-gray-400">
+                  No hay miembros del equipo registrados
+                </td>
+              </tr>
+            ) : (
+              staff.map((s) => (
+                <tr key={s.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-5 py-3 font-medium text-[#0D2340]">{s.nombre}</td>
+                  <td className="px-5 py-3 text-gray-600">{s.email}</td>
+                  <td className="px-5 py-3 text-gray-600">{s.telefono ?? "—"}</td>
+                  <td className="px-5 py-3 text-gray-600 font-mono text-xs">{s.tarjeta_profesional ?? "—"}</td>
+                  <td className="px-5 py-3">
+                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 capitalize">
+                      {s.rol}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 text-gray-500">{s.supervisor_nombre}</td>
+                  <td className="px-5 py-3">
+                    <span className={`font-semibold ${s.casos_activos > 0 ? "text-[#1B4F9B]" : "text-gray-400"}`}>
+                      {s.casos_activos}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        s.activo ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {s.activo ? "Activo" : "Inactivo"}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 text-right whitespace-nowrap">
                     <button
-                      onClick={() => handleDeactivate(s.id, s.nombre)}
-                      className="text-red-500 hover:underline text-xs font-medium"
+                      onClick={() => startEdit(s)}
+                      className="text-[#1B4F9B] hover:underline text-xs font-medium disabled:opacity-50"
                       disabled={loading}
                     >
-                      Desactivar
+                      Editar
                     </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                    {s.activo && (
+                      <button
+                        onClick={() => handleDeactivate(s.id, s.nombre)}
+                        className="ml-3 text-red-500 hover:underline text-xs font-medium disabled:opacity-50"
+                        disabled={loading}
+                      >
+                        Desactivar
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
       {/* Formulario */}
