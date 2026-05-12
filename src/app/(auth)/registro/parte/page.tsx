@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Scale } from "lucide-react";
+import { Folders } from "lucide-react";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 
 export default function RegistroPage() {
@@ -89,7 +89,7 @@ function RegistroPageContent() {
         <div className="bg-[#0D2340] px-8 py-6 text-center">
           <div className="flex justify-center mb-2">
             <div className="bg-[#1B4F9B] p-2.5 rounded-full">
-              <Scale className="w-6 h-6 text-white" />
+              <Folders className="w-6 h-6 text-white" />
             </div>
           </div>
           <h1 className="text-white text-xl font-bold">Portal de Partes</h1>

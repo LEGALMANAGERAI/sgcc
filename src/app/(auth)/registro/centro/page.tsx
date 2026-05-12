@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Scale, Building2 } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 
 const TIPOS_CENTRO = [
