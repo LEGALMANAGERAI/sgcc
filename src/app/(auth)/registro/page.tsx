@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Scale, Building2, Users, User } from "lucide-react";
+import { Folders, Building2, Users, User } from "lucide-react";
 
 const options = [
   {
@@ -41,7 +41,7 @@ export default function RegistroSelectorPage() {
         <div className="bg-[#0D2340] px-8 py-8 text-center">
           <div className="flex justify-center mb-3">
             <div className="bg-[#1B4F9B] p-3 rounded-full">
-              <Scale className="w-8 h-8 text-white" />
+              <Folders className="w-8 h-8 text-white" />
             </div>
           </div>
           <h1 className="text-white text-2xl font-bold">SIGECC</h1>
