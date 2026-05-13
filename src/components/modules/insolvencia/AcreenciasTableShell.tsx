@@ -24,11 +24,22 @@ interface Props {
 }
 
 const EDITABLE_SELECTOR =
-  'input:not([type="hidden"]):not([type="checkbox"]):not([readonly]), select, textarea:not([readonly])';
+  'input:not([type="hidden"]):not([type="checkbox"]):not([readonly]), select, textarea:not([readonly]), [data-keyboard-cell="true"]';
 
 function findEditableInTd(td: Element | null): HTMLElement | null {
   if (!td) return null;
   return td.querySelector<HTMLElement>(EDITABLE_SELECTOR);
+}
+
+function focusEditable(el: HTMLElement) {
+  el.focus();
+  if (el instanceof HTMLInputElement && el.type !== "checkbox") {
+    el.select();
+  } else if (el.dataset.keyboardCell === "true" && el.tagName === "BUTTON") {
+    // El boton actua como celda editable (ej. MoneyInput): un click abre
+    // su modo edicion (renderiza el input real con autoFocus).
+    (el as HTMLButtonElement).click();
+  }
 }
 
 function moveHorizontal(el: HTMLElement, direction: "left" | "right") {
@@ -38,10 +49,7 @@ function moveHorizontal(el: HTMLElement, direction: "left" | "right") {
   while (next) {
     const editable = findEditableInTd(next);
     if (editable) {
-      editable.focus();
-      if (editable instanceof HTMLInputElement && editable.type !== "checkbox") {
-        editable.select();
-      }
+      focusEditable(editable);
       return;
     }
     next = direction === "left" ? next.previousElementSibling : next.nextElementSibling;
@@ -59,15 +67,11 @@ function moveVertical(el: HTMLElement, direction: "up" | "down") {
     direction === "up" ? tr.previousElementSibling : tr.nextElementSibling;
 
   while (nextTr) {
-    // Saltar filas que no son de datos (header secundario, etc.)
     const candidateTd = nextTr.children[colIdx];
     if (candidateTd && candidateTd.tagName === "TD") {
       const editable = findEditableInTd(candidateTd);
       if (editable) {
-        editable.focus();
-        if (editable instanceof HTMLInputElement && editable.type !== "checkbox") {
-          editable.select();
-        }
+        focusEditable(editable);
         return;
       }
     }

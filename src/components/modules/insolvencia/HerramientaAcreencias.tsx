@@ -3207,6 +3207,8 @@ function MoneyInput({ value, onSave }: { value: number; onSave: (v: number) => v
 
   return (
     <button
+      type="button"
+      data-keyboard-cell="true"
       onClick={() => { setText(value ? String(value) : ""); setEditing(true); }}
       className="w-28 text-right text-xs text-gray-700 hover:bg-blue-50 rounded px-1.5 py-0.5 transition-colors"
     >
