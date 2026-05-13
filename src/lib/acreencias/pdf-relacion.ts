@@ -391,8 +391,8 @@ export async function generarRelacionAcreenciasPdf(
       {
         n: String(idx),
         acreedor: `${nombreConDoc} - ${grupo.acreencias.length} acreencias`,
-        doc: "—",
-        ident: "—",
+        doc: "-",
+        ident: "-",
         clase: grupo.claseMixta ? "Mixta" : grupo.claseLabel ?? "",
         capital: money(grupo.totales.capital),
         intCorr: money(grupo.totales.intCorr),
@@ -401,7 +401,7 @@ export async function generarRelacionAcreenciasPdf(
         otros: money(grupo.totales.otros),
         total: money(grupo.totalConciliado),
         pctVoto: pctFmt(grupo.pctVotoGrupo),
-        peq: grupo.todosPequenos ? "Sí" : "—",
+        peq: grupo.todosPequenos ? "Sí" : "-",
       },
       { fill: parentFill, bold: true },
     );
@@ -411,7 +411,7 @@ export async function generarRelacionAcreenciasPdf(
       dibujarFila(
         {
           n: "",
-          acreedor: `   ↳ ${f.a.identificacion_credito ?? "Sin identificación"}`,
+          acreedor: `      > ${f.a.identificacion_credito ?? "Sin identificación"}`,
           doc: "",
           ident: f.a.identificacion_credito ?? "-",
           clase: CLASE_LABEL[f.a.clase_credito],
