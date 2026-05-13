@@ -96,25 +96,23 @@ export function AcreenciasTableShell({ children, className }: Props) {
     const inputType = isInput ? (target as HTMLInputElement).type.toLowerCase() : null;
 
     if (e.key === "ArrowRight") {
-      if (isInput && inputType !== "number") {
-        const input = target as HTMLInputElement;
-        const len = input.value.length;
-        const allSelected = input.selectionStart === 0 && input.selectionEnd === len;
-        const atEnd = input.selectionStart === len && input.selectionEnd === len;
+      if ((isInput && inputType !== "number") || isTextarea) {
+        const field = target as HTMLInputElement | HTMLTextAreaElement;
+        const len = field.value.length;
+        const allSelected = field.selectionStart === 0 && field.selectionEnd === len;
+        const atEnd = field.selectionStart === len && field.selectionEnd === len;
         if (!atEnd && !allSelected) return;
       }
-      if (isTextarea) return;
       e.preventDefault();
       moveHorizontal(target, "right");
     } else if (e.key === "ArrowLeft") {
-      if (isInput && inputType !== "number") {
-        const input = target as HTMLInputElement;
-        const len = input.value.length;
-        const allSelected = input.selectionStart === 0 && input.selectionEnd === len;
-        const atStart = input.selectionStart === 0 && input.selectionEnd === 0;
+      if ((isInput && inputType !== "number") || isTextarea) {
+        const field = target as HTMLInputElement | HTMLTextAreaElement;
+        const len = field.value.length;
+        const allSelected = field.selectionStart === 0 && field.selectionEnd === len;
+        const atStart = field.selectionStart === 0 && field.selectionEnd === 0;
         if (!atStart && !allSelected) return;
       }
-      if (isTextarea) return;
       e.preventDefault();
       moveHorizontal(target, "left");
     } else if (e.key === "ArrowDown") {
