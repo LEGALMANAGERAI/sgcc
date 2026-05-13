@@ -1,6 +1,6 @@
 import type { SgccAcreencia, SgccCase, SgccCenter, SgccParty, ClaseCredito } from "@/types";
 import { partyDisplayName } from "@/types";
-import { prepararFilasRelacion } from "@/lib/doc-generator";
+import { prepararGruposRelacion } from "@/lib/doc-generator";
 
 export interface RelacionAcreenciasPdfInput {
   caso: Pick<SgccCase, "numero_radicado" | "materia">;
@@ -318,75 +318,116 @@ export async function generarRelacionAcreenciasPdf(
   drawHeaderRow(MARGIN_HOR, y, HEADER_H);
   y -= HEADER_H;
 
-  const filas = prepararFilasRelacion(input.acreencias);
+  const grupos = prepararGruposRelacion(input.acreencias);
+  const parentFill = rgb(220 / 255, 233 / 255, 248 / 255);
+  const subRowFill = rgb(248 / 255, 250 / 255, 253 / 255);
 
   let totalCapital = 0;
   let totalIntCorr = 0;
   let totalIntMora = 0;
   let totalSeguros = 0;
   let totalOtros = 0;
+  let idx = 0;
 
-  filas.forEach((f, idx) => {
-    const capital = Number(f.a.con_capital);
-    const intCorr = Number(f.a.con_intereses_corrientes);
-    const intMora = Number(f.a.con_intereses_moratorios);
-    const seguros = Number(f.a.con_seguros);
-    const otros = Number(f.a.con_otros);
-
-    totalCapital += capital;
-    totalIntCorr += intCorr;
-    totalIntMora += intMora;
-    totalSeguros += seguros;
-    totalOtros += otros;
-
-    const values: Record<string, string> = {
-      n: String(idx + 1),
-      acreedor: f.a.acreedor_nombre,
-      doc: f.a.acreedor_documento ?? "-",
-      ident: f.a.identificacion_credito ?? "-",
-      clase: CLASE_LABEL[f.a.clase_credito],
-      capital: money(capital),
-      intCorr: money(intCorr),
-      intMora: money(intMora),
-      seguros: money(seguros),
-      otros: money(otros),
-      total: money(f.totalConciliado),
-      pctVoto: pctFmt(Number(f.a.porcentaje_voto)),
-      peq: f.a.es_pequeno_acreedor ? "Sí" : "-",
-    };
-
+  function dibujarFila(values: Record<string, string>, opts: { fill?: any; bold?: boolean }) {
     const rowH = rowHeightFor(values);
-
-    // Nueva página si no cabe (dejamos espacio para totales + leyenda)
     if (y - rowH < MARGIN_VER + 80) {
       nuevaPagina();
       drawHeaderRow(MARGIN_HOR, y, HEADER_H);
       y -= HEADER_H;
     }
-
-    const fill = idx % 2 === 1 ? rgb(248 / 255, 250 / 255, 253 / 255) : undefined;
-    drawGridRow(MARGIN_HOR, y, rowH, fill);
-
+    drawGridRow(MARGIN_HOR, y, rowH, opts.fill);
     const padding = 3;
     let cx = MARGIN_HOR;
     for (const col of COLS) {
-      const isTotal = col.key === "total";
-      const lines = wrapToLines(values[col.key] ?? "", col.w - padding * 2, FONT_BODY, fontRegular);
-      drawCellLines(
-        lines,
-        cx,
-        y,
-        rowH,
-        col.w,
-        col.align,
-        FONT_BODY,
-        isTotal ? fontBold : fontRegular,
-      );
+      const font = opts.bold ? fontBold : col.key === "total" ? fontBold : fontRegular;
+      const lines = wrapToLines(values[col.key] ?? "", col.w - padding * 2, FONT_BODY, font);
+      drawCellLines(lines, cx, y, rowH, col.w, col.align, FONT_BODY, font);
       cx += col.w;
     }
-
     y -= rowH;
-  });
+  }
+
+  for (const grupo of grupos) {
+    // Sumar al total general (siempre, viva o no la fila padre)
+    totalCapital += grupo.totales.capital;
+    totalIntCorr += grupo.totales.intCorr;
+    totalIntMora += grupo.totales.intMora;
+    totalSeguros += grupo.totales.seguros;
+    totalOtros += grupo.totales.otros;
+
+    const multiple = grupo.acreencias.length > 1;
+
+    if (!multiple) {
+      idx += 1;
+      const f = grupo.acreencias[0];
+      dibujarFila(
+        {
+          n: String(idx),
+          acreedor: f.a.acreedor_nombre,
+          doc: f.a.acreedor_documento ?? "-",
+          ident: f.a.identificacion_credito ?? "-",
+          clase: CLASE_LABEL[f.a.clase_credito],
+          capital: money(Number(f.a.con_capital)),
+          intCorr: money(Number(f.a.con_intereses_corrientes)),
+          intMora: money(Number(f.a.con_intereses_moratorios)),
+          seguros: money(Number(f.a.con_seguros)),
+          otros: money(Number(f.a.con_otros)),
+          total: money(f.totalConciliado),
+          pctVoto: pctFmt(Number(f.a.porcentaje_voto)),
+          peq: f.a.es_pequeno_acreedor ? "Sí" : "-",
+        },
+        { fill: idx % 2 === 0 ? subRowFill : undefined },
+      );
+      continue;
+    }
+
+    // Fila padre — acreedor con varias acreencias consolidadas
+    idx += 1;
+    const nombreConDoc = grupo.acreedorDocumento
+      ? `${grupo.acreedorNombre} (${grupo.acreedorDocumento})`
+      : grupo.acreedorNombre;
+    dibujarFila(
+      {
+        n: String(idx),
+        acreedor: `${nombreConDoc} - ${grupo.acreencias.length} acreencias`,
+        doc: "—",
+        ident: "—",
+        clase: grupo.claseMixta ? "Mixta" : grupo.claseLabel ?? "",
+        capital: money(grupo.totales.capital),
+        intCorr: money(grupo.totales.intCorr),
+        intMora: money(grupo.totales.intMora),
+        seguros: money(grupo.totales.seguros),
+        otros: money(grupo.totales.otros),
+        total: money(grupo.totalConciliado),
+        pctVoto: pctFmt(grupo.pctVotoGrupo),
+        peq: grupo.todosPequenos ? "Sí" : "—",
+      },
+      { fill: parentFill, bold: true },
+    );
+
+    // Sub-filas — cada acreencia desplegada
+    for (const f of grupo.acreencias) {
+      dibujarFila(
+        {
+          n: "",
+          acreedor: `   ↳ ${f.a.identificacion_credito ?? "Sin identificación"}`,
+          doc: "",
+          ident: f.a.identificacion_credito ?? "-",
+          clase: CLASE_LABEL[f.a.clase_credito],
+          capital: money(Number(f.a.con_capital)),
+          intCorr: money(Number(f.a.con_intereses_corrientes)),
+          intMora: money(Number(f.a.con_intereses_moratorios)),
+          seguros: money(Number(f.a.con_seguros)),
+          otros: money(Number(f.a.con_otros)),
+          total: money(f.totalConciliado),
+          pctVoto: pctFmt(Number(f.a.porcentaje_voto)),
+          peq: f.a.es_pequeno_acreedor ? "Sí" : "-",
+        },
+        { fill: subRowFill },
+      );
+    }
+  }
 
   // Fila de totales
   const totalValues: Record<string, { text: string; align: "left" | "right" | "center" }> = {
