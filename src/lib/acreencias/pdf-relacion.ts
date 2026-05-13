@@ -43,12 +43,12 @@ export async function generarRelacionAcreenciasPdf(
   const gridLine = rgb(196 / 255, 206 / 255, 222 / 255);
   const white = rgb(1, 1, 1);
 
-  // Carta vertical con margenes verticales 1 in y horizontales ~1.5 cm para
-  // dar mas ancho util a las 13 columnas y que palabras/cifras no se trunquen.
+  // Carta vertical con margenes 1 pulgada (2.54 cm) en los 4 lados —
+  // identicos a los del Word para que ambos exports se vean iguales.
   const PAGE_W = 612;
   const PAGE_H = 792;
   const MARGIN_VER = 72;
-  const MARGIN_HOR = 43;
+  const MARGIN_HOR = 72;
   const USABLE_W = PAGE_W - 2 * MARGIN_HOR; // 526 pt
 
   // Sin columna Doc. ni Identif. — el documento va entre parentesis

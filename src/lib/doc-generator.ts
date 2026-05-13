@@ -420,20 +420,20 @@ export async function generateRelacionAcreenciasDocx(
     "Peq.",
   ];
 
-  // Suma debe ser <= 10512 (ancho util en pagina carta vertical con
-  // margenes horizontales de 864 twips cada lado).
+  // Suma debe ser <= 9360 (ancho util en pagina carta vertical con
+  // margenes de 1 pulgada / 1440 twips cada lado, igual al PDF).
   const COL_WIDTHS = [
-    380,   // #
-    2700,  // Acreedor (absorbe documento y identif.)
-    520,   // Clase
-    1100,  // Capital
-    960,   // Int. corr.
-    960,   // Int. mora
-    870,   // Seguros
-    820,   // Otros
-    1140,  // Total
-    600,   // % Voto
-    460,   // Peq.
+    340,   // #
+    2400,  // Acreedor (absorbe documento y identif.)
+    460,   // Clase
+    980,   // Capital
+    860,   // Int. corr.
+    860,   // Int. mora
+    780,   // Seguros
+    730,   // Otros
+    1010,  // Total
+    540,   // % Voto
+    400,   // Peq.
   ];
 
   const headerCell = (text: string, width: number) =>
@@ -724,10 +724,9 @@ export async function generateRelacionAcreenciasDocx(
       {
         properties: {
           page: {
-            // Margenes verticales 1in / horizontales 1.5cm (864 twips) para
-            // dar mas ancho util a la tabla y que Word no parta palabras
-            // letra por letra ("daviiend / a") ni montos.
-            margin: { top: 1440, right: 864, bottom: 1440, left: 864 },
+            // Margenes 1 pulgada (1440 twips) en los 4 lados — identicos
+            // a los del PDF para que ambos exports se vean iguales.
+            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
             size: { orientation: PageOrientation.PORTRAIT },
           },
         },
