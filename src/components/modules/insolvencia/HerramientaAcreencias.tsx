@@ -1695,7 +1695,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                     const totalRow = Number(a.con_capital) + Number(a.con_intereses_corrientes) + Number(a.con_intereses_moratorios) + Number(a.con_seguros) + Number(a.con_otros);
                     return (
                       <tr key={grupo.key} className={`hover:bg-gray-50/50 ${a.es_pequeno_acreedor ? "bg-amber-50/30" : ""}`}>
-                        <td className="px-3 py-2 font-medium text-gray-900">
+                        <td className="px-3 py-2 font-medium text-gray-900 border-l-4 border-l-[#0D2340]">
                           <div>{a.acreedor_nombre}{a.acreedor_documento && <span className="text-gray-400 ml-1">({a.acreedor_documento})</span>}</div>
                           {a.identificacion_credito && <div className="text-[10px] text-gray-500 mt-0.5">{a.identificacion_credito}</div>}
                         </td>
@@ -1760,7 +1760,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                         className="bg-blue-50/40 border-t-2 border-blue-200 cursor-pointer hover:bg-blue-100/40"
                         onClick={() => toggleGrupo(grupo.key)}
                       >
-                        <td className="px-3 py-2.5 font-bold text-gray-900">
+                        <td className="px-3 py-2.5 font-bold text-gray-900 border-l-4 border-l-[#0D2340]">
                           <div className="flex items-center gap-2">
                             {expanded ? (
                               <ChevronDown className="w-3.5 h-3.5 text-[#1B4F9B]" />
@@ -1822,7 +1822,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                         const totalRow = Number(a.con_capital) + Number(a.con_intereses_corrientes) + Number(a.con_intereses_moratorios) + Number(a.con_seguros) + Number(a.con_otros);
                         return (
                           <tr key={a.id} className={`bg-gray-50/40 hover:bg-gray-100/40 ${a.es_pequeno_acreedor ? "bg-amber-50/30" : ""}`}>
-                            <td className="px-3 py-2 text-gray-700">
+                            <td className="px-3 py-2 text-gray-700 border-l-4 border-l-[#1B4F9B]/40">
                               <div className="flex items-start gap-2 pl-5">
                                 <span className="text-gray-400 text-sm">↳</span>
                                 <div>
@@ -2846,7 +2846,7 @@ function SortableAcreenciaRow({
   };
   return (
     <tr ref={setNodeRef} style={style} className="hover:bg-gray-50/50">
-      <td className="w-8 px-1 py-2 text-center align-middle">
+      <td className="w-8 px-1 py-2 text-center align-middle border-l-4 border-l-[#0D2340]">
         <button
           type="button"
           {...attributes}
