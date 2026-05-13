@@ -403,18 +403,19 @@ export async function generateRelacionAcreenciasDocx(
   const totalOtros = ctx.acreencias.reduce((s, a) => s + Number(a.con_otros), 0);
   const totalGeneral = totalCapital + totalIntCorr + totalIntMora + totalSeguros + totalOtros;
 
+  // Headers cortos para que coincida con el PDF.
   const headers = [
     "#",
     "Acreedor",
-    "Documento",
-    "Identificación del crédito",
+    "Doc.",
+    "Identif.",
     "Clase",
     "Capital",
     "Int. corr.",
     "Int. mora",
     "Seguros",
     "Otros",
-    "Total conciliado",
+    "Total",
     "% Voto",
     "Peq.",
   ];
@@ -552,11 +553,11 @@ export async function generateRelacionAcreenciasDocx(
         children: [
           parentCell(String(idx), COL_WIDTHS[0], AlignmentType.CENTER, "main"),
           parentCell(
-            `${nombreConDocumento}\n${grupo.acreencias.length} acreencias consolidadas`,
+            `${nombreConDocumento} - ${grupo.acreencias.length} acreencias`,
             COL_WIDTHS[1],
           ),
-          parentCell("—", COL_WIDTHS[2]),
-          parentCell("—", COL_WIDTHS[3]),
+          parentCell("-", COL_WIDTHS[2]),
+          parentCell("-", COL_WIDTHS[3]),
           parentCell(claseLabel, COL_WIDTHS[4], AlignmentType.CENTER),
           parentCell(money(grupo.totales.capital), COL_WIDTHS[5], AlignmentType.RIGHT),
           parentCell(money(grupo.totales.intCorr), COL_WIDTHS[6], AlignmentType.RIGHT),
@@ -565,7 +566,7 @@ export async function generateRelacionAcreenciasDocx(
           parentCell(money(grupo.totales.otros), COL_WIDTHS[9], AlignmentType.RIGHT),
           parentCell(money(grupo.totalConciliado), COL_WIDTHS[10], AlignmentType.RIGHT),
           parentCell(pctFmt(grupo.pctVotoGrupo), COL_WIDTHS[11], AlignmentType.CENTER),
-          parentCell(grupo.todosPequenos ? "Sí" : "—", COL_WIDTHS[12], AlignmentType.CENTER),
+          parentCell(grupo.todosPequenos ? "Sí" : "-", COL_WIDTHS[12], AlignmentType.CENTER),
         ],
       }),
     );
@@ -577,11 +578,11 @@ export async function generateRelacionAcreenciasDocx(
           children: [
             bodyCell("", COL_WIDTHS[0], AlignmentType.CENTER, false, "child"),
             bodyCell(
-              `   ↳ ${f.a.identificacion_credito ?? "Sin identificación"}`,
+              `      > ${f.a.identificacion_credito ?? "Sin identificación"}`,
               COL_WIDTHS[1],
             ),
             bodyCell("", COL_WIDTHS[2]),
-            bodyCell(f.a.identificacion_credito ?? "—", COL_WIDTHS[3]),
+            bodyCell(f.a.identificacion_credito ?? "-", COL_WIDTHS[3]),
             bodyCell(CLASE_LABEL[f.a.clase_credito], COL_WIDTHS[4], AlignmentType.CENTER),
             bodyCell(money(Number(f.a.con_capital)), COL_WIDTHS[5], AlignmentType.RIGHT),
             bodyCell(money(Number(f.a.con_intereses_corrientes)), COL_WIDTHS[6], AlignmentType.RIGHT),
@@ -590,7 +591,7 @@ export async function generateRelacionAcreenciasDocx(
             bodyCell(money(Number(f.a.con_otros)), COL_WIDTHS[9], AlignmentType.RIGHT),
             bodyCell(money(f.totalConciliado), COL_WIDTHS[10], AlignmentType.RIGHT),
             bodyCell(pctFmt(Number(f.a.porcentaje_voto)), COL_WIDTHS[11], AlignmentType.CENTER),
-            bodyCell(f.a.es_pequeno_acreedor ? "Sí" : "—", COL_WIDTHS[12], AlignmentType.CENTER),
+            bodyCell(f.a.es_pequeno_acreedor ? "Sí" : "-", COL_WIDTHS[12], AlignmentType.CENTER),
           ],
         }),
       );
