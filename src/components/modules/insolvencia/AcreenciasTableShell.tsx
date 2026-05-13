@@ -98,9 +98,10 @@ export function AcreenciasTableShell({ children, className }: Props) {
     if (e.key === "ArrowRight") {
       if (isInput && inputType !== "number") {
         const input = target as HTMLInputElement;
-        const atEnd =
-          input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
-        if (!atEnd) return;
+        const len = input.value.length;
+        const allSelected = input.selectionStart === 0 && input.selectionEnd === len;
+        const atEnd = input.selectionStart === len && input.selectionEnd === len;
+        if (!atEnd && !allSelected) return;
       }
       if (isTextarea) return;
       e.preventDefault();
@@ -108,8 +109,10 @@ export function AcreenciasTableShell({ children, className }: Props) {
     } else if (e.key === "ArrowLeft") {
       if (isInput && inputType !== "number") {
         const input = target as HTMLInputElement;
+        const len = input.value.length;
+        const allSelected = input.selectionStart === 0 && input.selectionEnd === len;
         const atStart = input.selectionStart === 0 && input.selectionEnd === 0;
-        if (!atStart) return;
+        if (!atStart && !allSelected) return;
       }
       if (isTextarea) return;
       e.preventDefault();
