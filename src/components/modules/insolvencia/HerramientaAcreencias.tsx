@@ -1694,10 +1694,10 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                     const a = grupo.acreencias[0];
                     const totalRow = Number(a.con_capital) + Number(a.con_intereses_corrientes) + Number(a.con_intereses_moratorios) + Number(a.con_seguros) + Number(a.con_otros);
                     return (
-                      <tr key={grupo.key} className={`hover:bg-gray-50/50 ${a.es_pequeno_acreedor ? "bg-amber-50/30" : ""}`}>
-                        <td className="px-3 py-2 font-medium text-gray-900 border-l-4 border-l-[#0D2340]">
-                          <div>{a.acreedor_nombre}{a.acreedor_documento && <span className="text-gray-400 ml-1">({a.acreedor_documento})</span>}</div>
-                          {a.identificacion_credito && <div className="text-[10px] text-gray-500 mt-0.5">{a.identificacion_credito}</div>}
+                      <tr key={grupo.key} className={`bg-blue-50/40 border-t-2 border-blue-200 hover:bg-blue-100/40 ${a.es_pequeno_acreedor ? "bg-amber-50/30" : ""}`}>
+                        <td className="px-3 py-2.5 font-bold text-gray-900 border-l-4 border-l-[#0D2340]">
+                          <div>{a.acreedor_nombre}{a.acreedor_documento && <span className="text-gray-500 ml-1 font-normal">({a.acreedor_documento})</span>}</div>
+                          {a.identificacion_credito && <div className="text-[10px] text-gray-500 mt-0.5 font-normal">{a.identificacion_credito}</div>}
                         </td>
                         <td className="px-2 py-2 text-center">
                           {(() => {
