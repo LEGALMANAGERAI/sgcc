@@ -90,7 +90,14 @@ const sections: NavSection[] = [
   },
   {
     title: "Sistema",
-    items: [{ label: "Configuración", href: "/configuracion", icon: Settings }],
+    items: [
+      {
+        label: "Configuración",
+        href: "/configuracion",
+        icon: Settings,
+        rolesPermitidos: ["admin"],
+      },
+    ],
   },
 ];
 
