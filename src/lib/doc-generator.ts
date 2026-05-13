@@ -421,10 +421,12 @@ export async function generateRelacionAcreenciasDocx(
   ];
 
   // Suma debe ser <= 10512 (ancho util en pagina carta vertical con
-  // margenes horizontales de 864 twips cada lado).
+  // margenes horizontales de 864 twips cada lado). Reparto enfatiza las
+  // columnas finales (% Voto y Peq.) para que no queden apretadas al
+  // margen derecho.
   const COL_WIDTHS = [
     380,   // #
-    2400,  // Acreedor (mas ancho ahora que absorbe la identif.)
+    2050,  // Acreedor (absorbe la identif. debajo del nombre)
     1000,  // Documento
     480,   // Clase
     1050,  // Capital
@@ -433,8 +435,8 @@ export async function generateRelacionAcreenciasDocx(
     760,   // Seguros
     760,   // Otros
     1100,  // Total
-    420,   // % Voto
-    320,   // Peq.
+    600,   // % Voto
+    490,   // Peq.
   ];
 
   const headerCell = (text: string, width: number) =>
