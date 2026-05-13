@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { generateRadicado } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
 import { asignarConciliador } from "@/lib/asignacion-conciliador";
-import { normalizeEmail } from "@/lib/normalize-email";
+import { findOrCreateParty } from "@/lib/parties";
 
 interface PersonaPayload {
   tipo_persona: "natural" | "juridica";
@@ -32,73 +32,32 @@ interface SolicitudPayload {
 }
 
 /**
- * Busca o crea una parte (party) en sgcc_parties.
- * Busca primero por email, luego por número de documento.
+ * Wrapper sobre findOrCreateParty para preservar la firma legacy del widget
+ * (centerId + PersonaPayload). Para juridicas mapea nit_empresa a numero_doc
+ * porque findOrCreateParty espera el documento en numero_doc para ambos tipos.
  */
-async function findOrCreateParty(
+async function findOrCreatePartyForWidget(
   centerId: string,
-  persona: PersonaPayload
+  persona: PersonaPayload,
 ): Promise<string> {
-  const email = normalizeEmail(persona.email);
+  const numeroDoc =
+    persona.tipo_persona === "juridica" ? persona.nit_empresa : persona.numero_doc;
 
-  // Buscar por email (case-insensitive)
-  const { data: byEmail } = await supabaseAdmin
-    .from("sgcc_parties")
-    .select("id")
-    .eq("center_id", centerId)
-    .ilike("email", email)
-    .limit(1)
-    .maybeSingle();
+  const { partyId } = await findOrCreateParty(
+    {
+      tipo_persona: persona.tipo_persona,
+      nombres: persona.nombres ?? null,
+      apellidos: persona.apellidos ?? null,
+      razon_social: persona.razon_social ?? null,
+      tipo_doc: persona.tipo_doc ?? null,
+      numero_doc: numeroDoc ?? null,
+      email: persona.email,
+      telefono: persona.telefono ?? null,
+      ciudad: persona.ciudad ?? null,
+    },
+    { centerId },
+  );
 
-  if (byEmail) return byEmail.id;
-
-  // Buscar por número de documento (solo personas naturales)
-  if (persona.tipo_persona === "natural" && persona.numero_doc) {
-    const { data: byDoc } = await supabaseAdmin
-      .from("sgcc_parties")
-      .select("id")
-      .eq("center_id", centerId)
-      .eq("numero_doc", persona.numero_doc)
-      .limit(1)
-      .maybeSingle();
-
-    if (byDoc) return byDoc.id;
-  }
-
-  // Buscar por NIT (personas jurídicas)
-  if (persona.tipo_persona === "juridica" && persona.nit_empresa) {
-    const { data: byNit } = await supabaseAdmin
-      .from("sgcc_parties")
-      .select("id")
-      .eq("center_id", centerId)
-      .eq("numero_doc", persona.nit_empresa)
-      .limit(1)
-      .maybeSingle();
-
-    if (byNit) return byNit.id;
-  }
-
-  // Crear nueva parte
-  const partyId = randomUUID();
-  const isNatural = persona.tipo_persona === "natural";
-
-  const { error } = await supabaseAdmin.from("sgcc_parties").insert({
-    id: partyId,
-    center_id: centerId,
-    tipo_persona: persona.tipo_persona,
-    nombres: isNatural ? persona.nombres : null,
-    apellidos: isNatural ? persona.apellidos : null,
-    tipo_doc: isNatural ? (persona.tipo_doc ?? "CC") : "NIT",
-    numero_doc: isNatural ? persona.numero_doc : persona.nit_empresa,
-    razon_social: !isNatural ? persona.razon_social : null,
-    representante_legal: !isNatural ? persona.representante_legal : null,
-    email,
-    telefono: persona.telefono ?? null,
-    ciudad: persona.ciudad ?? null,
-    created_at: new Date().toISOString(),
-  });
-
-  if (error) throw new Error(`Error creando parte: ${error.message}`);
   return partyId;
 }
 
@@ -138,11 +97,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "El centro no se encuentra activo" }, { status: 400 });
     }
 
-    // 2. Crear o buscar partes
-    const convocanteId = await findOrCreateParty(body.center_id, body.convocante);
+    // 2. Crear o buscar partes (match por documento, NUNCA por email)
+    const convocanteId = await findOrCreatePartyForWidget(body.center_id, body.convocante);
     const convocadoIds: string[] = [];
     for (const conv of body.convocados) {
-      const id = await findOrCreateParty(body.center_id, conv);
+      const id = await findOrCreatePartyForWidget(body.center_id, conv);
       convocadoIds.push(id);
     }
 

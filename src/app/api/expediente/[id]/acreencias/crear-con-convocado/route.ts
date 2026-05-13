@@ -9,6 +9,7 @@ import {
   verifyPoderIsPdf,
   deletePoder,
 } from "@/lib/poderes-storage";
+import { findOrCreateParty } from "@/lib/parties";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -72,51 +73,24 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const now = new Date().toISOString();
 
-  // 1. Crear o reutilizar party (buscar por email case-insensitive)
+  // 1. Buscar party por documento (no por email — ver lib/parties.ts) o crear
   let partyId: string;
-  const { data: existingParty } = await supabaseAdmin
-    .from("sgcc_parties")
-    .select("id")
-    .ilike("email", acreedor.email.trim())
-    .maybeSingle();
-
-  if (existingParty) {
-    partyId = existingParty.id;
-    await supabaseAdmin
-      .from("sgcc_parties")
-      .update({
-        tipo_persona: tipoPersona,
-        nombres: tipoPersona === "natural" ? acreedor.nombres ?? acreedor.nombre ?? null : null,
-        apellidos: tipoPersona === "natural" ? acreedor.apellidos ?? null : null,
-        razon_social: tipoPersona === "juridica" ? acreedor.razon_social ?? acreedor.nombre ?? null : null,
-        tipo_doc: acreedor.tipo_doc ?? null,
-        numero_doc: tipoPersona === "natural" ? acreedor.numero_doc ?? null : null,
-        nit_empresa: tipoPersona === "juridica" ? acreedor.numero_doc ?? null : null,
-        telefono: acreedor.telefono ?? null,
-        direccion: acreedor.direccion ?? null,
-        ciudad: acreedor.ciudad ?? null,
-        updated_at: now,
-      })
-      .eq("id", partyId);
-  } else {
-    partyId = randomUUID();
-    const { error: partyErr } = await supabaseAdmin.from("sgcc_parties").insert({
-      id: partyId,
+  try {
+    const result = await findOrCreateParty({
       tipo_persona: tipoPersona,
       nombres: tipoPersona === "natural" ? acreedor.nombres ?? acreedor.nombre ?? null : null,
       apellidos: tipoPersona === "natural" ? acreedor.apellidos ?? null : null,
       razon_social: tipoPersona === "juridica" ? acreedor.razon_social ?? acreedor.nombre ?? null : null,
       tipo_doc: acreedor.tipo_doc ?? null,
-      numero_doc: tipoPersona === "natural" ? acreedor.numero_doc ?? null : null,
-      nit_empresa: tipoPersona === "juridica" ? acreedor.numero_doc ?? null : null,
+      numero_doc: acreedor.numero_doc ?? null,
       email: acreedor.email.trim(),
       telefono: acreedor.telefono ?? null,
       direccion: acreedor.direccion ?? null,
       ciudad: acreedor.ciudad ?? null,
-      created_at: now,
-      updated_at: now,
     });
-    if (partyErr) return NextResponse.json({ error: `Error creando parte: ${partyErr.message}` }, { status: 500 });
+    partyId = result.partyId;
+  } catch (e: any) {
+    return NextResponse.json({ error: `Error creando parte: ${e?.message ?? "desconocido"}` }, { status: 500 });
   }
 
   // 2. case_party con rol "convocado" (si no existe ya)
