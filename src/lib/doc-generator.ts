@@ -324,34 +324,55 @@ export async function generateRelacionAcreenciasDocx(
     "Peq.",
   ];
 
-  const headerCell = (text: string) =>
+  // Anchos por columna en twips. Suma = 10800 ≈ 19 cm. Con margenes
+  // horizontales reducidos a 1.5 cm la pagina carta tiene 18.5 cm utiles,
+  // suficientes para esta tabla sin que Word parta palabras letra por letra.
+  const COL_WIDTHS = [
+    400,   // #
+    1900,  // Acreedor
+    900,   // Documento
+    1000,  // Identif. credito
+    500,   // Clase
+    1000,  // Capital
+    900,   // Int. corr.
+    900,   // Int. mora
+    750,   // Seguros
+    750,   // Otros
+    1100,  // Total
+    400,   // % Voto
+    300,   // Peq.
+  ];
+
+  const headerCell = (text: string, width: number) =>
     new TableCell({
+      width: { size: width, type: WidthType.DXA },
       children: [
         new Paragraph({
-          children: [new TextRun({ text, bold: true, size: 16, color: "FFFFFF" })],
+          children: [new TextRun({ text, bold: true, size: 14, color: "FFFFFF" })],
           alignment: AlignmentType.CENTER,
         }),
       ],
       shading: { fill: "0D2340" },
-      margins: { top: 80, bottom: 80, left: 60, right: 60 },
+      margins: { top: 60, bottom: 60, left: 40, right: 40 },
     });
 
   type AlignValue = (typeof AlignmentType)[keyof typeof AlignmentType];
-  const bodyCell = (text: string, align: AlignValue = AlignmentType.LEFT, bold = false) =>
+  const bodyCell = (text: string, width: number, align: AlignValue = AlignmentType.LEFT, bold = false) =>
     new TableCell({
+      width: { size: width, type: WidthType.DXA },
       children: [
         new Paragraph({
-          children: [new TextRun({ text, size: 16, bold })],
+          children: [new TextRun({ text, size: 14, bold })],
           alignment: align,
         }),
       ],
-      margins: { top: 60, bottom: 60, left: 60, right: 60 },
+      margins: { top: 50, bottom: 50, left: 40, right: 40 },
     });
 
   const rows: TableRow[] = [
     new TableRow({
       tableHeader: true,
-      children: headers.map(headerCell),
+      children: headers.map((h, i) => headerCell(h, COL_WIDTHS[i])),
     }),
   ];
 
@@ -359,59 +380,62 @@ export async function generateRelacionAcreenciasDocx(
     rows.push(
       new TableRow({
         children: [
-          bodyCell(String(idx + 1), AlignmentType.CENTER),
-          bodyCell(f.a.acreedor_nombre),
-          bodyCell(f.a.acreedor_documento ?? "—"),
-          bodyCell(f.a.identificacion_credito ?? "—"),
-          bodyCell(CLASE_LABEL[f.a.clase_credito], AlignmentType.CENTER),
-          bodyCell(money(Number(f.a.con_capital)), AlignmentType.RIGHT),
-          bodyCell(money(Number(f.a.con_intereses_corrientes)), AlignmentType.RIGHT),
-          bodyCell(money(Number(f.a.con_intereses_moratorios)), AlignmentType.RIGHT),
-          bodyCell(money(Number(f.a.con_seguros)), AlignmentType.RIGHT),
-          bodyCell(money(Number(f.a.con_otros)), AlignmentType.RIGHT),
-          bodyCell(money(f.totalConciliado), AlignmentType.RIGHT, true),
-          bodyCell(pctFmt(Number(f.a.porcentaje_voto)), AlignmentType.CENTER),
-          bodyCell(f.a.es_pequeno_acreedor ? "Sí" : "—", AlignmentType.CENTER),
+          bodyCell(String(idx + 1), COL_WIDTHS[0], AlignmentType.CENTER),
+          bodyCell(f.a.acreedor_nombre, COL_WIDTHS[1]),
+          bodyCell(f.a.acreedor_documento ?? "—", COL_WIDTHS[2]),
+          bodyCell(f.a.identificacion_credito ?? "—", COL_WIDTHS[3]),
+          bodyCell(CLASE_LABEL[f.a.clase_credito], COL_WIDTHS[4], AlignmentType.CENTER),
+          bodyCell(money(Number(f.a.con_capital)), COL_WIDTHS[5], AlignmentType.RIGHT),
+          bodyCell(money(Number(f.a.con_intereses_corrientes)), COL_WIDTHS[6], AlignmentType.RIGHT),
+          bodyCell(money(Number(f.a.con_intereses_moratorios)), COL_WIDTHS[7], AlignmentType.RIGHT),
+          bodyCell(money(Number(f.a.con_seguros)), COL_WIDTHS[8], AlignmentType.RIGHT),
+          bodyCell(money(Number(f.a.con_otros)), COL_WIDTHS[9], AlignmentType.RIGHT),
+          bodyCell(money(f.totalConciliado), COL_WIDTHS[10], AlignmentType.RIGHT, true),
+          bodyCell(pctFmt(Number(f.a.porcentaje_voto)), COL_WIDTHS[11], AlignmentType.CENTER),
+          bodyCell(f.a.es_pequeno_acreedor ? "Sí" : "—", COL_WIDTHS[12], AlignmentType.CENTER),
         ],
       })
     );
   });
 
   // Fila de totales
-  const totalCell = (text: string, align: AlignValue = AlignmentType.RIGHT) =>
+  const totalCell = (text: string, width: number, align: AlignValue = AlignmentType.RIGHT) =>
     new TableCell({
+      width: { size: width, type: WidthType.DXA },
       children: [
         new Paragraph({
-          children: [new TextRun({ text, size: 16, bold: true })],
+          children: [new TextRun({ text, size: 14, bold: true })],
           alignment: align,
         }),
       ],
       shading: { fill: "E8EEF7" },
-      margins: { top: 80, bottom: 80, left: 60, right: 60 },
+      margins: { top: 60, bottom: 60, left: 40, right: 40 },
     });
 
   rows.push(
     new TableRow({
       children: [
-        totalCell("", AlignmentType.CENTER),
-        totalCell("TOTALES", AlignmentType.LEFT),
-        totalCell("", AlignmentType.LEFT),
-        totalCell("", AlignmentType.LEFT),
-        totalCell("", AlignmentType.CENTER),
-        totalCell(money(totalCapital)),
-        totalCell(money(totalIntCorr)),
-        totalCell(money(totalIntMora)),
-        totalCell(money(totalSeguros)),
-        totalCell(money(totalOtros)),
-        totalCell(money(totalGeneral)),
-        totalCell("100.00%", AlignmentType.CENTER),
-        totalCell("", AlignmentType.CENTER),
+        totalCell("", COL_WIDTHS[0], AlignmentType.CENTER),
+        totalCell("TOTALES", COL_WIDTHS[1], AlignmentType.LEFT),
+        totalCell("", COL_WIDTHS[2], AlignmentType.LEFT),
+        totalCell("", COL_WIDTHS[3], AlignmentType.LEFT),
+        totalCell("", COL_WIDTHS[4], AlignmentType.CENTER),
+        totalCell(money(totalCapital), COL_WIDTHS[5]),
+        totalCell(money(totalIntCorr), COL_WIDTHS[6]),
+        totalCell(money(totalIntMora), COL_WIDTHS[7]),
+        totalCell(money(totalSeguros), COL_WIDTHS[8]),
+        totalCell(money(totalOtros), COL_WIDTHS[9]),
+        totalCell(money(totalGeneral), COL_WIDTHS[10]),
+        totalCell("100.00%", COL_WIDTHS[11], AlignmentType.CENTER),
+        totalCell("", COL_WIDTHS[12], AlignmentType.CENTER),
       ],
     })
   );
 
+  const tableTotalWidth = COL_WIDTHS.reduce((s, w) => s + w, 0);
   const table = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
+    width: { size: tableTotalWidth, type: WidthType.DXA },
+    columnWidths: COL_WIDTHS,
     rows,
     borders: {
       top: { style: BorderStyle.SINGLE, size: 4, color: "8A9DB8" },
@@ -504,7 +528,10 @@ export async function generateRelacionAcreenciasDocx(
       {
         properties: {
           page: {
-            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
+            // Margenes verticales 1in / horizontales 1.5cm (864 twips) para
+            // dar mas ancho util a la tabla y que Word no parta palabras
+            // letra por letra ("daviiend / a") ni montos.
+            margin: { top: 1440, right: 864, bottom: 1440, left: 864 },
             size: { orientation: PageOrientation.PORTRAIT },
           },
         },

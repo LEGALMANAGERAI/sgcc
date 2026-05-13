@@ -43,31 +43,32 @@ export async function generarRelacionAcreenciasPdf(
   const gridLine = rgb(196 / 255, 206 / 255, 222 / 255);
   const white = rgb(1, 1, 1);
 
-  // Carta vertical con márgenes de 1 pulgada (72 pt = 2.54 cm), idénticos al acta.
+  // Carta vertical con margenes verticales 1 in y horizontales ~1.5 cm para
+  // dar mas ancho util a las 13 columnas y que palabras/cifras no se trunquen.
   const PAGE_W = 612;
   const PAGE_H = 792;
-  const MARGIN = 72;
-  const RIGHT = PAGE_W - MARGIN;
-  const USABLE_W = PAGE_W - 2 * MARGIN; // 468 pt
+  const MARGIN_VER = 72;
+  const MARGIN_HOR = 43;
+  const USABLE_W = PAGE_W - 2 * MARGIN_HOR; // 526 pt
 
-  // Distribución de 13 columnas sobre 468 pt de ancho útil.
+  // Distribucion ponderada: Acreedor + montos importantes mas anchos que
+  // identif./pequeño para nombres de empresas y montos COP completos.
   const COLS = [
-    { key: "n", label: "#", w: 16, align: "center" as const },
-    { key: "acreedor", label: "Acreedor", w: 72, align: "left" as const },
-    { key: "doc", label: "Doc.", w: 44, align: "left" as const },
-    { key: "ident", label: "Identif.", w: 52, align: "left" as const },
-    { key: "clase", label: "Clase", w: 22, align: "center" as const },
-    { key: "capital", label: "Capital", w: 44, align: "right" as const },
-    { key: "intCorr", label: "Int. corr.", w: 40, align: "right" as const },
-    { key: "intMora", label: "Int. mora", w: 40, align: "right" as const },
-    { key: "seguros", label: "Seguros", w: 30, align: "right" as const },
-    { key: "otros", label: "Otros", w: 30, align: "right" as const },
-    { key: "total", label: "Total", w: 48, align: "right" as const },
+    { key: "n", label: "#", w: 18, align: "center" as const },
+    { key: "acreedor", label: "Acreedor", w: 96, align: "left" as const },
+    { key: "doc", label: "Doc.", w: 48, align: "left" as const },
+    { key: "ident", label: "Identif.", w: 48, align: "left" as const },
+    { key: "clase", label: "Clase", w: 24, align: "center" as const },
+    { key: "capital", label: "Capital", w: 54, align: "right" as const },
+    { key: "intCorr", label: "Int. corr.", w: 46, align: "right" as const },
+    { key: "intMora", label: "Int. mora", w: 46, align: "right" as const },
+    { key: "seguros", label: "Seguros", w: 36, align: "right" as const },
+    { key: "otros", label: "Otros", w: 36, align: "right" as const },
+    { key: "total", label: "Total", w: 56, align: "right" as const },
     { key: "pctVoto", label: "% Voto", w: 26, align: "center" as const },
     { key: "peq", label: "Peq.", w: 18, align: "center" as const },
   ];
-  // Sanity: suma de w debe ser ≤ USABLE_W (468)
-  const SUM_W = COLS.reduce((s, c) => s + c.w, 0); // 482 — ajustamos al ancho real
+  const SUM_W = COLS.reduce((s, c) => s + c.w, 0);
   const SCALE = USABLE_W / SUM_W;
   COLS.forEach((c) => (c.w = c.w * SCALE));
 
@@ -77,10 +78,10 @@ export async function generarRelacionAcreenciasPdf(
   const ROW_PAD_Y = 3;
 
   let page = doc.addPage([PAGE_W, PAGE_H]);
-  let y = PAGE_H - MARGIN;
+  let y = PAGE_H - MARGIN_VER;
 
   function drawEncabezado() {
-    y = PAGE_H - MARGIN;
+    y = PAGE_H - MARGIN_VER;
     const centroLabel = input.centro.nombre.toUpperCase();
     const cw = fontBold.widthOfTextAtSize(centroLabel, 13);
     page.drawText(centroLabel, {
@@ -121,22 +122,22 @@ export async function generarRelacionAcreenciasPdf(
     const labelOpts = { size: 9, font: fontBold, color: navy };
     const valueOpts = { size: 9, font: fontRegular, color: rgb(0, 0, 0) };
 
-    page.drawText("Radicado:", { x: MARGIN, y, ...labelOpts });
-    page.drawText(input.caso.numero_radicado, { x: MARGIN + 60, y, ...valueOpts });
+    page.drawText("Radicado:", { x: MARGIN_HOR, y, ...labelOpts });
+    page.drawText(input.caso.numero_radicado, { x: MARGIN_HOR + 60, y, ...valueOpts });
     y -= 12;
 
     if (input.convocante) {
       const nombre = partyDisplayName(input.convocante);
       const docStr =
         input.convocante.numero_doc ?? input.convocante.nit_empresa ?? "sin doc.";
-      page.drawText("Deudor:", { x: MARGIN, y, ...labelOpts });
-      page.drawText(`${nombre}  (${docStr})`, { x: MARGIN + 60, y, ...valueOpts });
+      page.drawText("Deudor:", { x: MARGIN_HOR, y, ...labelOpts });
+      page.drawText(`${nombre}  (${docStr})`, { x: MARGIN_HOR + 60, y, ...valueOpts });
       y -= 12;
     }
 
     const fechaHoy = new Date().toLocaleDateString("es-CO", { dateStyle: "long" });
-    page.drawText("Fecha:", { x: MARGIN, y, ...labelOpts });
-    page.drawText(fechaHoy, { x: MARGIN + 60, y, ...valueOpts });
+    page.drawText("Fecha:", { x: MARGIN_HOR, y, ...labelOpts });
+    page.drawText(fechaHoy, { x: MARGIN_HOR + 60, y, ...valueOpts });
     y -= 16;
   }
 
@@ -230,7 +231,7 @@ export async function generarRelacionAcreenciasPdf(
 
   function nuevaPagina() {
     page = doc.addPage([PAGE_W, PAGE_H]);
-    y = PAGE_H - MARGIN;
+    y = PAGE_H - MARGIN_VER;
   }
 
   drawEncabezado();
@@ -241,7 +242,7 @@ export async function generarRelacionAcreenciasPdf(
   const HEADER_H = FONT_HEADER + ROW_PAD_Y * 2 + 4;
 
   // Header
-  drawHeaderRow(MARGIN, y, HEADER_H);
+  drawHeaderRow(MARGIN_HOR, y, HEADER_H);
   y -= HEADER_H;
 
   const filas = prepararFilasRelacion(input.acreencias);
@@ -254,9 +255,9 @@ export async function generarRelacionAcreenciasPdf(
 
   filas.forEach((f, idx) => {
     // Nueva página si no cabe (dejamos espacio para totales + leyenda)
-    if (y - ROW_H < MARGIN + 80) {
+    if (y - ROW_H < MARGIN_VER + 80) {
       nuevaPagina();
-      drawHeaderRow(MARGIN, y, HEADER_H);
+      drawHeaderRow(MARGIN_HOR, y, HEADER_H);
       y -= HEADER_H;
     }
 
@@ -273,10 +274,10 @@ export async function generarRelacionAcreenciasPdf(
     totalOtros += otros;
 
     const fill = idx % 2 === 1 ? rgb(248 / 255, 250 / 255, 253 / 255) : undefined;
-    drawGridRow(MARGIN, y, ROW_H, fill);
+    drawGridRow(MARGIN_HOR, y, ROW_H, fill);
 
     const textY = y - ROW_H + ROW_PAD_Y + 1;
-    let cx = MARGIN;
+    let cx = MARGIN_HOR;
     const values: Record<string, string> = {
       n: String(idx + 1),
       acreedor: f.a.acreedor_nombre,
@@ -311,16 +312,16 @@ export async function generarRelacionAcreenciasPdf(
   });
 
   // Fila de totales
-  if (y - ROW_H < MARGIN + 60) {
+  if (y - ROW_H < MARGIN_VER + 60) {
     nuevaPagina();
-    drawHeaderRow(MARGIN, y, HEADER_H);
+    drawHeaderRow(MARGIN_HOR, y, HEADER_H);
     y -= HEADER_H;
   }
 
   const totalGeneral = totalCapital + totalIntCorr + totalIntMora + totalSeguros + totalOtros;
-  drawGridRow(MARGIN, y, ROW_H + 2, softBg);
+  drawGridRow(MARGIN_HOR, y, ROW_H + 2, softBg);
   const totalTextY = y - (ROW_H + 2) + ROW_PAD_Y + 1;
-  let tx = MARGIN;
+  let tx = MARGIN_HOR;
   const totalValues: Record<string, { text: string; align: "left" | "right" | "center" }> = {
     n: { text: "", align: "center" },
     acreedor: { text: "TOTALES", align: "left" },
@@ -349,10 +350,10 @@ export async function generarRelacionAcreenciasPdf(
     'Cifras en pesos colombianos (COP). "Peq." indica pequeño acreedor (suma acumulada <= 5% del total). El % de voto se calcula sobre el capital conciliado.';
   const leyendaWrapped = wrapText(leyenda, USABLE_W, 8, fontItalic);
   for (const line of leyendaWrapped) {
-    if (y < MARGIN) {
+    if (y < MARGIN_VER) {
       nuevaPagina();
     }
-    page.drawText(line, { x: MARGIN, y, size: 8, font: fontItalic, color: gray });
+    page.drawText(line, { x: MARGIN_HOR, y, size: 8, font: fontItalic, color: gray });
     y -= 11;
   }
 
