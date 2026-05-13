@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
+import { recalcularPorcentajesAcreencias as recalcularPorcentajes } from "@/lib/acreencias/recalcular-porcentajes";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -92,6 +93,11 @@ export async function POST(req: NextRequest, { params }: Params) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Recalcular porcentajes y pequeños acreedores con la nueva acreencia
+  // incluida. Sin esto, las marcas previas quedaban obsoletas al crecer
+  // el pasivo total.
+  await recalcularPorcentajes(caseId, centerId);
 
   return NextResponse.json(data, { status: 201 });
 }
@@ -190,55 +196,4 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
 /* ─── Recalcular porcentajes ─────────────────────────────────────────── */
 
-async function recalcularPorcentajes(caseId: string, centerId: string) {
-  const { data: acreencias } = await supabaseAdmin
-    .from("sgcc_acreencias")
-    .select("id, con_capital")
-    .eq("case_id", caseId)
-    .eq("center_id", centerId);
-
-  if (!acreencias || acreencias.length === 0) return;
-
-  const totalCapital = acreencias.reduce((sum, a) => sum + (Number(a.con_capital) || 0), 0);
-
-  // Calcular porcentajes
-  const updates = acreencias.map((a) => ({
-    id: a.id,
-    porcentaje_voto: totalCapital > 0
-      ? Math.round((Number(a.con_capital) / totalCapital) * 10000) / 10000
-      : 0,
-  }));
-
-  // Identificar pequeños acreedores: sumados no superan 5% del total de TODOS los créditos
-  const totalCreditos = acreencias.reduce((sum, a) => {
-    return sum + (Number(a.con_capital) || 0);
-  }, 0);
-
-  const umbral5 = totalCreditos * 0.05;
-
-  // Ordenar de menor a mayor capital para identificar pequeños
-  const sorted = [...acreencias].sort((a, b) => (Number(a.con_capital) || 0) - (Number(b.con_capital) || 0));
-
-  let acumulado = 0;
-  const pequenosIds = new Set<string>();
-  for (const a of sorted) {
-    const capital = Number(a.con_capital) || 0;
-    if (acumulado + capital <= umbral5) {
-      acumulado += capital;
-      pequenosIds.add(a.id);
-    } else {
-      break;
-    }
-  }
-
-  // Actualizar cada acreencia
-  for (const u of updates) {
-    await supabaseAdmin
-      .from("sgcc_acreencias")
-      .update({
-        porcentaje_voto: u.porcentaje_voto,
-        es_pequeno_acreedor: pequenosIds.has(u.id),
-      })
-      .eq("id", u.id);
-  }
-}
+// recalcularPorcentajes -> @/lib/acreencias/recalcular-porcentajes

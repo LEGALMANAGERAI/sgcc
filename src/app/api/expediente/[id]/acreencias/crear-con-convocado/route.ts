@@ -10,6 +10,7 @@ import {
   deletePoder,
 } from "@/lib/poderes-storage";
 import { findOrCreateParty } from "@/lib/parties";
+import { recalcularPorcentajesAcreencias } from "@/lib/acreencias/recalcular-porcentajes";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -244,7 +245,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
   }
 
-  // 5. Devolver la acreencia resultante (con party_id para que la UI la muestre consolidada)
+  // 5. Recalcular pequeños acreedores y % de voto para todo el caso.
+  await recalcularPorcentajesAcreencias(caseId, centerId);
+
+  // 6. Devolver la acreencia resultante (con party_id para que la UI la muestre consolidada)
   const { data: acreenciaRes } = await supabaseAdmin
     .from("sgcc_acreencias")
     .select("*")
