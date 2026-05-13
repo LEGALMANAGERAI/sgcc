@@ -63,8 +63,9 @@ export async function GET(req: NextRequest, { params }: Params) {
     .select("*")
     .eq("case_id", caseId)
     .eq("center_id", centerId)
-    .order("clase_credito", { ascending: true })
-    .order("acreedor_nombre", { ascending: true });
+    .order("display_order", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
 
   if (acrError) return NextResponse.json({ error: acrError.message }, { status: 500 });
 
