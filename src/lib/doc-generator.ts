@@ -288,6 +288,104 @@ export function prepararFilasRelacion(acreencias: SgccAcreencia[]): FilaAcreenci
   return filas;
 }
 
+/* ─── Agrupacion por acreedor para los exports ────────────────────────────
+   Replica la vista expandida de la pantalla: por cada acreedor con varias
+   acreencias se muestra una fila padre con totales consolidados, y debajo
+   cada acreencia individual con sus propios montos y % de voto. Acreedor
+   con UNA sola acreencia se renderiza como fila simple sin padre. */
+
+const normDocAcreedor = (d: string | null | undefined): string =>
+  (d ?? "").replace(/[\s.\-_]/g, "").toUpperCase();
+
+export interface GrupoAcreedor {
+  acreedorNombre: string;
+  acreedorDocumento: string | null;
+  acreencias: FilaAcreencia[];
+  totales: {
+    capital: number;
+    intCorr: number;
+    intMora: number;
+    seguros: number;
+    otros: number;
+  };
+  totalConciliado: number;
+  pctVotoGrupo: number;
+  todosPequenos: boolean;
+  claseLabel: string | null;
+  claseMixta: boolean;
+}
+
+export function prepararGruposRelacion(acreencias: SgccAcreencia[]): GrupoAcreedor[] {
+  // Agrupar por (party_id || documento normalizado || nombre normalizado)
+  const map = new Map<string, FilaAcreencia[]>();
+  for (const a of acreencias) {
+    const key = a.party_id
+      ? `p:${a.party_id}`
+      : normDocAcreedor(a.acreedor_documento)
+        ? `d:${normDocAcreedor(a.acreedor_documento)}`
+        : `n:${(a.acreedor_nombre ?? "").trim().toUpperCase() || a.id}`;
+    const fila: FilaAcreencia = {
+      a,
+      totalConciliado:
+        Number(a.con_capital) +
+        Number(a.con_intereses_corrientes) +
+        Number(a.con_intereses_moratorios) +
+        Number(a.con_seguros) +
+        Number(a.con_otros),
+    };
+    const arr = map.get(key) ?? [];
+    arr.push(fila);
+    map.set(key, arr);
+  }
+
+  const grupos: GrupoAcreedor[] = Array.from(map.values()).map((filasGrupo) => {
+    const first = filasGrupo[0].a;
+    const totales = filasGrupo.reduce(
+      (acc, f) => ({
+        capital: acc.capital + Number(f.a.con_capital),
+        intCorr: acc.intCorr + Number(f.a.con_intereses_corrientes),
+        intMora: acc.intMora + Number(f.a.con_intereses_moratorios),
+        seguros: acc.seguros + Number(f.a.con_seguros),
+        otros: acc.otros + Number(f.a.con_otros),
+      }),
+      { capital: 0, intCorr: 0, intMora: 0, seguros: 0, otros: 0 },
+    );
+    const totalConciliado =
+      totales.capital + totales.intCorr + totales.intMora + totales.seguros + totales.otros;
+    const pctVotoGrupo = filasGrupo.reduce(
+      (s, f) => s + Number(f.a.porcentaje_voto || 0),
+      0,
+    );
+    const todosPequenos = filasGrupo.every((f) => f.a.es_pequeno_acreedor);
+    const clases = new Set(filasGrupo.map((f) => f.a.clase_credito));
+    const claseMixta = clases.size > 1;
+    const claseLabel = claseMixta ? null : CLASE_LABEL[[...clases][0]];
+
+    return {
+      acreedorNombre: first.acreedor_nombre,
+      acreedorDocumento: first.acreedor_documento,
+      acreencias: filasGrupo,
+      totales,
+      totalConciliado,
+      pctVotoGrupo,
+      todosPequenos,
+      claseLabel,
+      claseMixta,
+    };
+  });
+
+  // Ordenar grupos por la clase del primer credito (cuando es uniforme se
+  // respeta; cuando es mixta queda al final) y luego por nombre.
+  grupos.sort((x, y) => {
+    const ox = x.claseMixta ? 99 : ORDEN_CLASES.indexOf(x.acreencias[0].a.clase_credito);
+    const oy = y.claseMixta ? 99 : ORDEN_CLASES.indexOf(y.acreencias[0].a.clase_credito);
+    if (ox !== oy) return ox - oy;
+    return x.acreedorNombre.localeCompare(y.acreedorNombre, "es");
+  });
+
+  return grupos;
+}
+
 const money = (n: number) =>
   new Intl.NumberFormat("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
 const pctFmt = (n: number) => `${(n * 100).toFixed(2)}%`;
@@ -299,13 +397,12 @@ const pctFmt = (n: number) => `${(n * 100).toFixed(2)}%`;
 export async function generateRelacionAcreenciasDocx(
   ctx: RelacionAcreenciasContext
 ): Promise<Buffer> {
-  const filas = prepararFilasRelacion(ctx.acreencias);
-
-  const totalCapital = filas.reduce((s, f) => s + Number(f.a.con_capital), 0);
-  const totalIntCorr = filas.reduce((s, f) => s + Number(f.a.con_intereses_corrientes), 0);
-  const totalIntMora = filas.reduce((s, f) => s + Number(f.a.con_intereses_moratorios), 0);
-  const totalSeguros = filas.reduce((s, f) => s + Number(f.a.con_seguros), 0);
-  const totalOtros = filas.reduce((s, f) => s + Number(f.a.con_otros), 0);
+  const grupos = prepararGruposRelacion(ctx.acreencias);
+  const totalCapital = ctx.acreencias.reduce((s, a) => s + Number(a.con_capital), 0);
+  const totalIntCorr = ctx.acreencias.reduce((s, a) => s + Number(a.con_intereses_corrientes), 0);
+  const totalIntMora = ctx.acreencias.reduce((s, a) => s + Number(a.con_intereses_moratorios), 0);
+  const totalSeguros = ctx.acreencias.reduce((s, a) => s + Number(a.con_seguros), 0);
+  const totalOtros = ctx.acreencias.reduce((s, a) => s + Number(a.con_otros), 0);
   const totalGeneral = totalCapital + totalIntCorr + totalIntMora + totalSeguros + totalOtros;
 
   const headers = [
@@ -369,6 +466,21 @@ export async function generateRelacionAcreenciasDocx(
       margins: { top: 50, bottom: 50, left: 40, right: 40 },
     });
 
+  // Variante azul clara con texto bold para filas "padre" (acreedor con
+  // varias acreencias consolidadas).
+  const parentCell = (text: string, width: number, align: AlignValue = AlignmentType.LEFT) =>
+    new TableCell({
+      width: { size: width, type: WidthType.DXA },
+      children: [
+        new Paragraph({
+          children: [new TextRun({ text, size: 14, bold: true, color: "0D2340" })],
+          alignment: align,
+        }),
+      ],
+      shading: { fill: "DCE9F8" },
+      margins: { top: 50, bottom: 50, left: 40, right: 40 },
+    });
+
   const rows: TableRow[] = [
     new TableRow({
       tableHeader: true,
@@ -376,27 +488,91 @@ export async function generateRelacionAcreenciasDocx(
     }),
   ];
 
-  filas.forEach((f, idx) => {
+  let idx = 0;
+  for (const grupo of grupos) {
+    const multiple = grupo.acreencias.length > 1;
+
+    if (!multiple) {
+      // Fila simple — acreedor con una sola acreencia
+      idx += 1;
+      const f = grupo.acreencias[0];
+      rows.push(
+        new TableRow({
+          children: [
+            bodyCell(String(idx), COL_WIDTHS[0], AlignmentType.CENTER),
+            bodyCell(f.a.acreedor_nombre, COL_WIDTHS[1]),
+            bodyCell(f.a.acreedor_documento ?? "—", COL_WIDTHS[2]),
+            bodyCell(f.a.identificacion_credito ?? "—", COL_WIDTHS[3]),
+            bodyCell(CLASE_LABEL[f.a.clase_credito], COL_WIDTHS[4], AlignmentType.CENTER),
+            bodyCell(money(Number(f.a.con_capital)), COL_WIDTHS[5], AlignmentType.RIGHT),
+            bodyCell(money(Number(f.a.con_intereses_corrientes)), COL_WIDTHS[6], AlignmentType.RIGHT),
+            bodyCell(money(Number(f.a.con_intereses_moratorios)), COL_WIDTHS[7], AlignmentType.RIGHT),
+            bodyCell(money(Number(f.a.con_seguros)), COL_WIDTHS[8], AlignmentType.RIGHT),
+            bodyCell(money(Number(f.a.con_otros)), COL_WIDTHS[9], AlignmentType.RIGHT),
+            bodyCell(money(f.totalConciliado), COL_WIDTHS[10], AlignmentType.RIGHT, true),
+            bodyCell(pctFmt(Number(f.a.porcentaje_voto)), COL_WIDTHS[11], AlignmentType.CENTER),
+            bodyCell(f.a.es_pequeno_acreedor ? "Sí" : "—", COL_WIDTHS[12], AlignmentType.CENTER),
+          ],
+        }),
+      );
+      continue;
+    }
+
+    // Fila padre — acreedor con varias acreencias consolidadas
+    idx += 1;
+    const claseLabel = grupo.claseMixta ? "Mixta" : grupo.claseLabel ?? "";
+    const nombreConDocumento = grupo.acreedorDocumento
+      ? `${grupo.acreedorNombre} (${grupo.acreedorDocumento})`
+      : grupo.acreedorNombre;
     rows.push(
       new TableRow({
         children: [
-          bodyCell(String(idx + 1), COL_WIDTHS[0], AlignmentType.CENTER),
-          bodyCell(f.a.acreedor_nombre, COL_WIDTHS[1]),
-          bodyCell(f.a.acreedor_documento ?? "—", COL_WIDTHS[2]),
-          bodyCell(f.a.identificacion_credito ?? "—", COL_WIDTHS[3]),
-          bodyCell(CLASE_LABEL[f.a.clase_credito], COL_WIDTHS[4], AlignmentType.CENTER),
-          bodyCell(money(Number(f.a.con_capital)), COL_WIDTHS[5], AlignmentType.RIGHT),
-          bodyCell(money(Number(f.a.con_intereses_corrientes)), COL_WIDTHS[6], AlignmentType.RIGHT),
-          bodyCell(money(Number(f.a.con_intereses_moratorios)), COL_WIDTHS[7], AlignmentType.RIGHT),
-          bodyCell(money(Number(f.a.con_seguros)), COL_WIDTHS[8], AlignmentType.RIGHT),
-          bodyCell(money(Number(f.a.con_otros)), COL_WIDTHS[9], AlignmentType.RIGHT),
-          bodyCell(money(f.totalConciliado), COL_WIDTHS[10], AlignmentType.RIGHT, true),
-          bodyCell(pctFmt(Number(f.a.porcentaje_voto)), COL_WIDTHS[11], AlignmentType.CENTER),
-          bodyCell(f.a.es_pequeno_acreedor ? "Sí" : "—", COL_WIDTHS[12], AlignmentType.CENTER),
+          parentCell(String(idx), COL_WIDTHS[0], AlignmentType.CENTER),
+          parentCell(
+            `${nombreConDocumento}\n${grupo.acreencias.length} acreencias consolidadas`,
+            COL_WIDTHS[1],
+          ),
+          parentCell("—", COL_WIDTHS[2]),
+          parentCell("—", COL_WIDTHS[3]),
+          parentCell(claseLabel, COL_WIDTHS[4], AlignmentType.CENTER),
+          parentCell(money(grupo.totales.capital), COL_WIDTHS[5], AlignmentType.RIGHT),
+          parentCell(money(grupo.totales.intCorr), COL_WIDTHS[6], AlignmentType.RIGHT),
+          parentCell(money(grupo.totales.intMora), COL_WIDTHS[7], AlignmentType.RIGHT),
+          parentCell(money(grupo.totales.seguros), COL_WIDTHS[8], AlignmentType.RIGHT),
+          parentCell(money(grupo.totales.otros), COL_WIDTHS[9], AlignmentType.RIGHT),
+          parentCell(money(grupo.totalConciliado), COL_WIDTHS[10], AlignmentType.RIGHT),
+          parentCell(pctFmt(grupo.pctVotoGrupo), COL_WIDTHS[11], AlignmentType.CENTER),
+          parentCell(grupo.todosPequenos ? "Sí" : "—", COL_WIDTHS[12], AlignmentType.CENTER),
         ],
-      })
+      }),
     );
-  });
+
+    // Sub-filas — cada acreencia desplegada con sangria
+    for (const f of grupo.acreencias) {
+      rows.push(
+        new TableRow({
+          children: [
+            bodyCell("", COL_WIDTHS[0], AlignmentType.CENTER),
+            bodyCell(
+              `   ↳ ${f.a.identificacion_credito ?? "Sin identificación"}`,
+              COL_WIDTHS[1],
+            ),
+            bodyCell("", COL_WIDTHS[2]),
+            bodyCell(f.a.identificacion_credito ?? "—", COL_WIDTHS[3]),
+            bodyCell(CLASE_LABEL[f.a.clase_credito], COL_WIDTHS[4], AlignmentType.CENTER),
+            bodyCell(money(Number(f.a.con_capital)), COL_WIDTHS[5], AlignmentType.RIGHT),
+            bodyCell(money(Number(f.a.con_intereses_corrientes)), COL_WIDTHS[6], AlignmentType.RIGHT),
+            bodyCell(money(Number(f.a.con_intereses_moratorios)), COL_WIDTHS[7], AlignmentType.RIGHT),
+            bodyCell(money(Number(f.a.con_seguros)), COL_WIDTHS[8], AlignmentType.RIGHT),
+            bodyCell(money(Number(f.a.con_otros)), COL_WIDTHS[9], AlignmentType.RIGHT),
+            bodyCell(money(f.totalConciliado), COL_WIDTHS[10], AlignmentType.RIGHT),
+            bodyCell(pctFmt(Number(f.a.porcentaje_voto)), COL_WIDTHS[11], AlignmentType.CENTER),
+            bodyCell(f.a.es_pequeno_acreedor ? "Sí" : "—", COL_WIDTHS[12], AlignmentType.CENTER),
+          ],
+        }),
+      );
+    }
+  }
 
   // Fila de totales
   const totalCell = (text: string, width: number, align: AlignValue = AlignmentType.RIGHT) =>
