@@ -48,6 +48,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { uploadPoderViaSignedUrl } from "@/lib/poderes-client";
+import { AcreenciasTableShell } from "./AcreenciasTableShell";
 
 /* ─── Props ─────────────────────────────────────────────────────────── */
 
@@ -1305,7 +1306,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
               <option key={`d-${s.documento}`} value={s.documento}>{s.nombre}</option>
             ))}
           </datalist>
-          <div className="overflow-x-auto">
+          <AcreenciasTableShell>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <table className="w-full text-xs">
               <thead>
@@ -1567,7 +1568,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
               )}
             </table>
             </DndContext>
-          </div>
+          </AcreenciasTableShell>
           <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-4 flex-wrap">
             <button
               onClick={() => setModalAcreedor({ open: true })}
@@ -1646,7 +1647,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto">
+          <AcreenciasTableShell>
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-[#0D2340] text-white">
@@ -1872,7 +1873,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                 </tr>
               </tfoot>
             </table>
-          </div>
+          </AcreenciasTableShell>
         </div>
       )}
 
