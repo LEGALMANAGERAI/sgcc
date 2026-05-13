@@ -1524,7 +1524,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                     </td>
                     <td className="px-2 py-2 border-l border-gray-100">
                       <div className="flex flex-col items-center gap-1">
-                        {!a.party_id && (
+                        {!a.party_id ? (
                           <button
                             type="button"
                             onClick={() => setModalAcreedor({ open: true, acreencia: a })}
@@ -1533,6 +1533,16 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                             title="Este acreedor no está registrado en Partes del expediente — completa sus datos"
                           >
                             ⚠ Completar<br />datos
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setModalAcreedor({ open: true, acreencia: a })}
+                            disabled={saving === a.id}
+                            className="text-[9px] font-medium bg-blue-50 text-[#1B4F9B] border border-blue-200 rounded px-1.5 py-0.5 hover:bg-blue-100 disabled:opacity-50 leading-tight"
+                            title="Editar datos del acreedor y apoderado. Los cambios se reflejan en Partes y Poderes."
+                          >
+                            ✎ Editar<br />acreedor
                           </button>
                         )}
                         {(Number(a.con_seguros) > 0 || Number(a.acr_seguros) > 0 || Number(a.sol_seguros) > 0) && (
@@ -2774,6 +2784,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
 
       {modalAcreedor.open && (
         <ModalCrearAcreedor
+          caseId={caseId}
           acreencia={modalAcreedor.acreencia}
           onClose={() => setModalAcreedor({ open: false })}
           onSave={async (payload) => {
@@ -2853,19 +2864,21 @@ function SortableAcreenciaRow({
   );
 }
 
-/** Modal tarjeta para crear un acreedor completo (party + case_party + acreencia + apoderado + poder). */
+/** Modal tarjeta para crear o editar un acreedor completo (party + case_party + acreencia + apoderado + poder). */
 function ModalCrearAcreedor({
+  caseId,
   acreencia,
   onClose,
   onSave,
   saving,
 }: {
+  caseId: string;
   acreencia?: SgccAcreencia;
   onClose: () => void;
   onSave: (payload: { acreedor: Record<string, any>; apoderado: Record<string, any> | null; poderFile: File | null }) => void | Promise<void>;
   saving: boolean;
 }) {
-  // Prefill desde la acreencia existente (caso "completar datos")
+  // Prefill desde la acreencia existente (caso "completar datos" o "editar")
   const [tipoPersona, setTipoPersona] = useState<"natural" | "juridica">(acreencia?.acreedor_tipo ?? "natural");
   const [nombre, setNombre] = useState(acreencia?.acreedor_nombre ?? "");
   const [apellidos, setApellidos] = useState("");
@@ -2886,6 +2899,54 @@ function ModalCrearAcreedor({
   const [poderFile, setPoderFile] = useState<File | null>(null);
 
   const [error, setError] = useState<string | null>(null);
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
+
+  // Cargar datos extra (party + apoderado) cuando estamos editando un acreedor
+  // que ya tiene party vinculada.
+  useEffect(() => {
+    if (!acreencia?.id) return;
+    let cancelado = false;
+    setCargandoDetalle(true);
+    fetch(`/api/expediente/${caseId}/acreencias/${acreencia.id}/detalle-edicion`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelado || !data) return;
+        const p = data.party;
+        if (p) {
+          if (p.tipo_persona === "natural") {
+            setTipoPersona("natural");
+            setNombre(p.nombres ?? "");
+            setApellidos(p.apellidos ?? "");
+            setTipoDoc(p.tipo_doc ?? "CC");
+            setNumeroDoc(p.numero_doc ?? "");
+          } else {
+            setTipoPersona("juridica");
+            setNombre(p.razon_social ?? "");
+            setNumeroDoc(p.nit_empresa ?? "");
+          }
+          setEmail(p.email ?? "");
+          setTelefono(p.telefono ?? "");
+          setDireccion(p.direccion ?? "");
+          setCiudad(p.ciudad ?? "");
+        }
+        const ap = data.apoderado;
+        if (ap?.attorney) {
+          setIncluirApoderado(true);
+          setApNombre(ap.attorney.nombre ?? "");
+          setApTipoDoc(ap.attorney.tipo_doc ?? "CC");
+          setApNumeroDoc(ap.attorney.numero_doc ?? "");
+          setApTarjeta(ap.attorney.tarjeta_profesional ?? "");
+          setApEmail(ap.attorney.email ?? "");
+          setApTelefono(ap.attorney.telefono ?? "");
+        }
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoDetalle(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [acreencia?.id, caseId]);
 
   const nombreTrim = nombre.trim();
   const requiredFaltantes: string[] = [];
@@ -2940,7 +3001,14 @@ function ModalCrearAcreedor({
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8">
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <h3 className="text-lg font-semibold text-[#0D2340]">
-            {acreencia ? "Completar datos del acreedor" : "Nuevo acreedor"}
+            {acreencia?.party_id
+              ? "Editar acreedor"
+              : acreencia
+                ? "Completar datos del acreedor"
+                : "Nuevo acreedor"}
+            {cargandoDetalle && (
+              <span className="ml-2 text-xs font-normal text-gray-400">cargando...</span>
+            )}
           </h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <XCircle className="w-5 h-5" />
