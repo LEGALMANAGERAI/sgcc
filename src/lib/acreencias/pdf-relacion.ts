@@ -53,12 +53,14 @@ export async function generarRelacionAcreenciasPdf(
 
   // Distribucion ponderada: Acreedor + montos importantes mas anchos que
   // identif./pequeño para nombres de empresas y montos COP completos.
+  // Clase y Peq tienen el ancho minimo para que "Clase" y "Peq." quepan
+  // en una sola linea sin romperse por caracteres.
   const COLS = [
     { key: "n", label: "#", w: 18, align: "center" as const },
     { key: "acreedor", label: "Acreedor", w: 96, align: "left" as const },
-    { key: "doc", label: "Doc.", w: 48, align: "left" as const },
-    { key: "ident", label: "Identif.", w: 48, align: "left" as const },
-    { key: "clase", label: "Clase", w: 24, align: "center" as const },
+    { key: "doc", label: "Doc.", w: 44, align: "left" as const },
+    { key: "ident", label: "Identif.", w: 44, align: "left" as const },
+    { key: "clase", label: "Clase", w: 30, align: "center" as const },
     { key: "capital", label: "Capital", w: 54, align: "right" as const },
     { key: "intCorr", label: "Int. corr.", w: 46, align: "right" as const },
     { key: "intMora", label: "Int. mora", w: 46, align: "right" as const },
@@ -66,7 +68,7 @@ export async function generarRelacionAcreenciasPdf(
     { key: "otros", label: "Otros", w: 36, align: "right" as const },
     { key: "total", label: "Total", w: 56, align: "right" as const },
     { key: "pctVoto", label: "% Voto", w: 26, align: "center" as const },
-    { key: "peq", label: "Peq.", w: 18, align: "center" as const },
+    { key: "peq", label: "Peq.", w: 22, align: "center" as const },
   ];
   const SUM_W = COLS.reduce((s, c) => s + c.w, 0);
   const SCALE = USABLE_W / SUM_W;
