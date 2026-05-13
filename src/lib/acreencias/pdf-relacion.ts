@@ -321,6 +321,11 @@ export async function generarRelacionAcreenciasPdf(
   const grupos = prepararGruposRelacion(input.acreencias);
   const parentFill = rgb(220 / 255, 233 / 255, 248 / 255);
   const subRowFill = rgb(248 / 255, 250 / 255, 253 / 255);
+  // Barra azul que identifica cada credito. Color fuerte para filas
+  // principales (acreedor) y mas tenue para sub-filas (acreencias hijas).
+  const bandColorMain = navy;
+  const bandColorChild = rgb(27 / 255, 79 / 255, 155 / 255);
+  const BAND_W = 3;
 
   let totalCapital = 0;
   let totalIntCorr = 0;
@@ -329,7 +334,10 @@ export async function generarRelacionAcreenciasPdf(
   let totalOtros = 0;
   let idx = 0;
 
-  function dibujarFila(values: Record<string, string>, opts: { fill?: any; bold?: boolean }) {
+  function dibujarFila(
+    values: Record<string, string>,
+    opts: { fill?: any; bold?: boolean; band?: "main" | "child" | "none" },
+  ) {
     const rowH = rowHeightFor(values);
     if (y - rowH < MARGIN_VER + 80) {
       nuevaPagina();
@@ -337,6 +345,16 @@ export async function generarRelacionAcreenciasPdf(
       y -= HEADER_H;
     }
     drawGridRow(MARGIN_HOR, y, rowH, opts.fill);
+    // Banda azul al borde izquierdo de la fila
+    if (opts.band && opts.band !== "none") {
+      page.drawRectangle({
+        x: MARGIN_HOR,
+        y: y - rowH,
+        width: BAND_W,
+        height: rowH,
+        color: opts.band === "child" ? bandColorChild : bandColorMain,
+      });
+    }
     const padding = 3;
     let cx = MARGIN_HOR;
     for (const col of COLS) {
@@ -377,7 +395,7 @@ export async function generarRelacionAcreenciasPdf(
           pctVoto: pctFmt(Number(f.a.porcentaje_voto)),
           peq: f.a.es_pequeno_acreedor ? "Sí" : "-",
         },
-        { fill: idx % 2 === 0 ? subRowFill : undefined },
+        { fill: idx % 2 === 0 ? subRowFill : undefined, band: "main" },
       );
       continue;
     }
@@ -403,7 +421,7 @@ export async function generarRelacionAcreenciasPdf(
         pctVoto: pctFmt(grupo.pctVotoGrupo),
         peq: grupo.todosPequenos ? "Sí" : "-",
       },
-      { fill: parentFill, bold: true },
+      { fill: parentFill, bold: true, band: "main" },
     );
 
     // Sub-filas — cada acreencia desplegada
@@ -424,7 +442,7 @@ export async function generarRelacionAcreenciasPdf(
           pctVoto: pctFmt(Number(f.a.porcentaje_voto)),
           peq: f.a.es_pequeno_acreedor ? "Sí" : "-",
         },
-        { fill: subRowFill },
+        { fill: subRowFill, band: "child" },
       );
     }
   }

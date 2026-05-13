@@ -451,8 +451,24 @@ export async function generateRelacionAcreenciasDocx(
       margins: { top: 60, bottom: 60, left: 40, right: 40 },
     });
 
+  // Bordes "barra" para identificar cada credito. El borde izquierdo
+  // grueso azul reemplaza el borde normal de la tabla en la primera celda
+  // de cada fila.
+  const bandMain = {
+    left: { style: BorderStyle.SINGLE, size: 16, color: "0D2340" },
+  };
+  const bandChild = {
+    left: { style: BorderStyle.SINGLE, size: 16, color: "1B4F9B" },
+  };
+
   type AlignValue = (typeof AlignmentType)[keyof typeof AlignmentType];
-  const bodyCell = (text: string, width: number, align: AlignValue = AlignmentType.LEFT, bold = false) =>
+  const bodyCell = (
+    text: string,
+    width: number,
+    align: AlignValue = AlignmentType.LEFT,
+    bold = false,
+    band?: "main" | "child",
+  ) =>
     new TableCell({
       width: { size: width, type: WidthType.DXA },
       children: [
@@ -462,11 +478,17 @@ export async function generateRelacionAcreenciasDocx(
         }),
       ],
       margins: { top: 50, bottom: 50, left: 40, right: 40 },
+      ...(band ? { borders: band === "main" ? bandMain : bandChild } : {}),
     });
 
   // Variante azul clara con texto bold para filas "padre" (acreedor con
   // varias acreencias consolidadas).
-  const parentCell = (text: string, width: number, align: AlignValue = AlignmentType.LEFT) =>
+  const parentCell = (
+    text: string,
+    width: number,
+    align: AlignValue = AlignmentType.LEFT,
+    band?: "main" | "child",
+  ) =>
     new TableCell({
       width: { size: width, type: WidthType.DXA },
       children: [
@@ -477,6 +499,7 @@ export async function generateRelacionAcreenciasDocx(
       ],
       shading: { fill: "DCE9F8" },
       margins: { top: 50, bottom: 50, left: 40, right: 40 },
+      ...(band ? { borders: band === "main" ? bandMain : bandChild } : {}),
     });
 
   const rows: TableRow[] = [
@@ -497,7 +520,7 @@ export async function generateRelacionAcreenciasDocx(
       rows.push(
         new TableRow({
           children: [
-            bodyCell(String(idx), COL_WIDTHS[0], AlignmentType.CENTER),
+            bodyCell(String(idx), COL_WIDTHS[0], AlignmentType.CENTER, false, "main"),
             bodyCell(f.a.acreedor_nombre, COL_WIDTHS[1]),
             bodyCell(f.a.acreedor_documento ?? "—", COL_WIDTHS[2]),
             bodyCell(f.a.identificacion_credito ?? "—", COL_WIDTHS[3]),
@@ -525,7 +548,7 @@ export async function generateRelacionAcreenciasDocx(
     rows.push(
       new TableRow({
         children: [
-          parentCell(String(idx), COL_WIDTHS[0], AlignmentType.CENTER),
+          parentCell(String(idx), COL_WIDTHS[0], AlignmentType.CENTER, "main"),
           parentCell(
             `${nombreConDocumento}\n${grupo.acreencias.length} acreencias consolidadas`,
             COL_WIDTHS[1],
@@ -550,7 +573,7 @@ export async function generateRelacionAcreenciasDocx(
       rows.push(
         new TableRow({
           children: [
-            bodyCell("", COL_WIDTHS[0], AlignmentType.CENTER),
+            bodyCell("", COL_WIDTHS[0], AlignmentType.CENTER, false, "child"),
             bodyCell(
               `   ↳ ${f.a.identificacion_credito ?? "Sin identificación"}`,
               COL_WIDTHS[1],
