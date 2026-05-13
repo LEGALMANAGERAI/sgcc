@@ -514,25 +514,27 @@ export async function generateRelacionAcreenciasDocx(
     const multiple = grupo.acreencias.length > 1;
 
     if (!multiple) {
-      // Fila simple — acreedor con una sola acreencia
+      // Fila simple — acreedor con una sola acreencia. Mismo estilo que la
+      // fila padre (fondo azul claro + negrita) para que todos los acreedores
+      // se identifiquen visualmente al mismo nivel.
       idx += 1;
       const f = grupo.acreencias[0];
       rows.push(
         new TableRow({
           children: [
-            bodyCell(String(idx), COL_WIDTHS[0], AlignmentType.CENTER, false, "main"),
-            bodyCell(f.a.acreedor_nombre, COL_WIDTHS[1]),
-            bodyCell(f.a.acreedor_documento ?? "—", COL_WIDTHS[2]),
-            bodyCell(f.a.identificacion_credito ?? "—", COL_WIDTHS[3]),
-            bodyCell(CLASE_LABEL[f.a.clase_credito], COL_WIDTHS[4], AlignmentType.CENTER),
-            bodyCell(money(Number(f.a.con_capital)), COL_WIDTHS[5], AlignmentType.RIGHT),
-            bodyCell(money(Number(f.a.con_intereses_corrientes)), COL_WIDTHS[6], AlignmentType.RIGHT),
-            bodyCell(money(Number(f.a.con_intereses_moratorios)), COL_WIDTHS[7], AlignmentType.RIGHT),
-            bodyCell(money(Number(f.a.con_seguros)), COL_WIDTHS[8], AlignmentType.RIGHT),
-            bodyCell(money(Number(f.a.con_otros)), COL_WIDTHS[9], AlignmentType.RIGHT),
-            bodyCell(money(f.totalConciliado), COL_WIDTHS[10], AlignmentType.RIGHT, true),
-            bodyCell(pctFmt(Number(f.a.porcentaje_voto)), COL_WIDTHS[11], AlignmentType.CENTER),
-            bodyCell(f.a.es_pequeno_acreedor ? "Sí" : "—", COL_WIDTHS[12], AlignmentType.CENTER),
+            parentCell(String(idx), COL_WIDTHS[0], AlignmentType.CENTER, "main"),
+            parentCell(f.a.acreedor_nombre, COL_WIDTHS[1]),
+            parentCell(f.a.acreedor_documento ?? "-", COL_WIDTHS[2]),
+            parentCell(f.a.identificacion_credito ?? "-", COL_WIDTHS[3]),
+            parentCell(CLASE_LABEL[f.a.clase_credito], COL_WIDTHS[4], AlignmentType.CENTER),
+            parentCell(money(Number(f.a.con_capital)), COL_WIDTHS[5], AlignmentType.RIGHT),
+            parentCell(money(Number(f.a.con_intereses_corrientes)), COL_WIDTHS[6], AlignmentType.RIGHT),
+            parentCell(money(Number(f.a.con_intereses_moratorios)), COL_WIDTHS[7], AlignmentType.RIGHT),
+            parentCell(money(Number(f.a.con_seguros)), COL_WIDTHS[8], AlignmentType.RIGHT),
+            parentCell(money(Number(f.a.con_otros)), COL_WIDTHS[9], AlignmentType.RIGHT),
+            parentCell(money(f.totalConciliado), COL_WIDTHS[10], AlignmentType.RIGHT),
+            parentCell(pctFmt(Number(f.a.porcentaje_voto)), COL_WIDTHS[11], AlignmentType.CENTER),
+            parentCell(f.a.es_pequeno_acreedor ? "Sí" : "-", COL_WIDTHS[12], AlignmentType.CENTER),
           ],
         }),
       );

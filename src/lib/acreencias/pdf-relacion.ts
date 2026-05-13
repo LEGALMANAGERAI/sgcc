@@ -395,7 +395,7 @@ export async function generarRelacionAcreenciasPdf(
           pctVoto: pctFmt(Number(f.a.porcentaje_voto)),
           peq: f.a.es_pequeno_acreedor ? "Sí" : "-",
         },
-        { fill: idx % 2 === 0 ? subRowFill : undefined, band: "main" },
+        { fill: parentFill, bold: true, band: "main" },
       );
       continue;
     }
