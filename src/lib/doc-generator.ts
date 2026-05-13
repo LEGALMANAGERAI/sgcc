@@ -378,15 +378,9 @@ export function prepararGruposRelacion(acreencias: SgccAcreencia[]): GrupoAcreed
     };
   });
 
-  // Ordenar grupos por la clase del primer credito (cuando es uniforme se
-  // respeta; cuando es mixta queda al final) y luego por nombre.
-  grupos.sort((x, y) => {
-    const ox = x.claseMixta ? 99 : ORDEN_CLASES.indexOf(x.acreencias[0].a.clase_credito);
-    const oy = y.claseMixta ? 99 : ORDEN_CLASES.indexOf(y.acreencias[0].a.clase_credito);
-    if (ox !== oy) return ox - oy;
-    return x.acreedorNombre.localeCompare(y.acreedorNombre, "es");
-  });
-
+  // No reordenamos los grupos: respetamos el orden en que vienen las
+  // acreencias del backend (sgcc_acreencias ordenada por display_order,
+  // que el usuario controla con drag-and-drop en la pantalla).
   return grupos;
 }
 
