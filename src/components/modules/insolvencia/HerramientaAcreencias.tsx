@@ -1218,10 +1218,14 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     return Array.from(map.values());
   }, [acreencias, documentoPorParty]);
 
-  // Conteo de pequeños acreedores: un acreedor que tenga al menos una
-  // acreencia marcada como pequeña cuenta como uno, no como N filas.
-  const pequenosCount = gruposAcreedores.filter((g) =>
-    g.acreencias.some((a) => a.es_pequeno_acreedor),
+  // Conteo de pequeños acreedores: por acreedor consolidado, no por acreencia.
+  // Usamos `every` (consistente con la fila padre, que solo muestra "Sí" si
+  // TODAS las acreencias del grupo están marcadas). Si la BD trae datos
+  // obsoletos donde solo una acreencia individual quedó marcada, el grupo
+  // no califica y no se cuenta — el KPI/TOTALES coincide con lo que ve el
+  // usuario en cada fila.
+  const pequenosCount = gruposAcreedores.filter(
+    (g) => g.acreencias.length > 0 && g.acreencias.every((a) => a.es_pequeno_acreedor),
   ).length;
 
   // Sugerencias únicas de acreedores ya capturados en este caso (para autocompletar y prevenir typos)
