@@ -51,23 +51,20 @@ export async function generarRelacionAcreenciasPdf(
   const MARGIN_HOR = 43;
   const USABLE_W = PAGE_W - 2 * MARGIN_HOR; // 526 pt
 
-  // Distribucion ponderada: Acreedor + montos importantes mas anchos que
-  // identif./pequeño para nombres de empresas y montos COP completos.
-  // Clase y Peq tienen el ancho minimo para que "Clase" y "Peq." quepan
-  // en una sola linea sin romperse por caracteres.
+  // Distribucion ponderada. Sin columna Identif. — la identificacion del
+  // credito va debajo del nombre del acreedor en la columna Acreedor.
   const COLS = [
     { key: "n", label: "#", w: 18, align: "center" as const },
-    { key: "acreedor", label: "Acreedor", w: 96, align: "left" as const },
-    { key: "doc", label: "Doc.", w: 44, align: "left" as const },
-    { key: "ident", label: "Identif.", w: 44, align: "left" as const },
+    { key: "acreedor", label: "Acreedor", w: 130, align: "left" as const },
+    { key: "doc", label: "Doc.", w: 50, align: "left" as const },
     { key: "clase", label: "Clase", w: 30, align: "center" as const },
-    { key: "capital", label: "Capital", w: 54, align: "right" as const },
-    { key: "intCorr", label: "Int. corr.", w: 46, align: "right" as const },
-    { key: "intMora", label: "Int. mora", w: 46, align: "right" as const },
-    { key: "seguros", label: "Seguros", w: 36, align: "right" as const },
-    { key: "otros", label: "Otros", w: 36, align: "right" as const },
-    { key: "total", label: "Total", w: 56, align: "right" as const },
-    { key: "pctVoto", label: "% Voto", w: 26, align: "center" as const },
+    { key: "capital", label: "Capital", w: 56, align: "right" as const },
+    { key: "intCorr", label: "Int. corr.", w: 48, align: "right" as const },
+    { key: "intMora", label: "Int. mora", w: 48, align: "right" as const },
+    { key: "seguros", label: "Seguros", w: 38, align: "right" as const },
+    { key: "otros", label: "Otros", w: 38, align: "right" as const },
+    { key: "total", label: "Total", w: 60, align: "right" as const },
+    { key: "pctVoto", label: "% Voto", w: 28, align: "center" as const },
     { key: "peq", label: "Peq.", w: 22, align: "center" as const },
   ];
   const SUM_W = COLS.reduce((s, c) => s + c.w, 0);
@@ -143,68 +140,77 @@ export async function generarRelacionAcreenciasPdf(
     y -= 16;
   }
 
-  // Divide texto en lineas que quepan en maxWidth. Prioriza romper por
-  // espacios; si una palabra individual excede el ancho, hace hard-break
-  // por caracteres (sin "..."). Asi nombres como "FINANCIERA COMULTRASAN"
-  // quedan "FINANCIERA" + "COMULTRASAN" en dos lineas.
+  // Divide texto en lineas que quepan en maxWidth. Respeta saltos de linea
+  // explicitos ("\n") y prioriza romper por espacios; si una palabra
+  // individual excede el ancho, hace hard-break por caracteres.
   function wrapToLines(text: string, maxWidth: number, size: number, font: typeof fontRegular): string[] {
     if (!text) return [""];
-    if (font.widthOfTextAtSize(text, size) <= maxWidth) return [text];
+    const explicitLines = text.split(/\n/);
+    const out: string[] = [];
 
-    const lines: string[] = [];
-    let current = "";
-
-    const flushIfFits = (candidate: string): boolean => {
-      if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
-        current = candidate;
-        return true;
-      }
-      return false;
-    };
-
-    const hardBreakLong = (word: string) => {
-      // Si la palabra entera excede el ancho, romperla por chars sin perder nada.
-      if (font.widthOfTextAtSize(word, size) <= maxWidth) {
-        if (current && !flushIfFits(`${current} ${word}`)) {
-          lines.push(current);
-          current = word;
-        } else if (!current) {
-          current = word;
-        }
-        return;
-      }
-      // Iterar caracteres acumulando hasta que ya no quepan
-      let chunk = current ? `${current} ` : "";
-      for (const ch of word) {
-        const candidate = chunk + ch;
-        if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
-          chunk = candidate;
-        } else {
-          if (chunk.trim()) lines.push(chunk.trim());
-          chunk = ch;
-        }
-      }
-      current = chunk;
-    };
-
-    const words = text.split(/\s+/);
-    for (const w of words) {
-      if (!current) {
-        if (font.widthOfTextAtSize(w, size) <= maxWidth) current = w;
-        else hardBreakLong(w);
+    for (const segment of explicitLines) {
+      if (!segment) {
+        out.push("");
         continue;
       }
-      const candidate = `${current} ${w}`;
-      if (!flushIfFits(candidate)) {
-        // No cabe agregando esta palabra: vuelco la linea actual y proceso w
-        lines.push(current);
-        current = "";
-        if (font.widthOfTextAtSize(w, size) <= maxWidth) current = w;
-        else hardBreakLong(w);
+      if (font.widthOfTextAtSize(segment, size) <= maxWidth) {
+        out.push(segment);
+        continue;
       }
+
+      const lines: string[] = [];
+      let current = "";
+
+      const flushIfFits = (candidate: string): boolean => {
+        if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+          current = candidate;
+          return true;
+        }
+        return false;
+      };
+
+      const hardBreakLong = (word: string) => {
+        if (font.widthOfTextAtSize(word, size) <= maxWidth) {
+          if (current && !flushIfFits(`${current} ${word}`)) {
+            lines.push(current);
+            current = word;
+          } else if (!current) {
+            current = word;
+          }
+          return;
+        }
+        let chunk = current ? `${current} ` : "";
+        for (const ch of word) {
+          const candidate = chunk + ch;
+          if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+            chunk = candidate;
+          } else {
+            if (chunk.trim()) lines.push(chunk.trim());
+            chunk = ch;
+          }
+        }
+        current = chunk;
+      };
+
+      const words = segment.split(/\s+/);
+      for (const w of words) {
+        if (!current) {
+          if (font.widthOfTextAtSize(w, size) <= maxWidth) current = w;
+          else hardBreakLong(w);
+          continue;
+        }
+        const candidate = `${current} ${w}`;
+        if (!flushIfFits(candidate)) {
+          lines.push(current);
+          current = "";
+          if (font.widthOfTextAtSize(w, size) <= maxWidth) current = w;
+          else hardBreakLong(w);
+        }
+      }
+      if (current) lines.push(current);
+      for (const ln of lines) out.push(ln);
     }
-    if (current) lines.push(current);
-    return lines;
+    return out;
   }
 
   function drawCellLines(
@@ -382,12 +388,15 @@ export async function generarRelacionAcreenciasPdf(
     if (!multiple) {
       idx += 1;
       const f = grupo.acreencias[0];
+      // Nombre del acreedor + identificacion del credito en linea siguiente
+      const acreedorTxt = f.a.identificacion_credito
+        ? `${f.a.acreedor_nombre}\n${f.a.identificacion_credito}`
+        : f.a.acreedor_nombre;
       dibujarFila(
         {
           n: String(idx),
-          acreedor: f.a.acreedor_nombre,
+          acreedor: acreedorTxt,
           doc: f.a.acreedor_documento ?? "-",
-          ident: f.a.identificacion_credito ?? "-",
           clase: CLASE_LABEL[f.a.clase_credito],
           capital: money(Number(f.a.con_capital)),
           intCorr: money(Number(f.a.con_intereses_corrientes)),
@@ -411,9 +420,8 @@ export async function generarRelacionAcreenciasPdf(
     dibujarFila(
       {
         n: String(idx),
-        acreedor: `${nombreConDoc} - ${grupo.acreencias.length} acreencias`,
+        acreedor: `${nombreConDoc}\n${grupo.acreencias.length} acreencias`,
         doc: "-",
-        ident: "-",
         clase: grupo.claseMixta ? "Mixta" : grupo.claseLabel ?? "",
         capital: money(grupo.totales.capital),
         intCorr: money(grupo.totales.intCorr),
@@ -427,14 +435,13 @@ export async function generarRelacionAcreenciasPdf(
       { fill: parentFill, bold: true, band: "main" },
     );
 
-    // Sub-filas — cada acreencia desplegada
+    // Sub-filas — cada acreencia desplegada (solo identificacion del credito)
     for (const f of grupo.acreencias) {
       dibujarFila(
         {
           n: "",
           acreedor: `      > ${f.a.identificacion_credito ?? "Sin identificación"}`,
           doc: "",
-          ident: f.a.identificacion_credito ?? "-",
           clase: CLASE_LABEL[f.a.clase_credito],
           capital: money(Number(f.a.con_capital)),
           intCorr: money(Number(f.a.con_intereses_corrientes)),
@@ -455,7 +462,6 @@ export async function generarRelacionAcreenciasPdf(
     n: { text: "", align: "center" },
     acreedor: { text: "TOTALES", align: "left" },
     doc: { text: "", align: "left" },
-    ident: { text: "", align: "left" },
     clase: { text: "", align: "center" },
     capital: { text: money(totalCapital), align: "right" },
     intCorr: { text: money(totalIntCorr), align: "right" },

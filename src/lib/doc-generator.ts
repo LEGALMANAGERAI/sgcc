@@ -403,12 +403,12 @@ export async function generateRelacionAcreenciasDocx(
   const totalOtros = ctx.acreencias.reduce((s, a) => s + Number(a.con_otros), 0);
   const totalGeneral = totalCapital + totalIntCorr + totalIntMora + totalSeguros + totalOtros;
 
-  // Headers cortos para que coincida con el PDF.
+  // Headers cortos. Sin columna Identif. — la identificacion del credito
+  // va debajo del nombre del acreedor en la columna Acreedor.
   const headers = [
     "#",
     "Acreedor",
     "Doc.",
-    "Identif.",
     "Clase",
     "Capital",
     "Int. corr.",
@@ -420,26 +420,21 @@ export async function generateRelacionAcreenciasDocx(
     "Peq.",
   ];
 
-  // Anchos por columna en twips. Suma = 10800 ≈ 19 cm. Con margenes
-  // horizontales reducidos a 1.5 cm la pagina carta tiene 18.5 cm utiles,
-  // suficientes para esta tabla sin que Word parta palabras letra por letra.
   // Suma debe ser <= 10512 (ancho util en pagina carta vertical con
-  // margenes horizontales de 864 twips cada lado). Antes era 10800 y la
-  // tabla se desbordaba comiendo el margen izquierdo.
+  // margenes horizontales de 864 twips cada lado).
   const COL_WIDTHS = [
     380,   // #
-    1750,  // Acreedor
-    880,   // Documento
-    900,   // Identif. credito
+    2400,  // Acreedor (mas ancho ahora que absorbe la identif.)
+    1000,  // Documento
     480,   // Clase
-    980,   // Capital
-    880,   // Int. corr.
-    880,   // Int. mora
-    720,   // Seguros
-    720,   // Otros
-    1042,  // Total
-    400,   // % Voto
-    300,   // Peq.
+    1050,  // Capital
+    920,   // Int. corr.
+    920,   // Int. mora
+    760,   // Seguros
+    760,   // Otros
+    1100,  // Total
+    420,   // % Voto
+    320,   // Peq.
   ];
 
   const headerCell = (text: string, width: number) =>
@@ -466,6 +461,21 @@ export async function generateRelacionAcreenciasDocx(
   };
 
   type AlignValue = (typeof AlignmentType)[keyof typeof AlignmentType];
+  // Convierte "linea1\nlinea2" en N parrafos para que Word respete los
+  // saltos de linea dentro de la celda (TextRun no respeta \n).
+  const linesAsParagraphs = (
+    text: string,
+    align: AlignValue,
+    style: { size: number; bold?: boolean; color?: string },
+  ): Paragraph[] =>
+    text.split(/\n/).map(
+      (ln) =>
+        new Paragraph({
+          children: [new TextRun({ text: ln, ...style })],
+          alignment: align,
+        }),
+    );
+
   const bodyCell = (
     text: string,
     width: number,
@@ -475,12 +485,7 @@ export async function generateRelacionAcreenciasDocx(
   ) =>
     new TableCell({
       width: { size: width, type: WidthType.DXA },
-      children: [
-        new Paragraph({
-          children: [new TextRun({ text, size: 14, bold })],
-          alignment: align,
-        }),
-      ],
+      children: linesAsParagraphs(text, align, { size: 14, bold }),
       margins: { top: 50, bottom: 50, left: 40, right: 40 },
       ...(band ? { borders: band === "main" ? bandMain : bandChild } : {}),
     });
@@ -495,12 +500,7 @@ export async function generateRelacionAcreenciasDocx(
   ) =>
     new TableCell({
       width: { size: width, type: WidthType.DXA },
-      children: [
-        new Paragraph({
-          children: [new TextRun({ text, size: 14, bold: true, color: "0D2340" })],
-          alignment: align,
-        }),
-      ],
+      children: linesAsParagraphs(text, align, { size: 14, bold: true, color: "0D2340" }),
       shading: { fill: "E8EEF7" },
       margins: { top: 50, bottom: 50, left: 40, right: 40 },
       ...(band ? { borders: band === "main" ? bandMain : bandChild } : {}),
@@ -519,26 +519,27 @@ export async function generateRelacionAcreenciasDocx(
 
     if (!multiple) {
       // Fila simple — acreedor con una sola acreencia. Mismo estilo que la
-      // fila padre (fondo azul claro + negrita) para que todos los acreedores
-      // se identifiquen visualmente al mismo nivel.
+      // fila padre (fondo azul claro + negrita).
       idx += 1;
       const f = grupo.acreencias[0];
+      const acreedorTxt = f.a.identificacion_credito
+        ? `${f.a.acreedor_nombre}\n${f.a.identificacion_credito}`
+        : f.a.acreedor_nombre;
       rows.push(
         new TableRow({
           children: [
             parentCell(String(idx), COL_WIDTHS[0], AlignmentType.CENTER, "main"),
-            parentCell(f.a.acreedor_nombre, COL_WIDTHS[1]),
+            parentCell(acreedorTxt, COL_WIDTHS[1]),
             parentCell(f.a.acreedor_documento ?? "-", COL_WIDTHS[2]),
-            parentCell(f.a.identificacion_credito ?? "-", COL_WIDTHS[3]),
-            parentCell(CLASE_LABEL[f.a.clase_credito], COL_WIDTHS[4], AlignmentType.CENTER),
-            parentCell(money(Number(f.a.con_capital)), COL_WIDTHS[5], AlignmentType.RIGHT),
-            parentCell(money(Number(f.a.con_intereses_corrientes)), COL_WIDTHS[6], AlignmentType.RIGHT),
-            parentCell(money(Number(f.a.con_intereses_moratorios)), COL_WIDTHS[7], AlignmentType.RIGHT),
-            parentCell(money(Number(f.a.con_seguros)), COL_WIDTHS[8], AlignmentType.RIGHT),
-            parentCell(money(Number(f.a.con_otros)), COL_WIDTHS[9], AlignmentType.RIGHT),
-            parentCell(money(f.totalConciliado), COL_WIDTHS[10], AlignmentType.RIGHT),
-            parentCell(pctFmt(Number(f.a.porcentaje_voto)), COL_WIDTHS[11], AlignmentType.CENTER),
-            parentCell(f.a.es_pequeno_acreedor ? "Sí" : "-", COL_WIDTHS[12], AlignmentType.CENTER),
+            parentCell(CLASE_LABEL[f.a.clase_credito], COL_WIDTHS[3], AlignmentType.CENTER),
+            parentCell(money(Number(f.a.con_capital)), COL_WIDTHS[4], AlignmentType.RIGHT),
+            parentCell(money(Number(f.a.con_intereses_corrientes)), COL_WIDTHS[5], AlignmentType.RIGHT),
+            parentCell(money(Number(f.a.con_intereses_moratorios)), COL_WIDTHS[6], AlignmentType.RIGHT),
+            parentCell(money(Number(f.a.con_seguros)), COL_WIDTHS[7], AlignmentType.RIGHT),
+            parentCell(money(Number(f.a.con_otros)), COL_WIDTHS[8], AlignmentType.RIGHT),
+            parentCell(money(f.totalConciliado), COL_WIDTHS[9], AlignmentType.RIGHT),
+            parentCell(pctFmt(Number(f.a.porcentaje_voto)), COL_WIDTHS[10], AlignmentType.CENTER),
+            parentCell(f.a.es_pequeno_acreedor ? "Sí" : "-", COL_WIDTHS[11], AlignmentType.CENTER),
           ],
         }),
       );
@@ -556,25 +557,24 @@ export async function generateRelacionAcreenciasDocx(
         children: [
           parentCell(String(idx), COL_WIDTHS[0], AlignmentType.CENTER, "main"),
           parentCell(
-            `${nombreConDocumento} - ${grupo.acreencias.length} acreencias`,
+            `${nombreConDocumento}\n${grupo.acreencias.length} acreencias`,
             COL_WIDTHS[1],
           ),
           parentCell("-", COL_WIDTHS[2]),
-          parentCell("-", COL_WIDTHS[3]),
-          parentCell(claseLabel, COL_WIDTHS[4], AlignmentType.CENTER),
-          parentCell(money(grupo.totales.capital), COL_WIDTHS[5], AlignmentType.RIGHT),
-          parentCell(money(grupo.totales.intCorr), COL_WIDTHS[6], AlignmentType.RIGHT),
-          parentCell(money(grupo.totales.intMora), COL_WIDTHS[7], AlignmentType.RIGHT),
-          parentCell(money(grupo.totales.seguros), COL_WIDTHS[8], AlignmentType.RIGHT),
-          parentCell(money(grupo.totales.otros), COL_WIDTHS[9], AlignmentType.RIGHT),
-          parentCell(money(grupo.totalConciliado), COL_WIDTHS[10], AlignmentType.RIGHT),
-          parentCell(pctFmt(grupo.pctVotoGrupo), COL_WIDTHS[11], AlignmentType.CENTER),
-          parentCell(grupo.todosPequenos ? "Sí" : "-", COL_WIDTHS[12], AlignmentType.CENTER),
+          parentCell(claseLabel, COL_WIDTHS[3], AlignmentType.CENTER),
+          parentCell(money(grupo.totales.capital), COL_WIDTHS[4], AlignmentType.RIGHT),
+          parentCell(money(grupo.totales.intCorr), COL_WIDTHS[5], AlignmentType.RIGHT),
+          parentCell(money(grupo.totales.intMora), COL_WIDTHS[6], AlignmentType.RIGHT),
+          parentCell(money(grupo.totales.seguros), COL_WIDTHS[7], AlignmentType.RIGHT),
+          parentCell(money(grupo.totales.otros), COL_WIDTHS[8], AlignmentType.RIGHT),
+          parentCell(money(grupo.totalConciliado), COL_WIDTHS[9], AlignmentType.RIGHT),
+          parentCell(pctFmt(grupo.pctVotoGrupo), COL_WIDTHS[10], AlignmentType.CENTER),
+          parentCell(grupo.todosPequenos ? "Sí" : "-", COL_WIDTHS[11], AlignmentType.CENTER),
         ],
       }),
     );
 
-    // Sub-filas — cada acreencia desplegada con sangria
+    // Sub-filas — cada acreencia desplegada (solo identificacion del credito)
     for (const f of grupo.acreencias) {
       rows.push(
         new TableRow({
@@ -585,16 +585,15 @@ export async function generateRelacionAcreenciasDocx(
               COL_WIDTHS[1],
             ),
             bodyCell("", COL_WIDTHS[2]),
-            bodyCell(f.a.identificacion_credito ?? "-", COL_WIDTHS[3]),
-            bodyCell(CLASE_LABEL[f.a.clase_credito], COL_WIDTHS[4], AlignmentType.CENTER),
-            bodyCell(money(Number(f.a.con_capital)), COL_WIDTHS[5], AlignmentType.RIGHT),
-            bodyCell(money(Number(f.a.con_intereses_corrientes)), COL_WIDTHS[6], AlignmentType.RIGHT),
-            bodyCell(money(Number(f.a.con_intereses_moratorios)), COL_WIDTHS[7], AlignmentType.RIGHT),
-            bodyCell(money(Number(f.a.con_seguros)), COL_WIDTHS[8], AlignmentType.RIGHT),
-            bodyCell(money(Number(f.a.con_otros)), COL_WIDTHS[9], AlignmentType.RIGHT),
-            bodyCell(money(f.totalConciliado), COL_WIDTHS[10], AlignmentType.RIGHT),
-            bodyCell(pctFmt(Number(f.a.porcentaje_voto)), COL_WIDTHS[11], AlignmentType.CENTER),
-            bodyCell(f.a.es_pequeno_acreedor ? "Sí" : "-", COL_WIDTHS[12], AlignmentType.CENTER),
+            bodyCell(CLASE_LABEL[f.a.clase_credito], COL_WIDTHS[3], AlignmentType.CENTER),
+            bodyCell(money(Number(f.a.con_capital)), COL_WIDTHS[4], AlignmentType.RIGHT),
+            bodyCell(money(Number(f.a.con_intereses_corrientes)), COL_WIDTHS[5], AlignmentType.RIGHT),
+            bodyCell(money(Number(f.a.con_intereses_moratorios)), COL_WIDTHS[6], AlignmentType.RIGHT),
+            bodyCell(money(Number(f.a.con_seguros)), COL_WIDTHS[7], AlignmentType.RIGHT),
+            bodyCell(money(Number(f.a.con_otros)), COL_WIDTHS[8], AlignmentType.RIGHT),
+            bodyCell(money(f.totalConciliado), COL_WIDTHS[9], AlignmentType.RIGHT),
+            bodyCell(pctFmt(Number(f.a.porcentaje_voto)), COL_WIDTHS[10], AlignmentType.CENTER),
+            bodyCell(f.a.es_pequeno_acreedor ? "Sí" : "-", COL_WIDTHS[11], AlignmentType.CENTER),
           ],
         }),
       );
@@ -620,16 +619,15 @@ export async function generateRelacionAcreenciasDocx(
         totalCell("", COL_WIDTHS[0], AlignmentType.CENTER),
         totalCell("TOTALES", COL_WIDTHS[1], AlignmentType.LEFT),
         totalCell("", COL_WIDTHS[2], AlignmentType.LEFT),
-        totalCell("", COL_WIDTHS[3], AlignmentType.LEFT),
-        totalCell("", COL_WIDTHS[4], AlignmentType.CENTER),
-        totalCell(money(totalCapital), COL_WIDTHS[5]),
-        totalCell(money(totalIntCorr), COL_WIDTHS[6]),
-        totalCell(money(totalIntMora), COL_WIDTHS[7]),
-        totalCell(money(totalSeguros), COL_WIDTHS[8]),
-        totalCell(money(totalOtros), COL_WIDTHS[9]),
-        totalCell(money(totalGeneral), COL_WIDTHS[10]),
-        totalCell("100.00%", COL_WIDTHS[11], AlignmentType.CENTER),
-        totalCell("", COL_WIDTHS[12], AlignmentType.CENTER),
+        totalCell("", COL_WIDTHS[3], AlignmentType.CENTER),
+        totalCell(money(totalCapital), COL_WIDTHS[4]),
+        totalCell(money(totalIntCorr), COL_WIDTHS[5]),
+        totalCell(money(totalIntMora), COL_WIDTHS[6]),
+        totalCell(money(totalSeguros), COL_WIDTHS[7]),
+        totalCell(money(totalOtros), COL_WIDTHS[8]),
+        totalCell(money(totalGeneral), COL_WIDTHS[9]),
+        totalCell("100.00%", COL_WIDTHS[10], AlignmentType.CENTER),
+        totalCell("", COL_WIDTHS[11], AlignmentType.CENTER),
       ],
     })
   );
