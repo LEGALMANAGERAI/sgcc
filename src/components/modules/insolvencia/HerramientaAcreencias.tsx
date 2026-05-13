@@ -1170,7 +1170,6 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
   const totalAcr = acreencias.reduce((s, a) => s + Number(a.acr_capital) + Number(a.acr_intereses_corrientes) + Number(a.acr_intereses_moratorios) + Number(a.acr_seguros) + Number(a.acr_otros), 0);
   const totalCon = acreencias.reduce((s, a) => s + Number(a.con_capital) + Number(a.con_intereses_corrientes) + Number(a.con_intereses_moratorios) + Number(a.con_seguros) + Number(a.con_otros), 0);
   const totalCapitalCon = acreencias.reduce((s, a) => s + Number(a.con_capital), 0);
-  const pequenosCount = acreencias.filter((a) => a.es_pequeno_acreedor).length;
 
   const propEnVotacion = propuestas.find((p) => p.estado === "en_votacion");
 
@@ -1218,6 +1217,12 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     }
     return Array.from(map.values());
   }, [acreencias, documentoPorParty]);
+
+  // Conteo de pequeños acreedores: un acreedor que tenga al menos una
+  // acreencia marcada como pequeña cuenta como uno, no como N filas.
+  const pequenosCount = gruposAcreedores.filter((g) =>
+    g.acreencias.some((a) => a.es_pequeno_acreedor),
+  ).length;
 
   // Sugerencias únicas de acreedores ya capturados en este caso (para autocompletar y prevenir typos)
   const sugerenciasAcreedores = useMemo(() => {
@@ -1268,7 +1273,14 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-white rounded-xl border border-gray-200 px-4 py-3">
           <p className="text-xs text-gray-500">Acreedores</p>
-          <p className="text-xl font-bold text-[#0D2340]">{acreencias.length}</p>
+          <p className="text-xl font-bold text-[#0D2340]">
+            {gruposAcreedores.length}
+            {acreencias.length !== gruposAcreedores.length && (
+              <span className="text-xs font-normal text-gray-400 ml-1">
+                ({acreencias.length} acreencia{acreencias.length === 1 ? "" : "s"})
+              </span>
+            )}
+          </p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 px-4 py-3">
           <p className="text-xs text-gray-500">Total conciliado</p>
