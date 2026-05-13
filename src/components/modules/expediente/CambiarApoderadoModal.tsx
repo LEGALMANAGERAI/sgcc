@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Loader2, AlertCircle, Upload } from "lucide-react";
+import { uploadPoderViaSignedUrl } from "@/lib/poderes-client";
 
 interface CambiarApoderadoModalProps {
   caseId: string;
@@ -63,13 +64,17 @@ export function CambiarApoderadoModal({
         },
       };
 
-      const formData = new FormData();
-      formData.append("data", JSON.stringify(payload));
-      if (poderFile) formData.append("poderFile", poderFile);
+      // Si hay PDF, subir directo via signed URL antes de crear el apoderado.
+      let tmpPoderPath: string | null = null;
+      if (poderFile) {
+        const { path } = await uploadPoderViaSignedUrl(poderFile);
+        tmpPoderPath = path;
+      }
 
       const res = await fetch(`/api/expediente/${caseId}/apoderados`, {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, tmp_poder_path: tmpPoderPath }),
       });
 
       if (!res.ok) {

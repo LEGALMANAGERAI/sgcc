@@ -2,16 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
+import {
+  isTempPoderPath,
+  movePoderToFinal,
+  verifyPoderIsPdf,
+  deletePoder,
+  createSignedDownloadUrl,
+  PODERES_BUCKET,
+} from "@/lib/poderes-storage";
 
 /**
  * POST /api/apoderados-poder/[caseAttorneyId]
  *
- * Sube (o reemplaza) el PDF del poder asociado a un case_attorney existente.
- * Útil cuando el upload original falló silenciosamente y la columna
- * `poder_url` quedó NULL — permite reparar la data desde la lista de
- * apoderados sin tener que crear un nuevo case_attorney como sustitución.
+ * Asocia (o reemplaza) el PDF del poder de un case_attorney existente.
+ * El PDF debe haberse subido previamente via signed URL al path tmp/<uuid>.pdf;
+ * aqui se mueve al path final y se actualiza poder_url en BD.
  *
- * Body: multipart/form-data con campo `poderFile` (PDF).
+ * Body JSON: { tmp_poder_path: string }
  */
 export async function POST(
   req: NextRequest,
@@ -25,10 +32,9 @@ export async function POST(
 
   const { caseAttorneyId } = await params;
 
-  // Validar que el case_attorney pertenezca al centro (vía caso)
   const { data: ca } = await supabaseAdmin
     .from("sgcc_case_attorneys")
-    .select(`id, case_id, caso:sgcc_cases!inner(center_id)`)
+    .select(`id, case_id, poder_url, caso:sgcc_cases!inner(center_id)`)
     .eq("id", caseAttorneyId)
     .maybeSingle();
 
@@ -36,56 +42,49 @@ export async function POST(
     return NextResponse.json({ error: "Apoderado no encontrado" }, { status: 404 });
   }
 
-  const contentType = req.headers.get("content-type") ?? "";
-  if (!contentType.includes("multipart/form-data")) {
-    return NextResponse.json({ error: "Se requiere multipart/form-data" }, { status: 400 });
+  const body = await req.json().catch(() => ({}));
+  const { tmp_poder_path } = body ?? {};
+
+  if (!tmp_poder_path || !isTempPoderPath(tmp_poder_path)) {
+    return NextResponse.json({ error: "tmp_poder_path requerido" }, { status: 400 });
   }
 
-  const formData = await req.formData();
-  const poderFile = formData.get("poderFile") as File | null;
-
-  if (!poderFile || poderFile.size === 0) {
-    return NextResponse.json({ error: "Archivo PDF requerido" }, { status: 400 });
-  }
-  if (poderFile.type !== "application/pdf") {
-    return NextResponse.json({ error: "El archivo debe ser PDF" }, { status: 400 });
-  }
-  if (poderFile.size > 10 * 1024 * 1024) {
-    return NextResponse.json({ error: "El archivo no puede superar 10 MB" }, { status: 400 });
-  }
-
-  const buffer = Buffer.from(await poderFile.arrayBuffer());
-  const filePath = `${ca.case_id}/${caseAttorneyId}.pdf`;
-
-  const { error: uploadError } = await supabaseAdmin.storage
-    .from("poderes")
-    .upload(filePath, buffer, { contentType: "application/pdf", upsert: true });
-
-  if (uploadError) {
-    console.error("[apoderados-poder] upload error:", uploadError);
+  const isPdf = await verifyPoderIsPdf(tmp_poder_path);
+  if (!isPdf) {
+    await deletePoder(tmp_poder_path);
     return NextResponse.json(
-      { error: `Error al subir el PDF: ${uploadError.message}` },
-      { status: 500 }
+      { error: "El archivo no es un PDF valido (firma magica incorrecta)." },
+      { status: 400 },
     );
   }
 
-  const { data: urlData } = supabaseAdmin.storage.from("poderes").getPublicUrl(filePath);
+  // Si ya habia un poder anterior, eliminarlo del bucket antes de subir el nuevo.
+  if (ca.poder_url) {
+    await deletePoder(ca.poder_url);
+  }
 
-  // sgcc_case_attorneys no tiene columna updated_at (solo created_at).
+  const moveResult = await movePoderToFinal(tmp_poder_path, ca.case_id, caseAttorneyId);
+  if ("error" in moveResult) {
+    await deletePoder(tmp_poder_path);
+    return NextResponse.json({ error: moveResult.error }, { status: 500 });
+  }
+
   const { error: updateError } = await supabaseAdmin
     .from("sgcc_case_attorneys")
-    .update({ poder_url: urlData.publicUrl })
+    .update({ poder_url: moveResult.path })
     .eq("id", caseAttorneyId);
 
   if (updateError) {
     console.error("[apoderados-poder] update error:", updateError);
+    await deletePoder(moveResult.path);
     return NextResponse.json(
       { error: `Error al actualizar el registro: ${updateError.message}` },
       { status: 500 }
     );
   }
 
-  return NextResponse.json({ ok: true, poder_url: urlData.publicUrl });
+  const signedUrl = await createSignedDownloadUrl(moveResult.path);
+  return NextResponse.json({ ok: true, poder_url: signedUrl });
 }
 
 /**
@@ -116,13 +115,9 @@ export async function DELETE(
     return NextResponse.json({ error: "Apoderado no encontrado" }, { status: 404 });
   }
 
-  const filePath = `${ca.case_id}/${caseAttorneyId}.pdf`;
   // Borra el archivo del bucket. No fallar si el archivo no existe.
-  const { error: removeError } = await supabaseAdmin.storage.from("poderes").remove([filePath]);
-  if (removeError) {
-    console.error("[apoderados-poder] remove error:", removeError);
-    // Continuamos: aunque el storage falle, queremos limpiar la columna
-    // para que la UI no apunte a un archivo inválido.
+  if (ca.poder_url) {
+    await deletePoder(ca.poder_url);
   }
 
   const { error: updateError } = await supabaseAdmin

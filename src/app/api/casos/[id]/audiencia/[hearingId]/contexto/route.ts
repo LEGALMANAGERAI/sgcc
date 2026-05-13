@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
+import { createSignedDownloadUrl } from "@/lib/poderes-storage";
 
 export async function GET(
   _req: NextRequest,
@@ -118,18 +119,32 @@ export async function GET(
   const { data: historialApoderados } = await supabaseAdmin
     .from("sgcc_case_attorneys")
     .select(`
-      id, party_id, motivo_cambio, activo, poder_vigente_desde, poder_vigente_hasta, created_at,
+      id, party_id, motivo_cambio, activo, poder_vigente_desde, poder_vigente_hasta, poder_url, created_at,
       attorney:sgcc_attorneys(id, nombre, numero_doc, tarjeta_profesional)
     `)
     .eq("case_id", caseId)
     .order("created_at", { ascending: false });
 
+  // Convertir poder_url (path en BD) a signed URL temporal
+  const apoderadosVigentesEnriched = await Promise.all(
+    (apoderadosVigentes ?? []).map(async (a) => ({
+      ...a,
+      poder_url: await createSignedDownloadUrl(a.poder_url),
+    })),
+  );
+  const historialApoderadosEnriched = await Promise.all(
+    (historialApoderados ?? []).map(async (a) => ({
+      ...a,
+      poder_url: await createSignedDownloadUrl(a.poder_url),
+    })),
+  );
+
   return NextResponse.json({
     caso,
     audiencia,
-    apoderadosVigentes: apoderadosVigentes ?? [],
+    apoderadosVigentes: apoderadosVigentesEnriched,
     asistencia: asistencia ?? [],
     ultimaActa: ultimaActa ?? null,
-    historialApoderados: historialApoderados ?? [],
+    historialApoderados: historialApoderadosEnriched,
   });
 }

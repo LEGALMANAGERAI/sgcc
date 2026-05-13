@@ -3,6 +3,13 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
+import {
+  isTempPoderPath,
+  movePoderToFinal,
+  verifyPoderIsPdf,
+  deletePoder,
+  createSignedDownloadUrl,
+} from "@/lib/poderes-storage";
 
 /**
  * GET /api/expediente/[id]/apoderados
@@ -30,7 +37,15 @@ export async function GET(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  // poder_url en BD ahora guarda el path; convertir a signed URL temporal.
+  const enriched = await Promise.all(
+    (data ?? []).map(async (row: any) => ({
+      ...row,
+      poder_url: await createSignedDownloadUrl(row.poder_url),
+    })),
+  );
+
+  return NextResponse.json(enriched);
 }
 
 /**
@@ -72,19 +87,17 @@ export async function POST(
     return NextResponse.json({ error: "Caso no encontrado" }, { status: 404 });
   }
 
-  const contentType = req.headers.get("content-type") ?? "";
-  let body: any;
-  let poderFile: File | null = null;
-
-  if (contentType.includes("multipart/form-data")) {
-    const formData = await req.formData();
-    body = JSON.parse(formData.get("data") as string);
-    poderFile = formData.get("poderFile") as File | null;
-  } else {
-    body = await req.json();
-  }
-
-  const { party_id, attorney, motivo_cambio, poder_vigente_desde, poder_vigente_hasta } = body;
+  // Solo JSON. El PDF del poder se sube aparte via signed URL al bucket
+  // privado y aqui llega como `tmp_poder_path`.
+  const body = await req.json();
+  const {
+    party_id,
+    attorney,
+    motivo_cambio,
+    poder_vigente_desde,
+    poder_vigente_hasta,
+    tmp_poder_path,
+  } = body;
 
   if (!party_id) {
     return NextResponse.json({ error: "party_id es requerido" }, { status: 400 });
@@ -198,41 +211,46 @@ export async function POST(
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
-  // Upload poder si viene archivo. Si falla, devolvemos error visible
-  // (el case_attorney ya se creó pero queda sin poder_url; es preferible
-  // que el usuario lo sepa para reintentar y no que falle silenciosamente).
-  if (poderFile && poderFile.size > 0) {
-    const buffer = Buffer.from(await poderFile.arrayBuffer());
-    const filePath = `${caseId}/${caseAttorneyId}.pdf`;
-    const { error: uploadError } = await supabaseAdmin.storage
-      .from("poderes")
-      .upload(filePath, buffer, { contentType: "application/pdf", upsert: true });
-
-    if (uploadError) {
-      console.error("[expediente/apoderados] upload error:", uploadError);
+  // Mover poder desde tmp/ al path final, si el frontend ya lo subio.
+  if (tmp_poder_path && isTempPoderPath(tmp_poder_path)) {
+    const isPdf = await verifyPoderIsPdf(tmp_poder_path);
+    if (!isPdf) {
+      await deletePoder(tmp_poder_path);
       return NextResponse.json(
         {
-          error: `El apoderado fue registrado pero el PDF no se pudo subir: ${uploadError.message}. Súbelo desde la lista de apoderados.`,
+          error: "El archivo del poder no es un PDF valido (firma magica incorrecta).",
           caseAttorneyId,
         },
-        { status: 500 }
+        { status: 400 },
       );
     }
 
-    const { data: urlData } = supabaseAdmin.storage.from("poderes").getPublicUrl(filePath);
+    const moveResult = await movePoderToFinal(tmp_poder_path, caseId, caseAttorneyId);
+    if ("error" in moveResult) {
+      await deletePoder(tmp_poder_path);
+      return NextResponse.json(
+        {
+          error: `El apoderado fue registrado pero el PDF no se pudo mover: ${moveResult.error}. Subelo desde la lista de apoderados.`,
+          caseAttorneyId,
+        },
+        { status: 500 },
+      );
+    }
+
     const { error: updateError } = await supabaseAdmin
       .from("sgcc_case_attorneys")
-      .update({ poder_url: urlData.publicUrl })
+      .update({ poder_url: moveResult.path })
       .eq("id", caseAttorneyId);
 
     if (updateError) {
       console.error("[expediente/apoderados] update poder_url error:", updateError);
+      await deletePoder(moveResult.path);
       return NextResponse.json(
         {
-          error: `El PDF se subió pero no se pudo asociar al registro: ${updateError.message}`,
+          error: `El PDF se subio pero no se pudo asociar al registro: ${updateError.message}`,
           caseAttorneyId,
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
   }

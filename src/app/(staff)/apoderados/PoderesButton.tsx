@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Paperclip, Upload, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { uploadPoderViaSignedUrl } from "@/lib/poderes-client";
 
 interface PoderItem {
   caseAttorneyId: string;
@@ -41,11 +42,11 @@ export function PoderesButton({ poderes }: Props) {
     setError(null);
     setSubiendo(caseAttorneyId);
     try {
-      const fd = new FormData();
-      fd.append("poderFile", file);
+      const { path } = await uploadPoderViaSignedUrl(file);
       const res = await fetch(`/api/apoderados-poder/${caseAttorneyId}`, {
         method: "POST",
-        body: fd,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tmp_poder_path: path }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

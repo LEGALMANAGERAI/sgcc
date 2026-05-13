@@ -25,6 +25,7 @@ import { HistorialObservacionesAudiencias } from "@/components/modules/expedient
 import type { TipoTramite } from "@/types";
 import { sumarDiasHabiles, diasHabilesEntre } from "@/lib/dias-habiles-colombia";
 import { sincronizarApoderadosDePartes } from "@/lib/sincronizar-apoderados";
+import { createSignedDownloadUrl } from "@/lib/poderes-storage";
 import { puedeVerCaso } from "@/lib/server-utils";
 import { EliminarExpediente } from "@/components/modules/expediente/EliminarExpediente";
 
@@ -149,7 +150,15 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
   ]);
 
   const parties = rawParties ?? [];
-  const attorneys = rawAttorneys ?? [];
+  // poder_url en BD es ahora un path en bucket privado; convertir a signed URL
+  // temporal para que los <a href={poder_url}> funcionen en el cliente.
+  const attorneysRaw = rawAttorneys ?? [];
+  const attorneys = await Promise.all(
+    attorneysRaw.map(async (a: any) => ({
+      ...a,
+      poder_url: await createSignedDownloadUrl(a.poder_url),
+    })),
+  );
   const hearings = rawHearings ?? [];
   const documentos = rawDocumentos ?? [];
   const timelineRaw = rawTimeline ?? [];
