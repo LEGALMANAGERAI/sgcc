@@ -51,20 +51,19 @@ export async function generarRelacionAcreenciasPdf(
   const MARGIN_HOR = 43;
   const USABLE_W = PAGE_W - 2 * MARGIN_HOR; // 526 pt
 
-  // Sin columna Identif. — la identificacion va debajo del nombre del
-  // acreedor. Espacio extra repartido a las columnas finales (% Voto y
-  // Peq.) que antes quedaban muy apretadas contra el margen derecho.
+  // Sin columna Doc. ni Identif. — el documento va entre parentesis
+  // junto al nombre del acreedor; la identificacion del credito va
+  // debajo (en filas simples) o como sub-fila ">" (cuando hay varias).
   const COLS = [
     { key: "n", label: "#", w: 18, align: "center" as const },
-    { key: "acreedor", label: "Acreedor", w: 104, align: "left" as const },
-    { key: "doc", label: "Doc.", w: 50, align: "left" as const },
+    { key: "acreedor", label: "Acreedor", w: 142, align: "left" as const },
     { key: "clase", label: "Clase", w: 30, align: "center" as const },
-    { key: "capital", label: "Capital", w: 56, align: "right" as const },
-    { key: "intCorr", label: "Int. corr.", w: 48, align: "right" as const },
-    { key: "intMora", label: "Int. mora", w: 48, align: "right" as const },
-    { key: "seguros", label: "Seguros", w: 42, align: "right" as const },
-    { key: "otros", label: "Otros", w: 40, align: "right" as const },
-    { key: "total", label: "Total", w: 60, align: "right" as const },
+    { key: "capital", label: "Capital", w: 60, align: "right" as const },
+    { key: "intCorr", label: "Int. corr.", w: 50, align: "right" as const },
+    { key: "intMora", label: "Int. mora", w: 50, align: "right" as const },
+    { key: "seguros", label: "Seguros", w: 44, align: "right" as const },
+    { key: "otros", label: "Otros", w: 42, align: "right" as const },
+    { key: "total", label: "Total", w: 62, align: "right" as const },
     { key: "pctVoto", label: "% Voto", w: 40, align: "center" as const },
     { key: "peq", label: "Peq.", w: 30, align: "center" as const },
   ];
@@ -389,15 +388,17 @@ export async function generarRelacionAcreenciasPdf(
     if (!multiple) {
       idx += 1;
       const f = grupo.acreencias[0];
-      // Nombre del acreedor + identificacion del credito en linea siguiente
-      const acreedorTxt = f.a.identificacion_credito
-        ? `${f.a.acreedor_nombre}\n${f.a.identificacion_credito}`
+      // Nombre + (doc) en la primera linea, identificacion del credito debajo
+      const nombreConDocSimple = f.a.acreedor_documento
+        ? `${f.a.acreedor_nombre} (${f.a.acreedor_documento})`
         : f.a.acreedor_nombre;
+      const acreedorTxt = f.a.identificacion_credito
+        ? `${nombreConDocSimple}\n${f.a.identificacion_credito}`
+        : nombreConDocSimple;
       dibujarFila(
         {
           n: String(idx),
           acreedor: acreedorTxt,
-          doc: f.a.acreedor_documento ?? "-",
           clase: CLASE_LABEL[f.a.clase_credito],
           capital: money(Number(f.a.con_capital)),
           intCorr: money(Number(f.a.con_intereses_corrientes)),
@@ -422,7 +423,6 @@ export async function generarRelacionAcreenciasPdf(
       {
         n: String(idx),
         acreedor: `${nombreConDoc}\n${grupo.acreencias.length} acreencias`,
-        doc: "-",
         clase: grupo.claseMixta ? "Mixta" : grupo.claseLabel ?? "",
         capital: money(grupo.totales.capital),
         intCorr: money(grupo.totales.intCorr),
@@ -442,7 +442,6 @@ export async function generarRelacionAcreenciasPdf(
         {
           n: "",
           acreedor: `      > ${f.a.identificacion_credito ?? "Sin identificación"}`,
-          doc: "",
           clase: CLASE_LABEL[f.a.clase_credito],
           capital: money(Number(f.a.con_capital)),
           intCorr: money(Number(f.a.con_intereses_corrientes)),
@@ -462,7 +461,6 @@ export async function generarRelacionAcreenciasPdf(
   const totalValues: Record<string, { text: string; align: "left" | "right" | "center" }> = {
     n: { text: "", align: "center" },
     acreedor: { text: "TOTALES", align: "left" },
-    doc: { text: "", align: "left" },
     clase: { text: "", align: "center" },
     capital: { text: money(totalCapital), align: "right" },
     intCorr: { text: money(totalIntCorr), align: "right" },
