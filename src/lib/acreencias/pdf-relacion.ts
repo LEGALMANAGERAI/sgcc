@@ -56,14 +56,14 @@ export async function generarRelacionAcreenciasPdf(
   // Peq.) que antes quedaban muy apretadas contra el margen derecho.
   const COLS = [
     { key: "n", label: "#", w: 18, align: "center" as const },
-    { key: "acreedor", label: "Acreedor", w: 110, align: "left" as const },
+    { key: "acreedor", label: "Acreedor", w: 104, align: "left" as const },
     { key: "doc", label: "Doc.", w: 50, align: "left" as const },
     { key: "clase", label: "Clase", w: 30, align: "center" as const },
     { key: "capital", label: "Capital", w: 56, align: "right" as const },
     { key: "intCorr", label: "Int. corr.", w: 48, align: "right" as const },
     { key: "intMora", label: "Int. mora", w: 48, align: "right" as const },
-    { key: "seguros", label: "Seguros", w: 38, align: "right" as const },
-    { key: "otros", label: "Otros", w: 38, align: "right" as const },
+    { key: "seguros", label: "Seguros", w: 42, align: "right" as const },
+    { key: "otros", label: "Otros", w: 40, align: "right" as const },
     { key: "total", label: "Total", w: 60, align: "right" as const },
     { key: "pctVoto", label: "% Voto", w: 40, align: "center" as const },
     { key: "peq", label: "Peq.", w: 30, align: "center" as const },

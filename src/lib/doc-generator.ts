@@ -426,14 +426,14 @@ export async function generateRelacionAcreenciasDocx(
   // margen derecho.
   const COL_WIDTHS = [
     380,   // #
-    2050,  // Acreedor (absorbe la identif. debajo del nombre)
+    1920,  // Acreedor (absorbe la identif. debajo del nombre)
     1000,  // Documento
     480,   // Clase
     1050,  // Capital
     920,   // Int. corr.
     920,   // Int. mora
-    760,   // Seguros
-    760,   // Otros
+    850,   // Seguros (mas ancho para que el header quepa en 1 linea)
+    800,   // Otros
     1100,  // Total
     600,   // % Voto
     490,   // Peq.
