@@ -607,7 +607,6 @@ export async function generateRelacionAcreenciasDocx(
           alignment: align,
         }),
       ],
-      shading: { fill: "E8EEF7" },
       margins: { top: 60, bottom: 60, left: 40, right: 40 },
     });
 

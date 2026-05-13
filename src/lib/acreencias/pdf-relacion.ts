@@ -476,7 +476,7 @@ export async function generarRelacionAcreenciasPdf(
     y -= HEADER_H;
   }
 
-  drawGridRow(MARGIN_HOR, y, totalRowH, softBg);
+  drawGridRow(MARGIN_HOR, y, totalRowH);
   const paddingT = 3;
   let tx = MARGIN_HOR;
   for (const col of COLS) {
