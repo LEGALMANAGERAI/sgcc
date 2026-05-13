@@ -141,24 +141,75 @@ export async function generarRelacionAcreenciasPdf(
     y -= 16;
   }
 
-  function truncate(text: string, maxWidth: number, size: number, font: typeof fontRegular): string {
-    if (font.widthOfTextAtSize(text, size) <= maxWidth) return text;
-    const ellipsis = "...";
-    let lo = 0;
-    let hi = text.length;
-    while (lo < hi) {
-      const mid = Math.floor((lo + hi + 1) / 2);
-      const candidate = text.slice(0, mid) + ellipsis;
-      if (font.widthOfTextAtSize(candidate, size) <= maxWidth) lo = mid;
-      else hi = mid - 1;
+  // Divide texto en lineas que quepan en maxWidth. Prioriza romper por
+  // espacios; si una palabra individual excede el ancho, hace hard-break
+  // por caracteres (sin "..."). Asi nombres como "FINANCIERA COMULTRASAN"
+  // quedan "FINANCIERA" + "COMULTRASAN" en dos lineas.
+  function wrapToLines(text: string, maxWidth: number, size: number, font: typeof fontRegular): string[] {
+    if (!text) return [""];
+    if (font.widthOfTextAtSize(text, size) <= maxWidth) return [text];
+
+    const lines: string[] = [];
+    let current = "";
+
+    const flushIfFits = (candidate: string): boolean => {
+      if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+        current = candidate;
+        return true;
+      }
+      return false;
+    };
+
+    const hardBreakLong = (word: string) => {
+      // Si la palabra entera excede el ancho, romperla por chars sin perder nada.
+      if (font.widthOfTextAtSize(word, size) <= maxWidth) {
+        if (current && !flushIfFits(`${current} ${word}`)) {
+          lines.push(current);
+          current = word;
+        } else if (!current) {
+          current = word;
+        }
+        return;
+      }
+      // Iterar caracteres acumulando hasta que ya no quepan
+      let chunk = current ? `${current} ` : "";
+      for (const ch of word) {
+        const candidate = chunk + ch;
+        if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+          chunk = candidate;
+        } else {
+          if (chunk.trim()) lines.push(chunk.trim());
+          chunk = ch;
+        }
+      }
+      current = chunk;
+    };
+
+    const words = text.split(/\s+/);
+    for (const w of words) {
+      if (!current) {
+        if (font.widthOfTextAtSize(w, size) <= maxWidth) current = w;
+        else hardBreakLong(w);
+        continue;
+      }
+      const candidate = `${current} ${w}`;
+      if (!flushIfFits(candidate)) {
+        // No cabe agregando esta palabra: vuelco la linea actual y proceso w
+        lines.push(current);
+        current = "";
+        if (font.widthOfTextAtSize(w, size) <= maxWidth) current = w;
+        else hardBreakLong(w);
+      }
     }
-    return text.slice(0, lo) + ellipsis;
+    if (current) lines.push(current);
+    return lines;
   }
 
-  function drawCellText(
-    text: string,
+  function drawCellLines(
+    lines: string[],
     x: number,
-    y: number,
+    yTop: number,
+    rowHeight: number,
     w: number,
     align: "left" | "right" | "center",
     size: number,
@@ -166,16 +217,33 @@ export async function generarRelacionAcreenciasPdf(
     color = rgb(0, 0, 0)
   ) {
     const padding = 3;
-    const maxW = w - padding * 2;
-    const rendered = truncate(text, maxW, size, font);
-    const tw = font.widthOfTextAtSize(rendered, size);
-    let tx = x + padding;
-    if (align === "right") tx = x + w - padding - tw;
-    if (align === "center") tx = x + (w - tw) / 2;
-    page.drawText(rendered, { x: tx, y, size, font, color });
+    const lineH = size + 1;
+    // Centrar verticalmente el bloque de lineas dentro de la celda.
+    const blockH = lines.length * lineH;
+    let lineY = yTop - (rowHeight - blockH) / 2 - size;
+    for (const line of lines) {
+      const tw = font.widthOfTextAtSize(line, size);
+      let tx = x + padding;
+      if (align === "right") tx = x + w - padding - tw;
+      if (align === "center") tx = x + (w - tw) / 2;
+      page.drawText(line, { x: tx, y: lineY, size, font, color });
+      lineY -= lineH;
+    }
+  }
+
+  function computeHeaderHeight(): number {
+    const padding = 3;
+    let maxLines = 1;
+    for (const col of COLS) {
+      const lines = wrapToLines(col.label, col.w - padding * 2, FONT_HEADER, fontBold);
+      if (lines.length > maxLines) maxLines = lines.length;
+    }
+    const lineH = FONT_HEADER + 1;
+    return ROW_PAD_Y * 2 + maxLines * lineH + 2;
   }
 
   function drawHeaderRow(xStart: number, yTop: number, height: number) {
+    const padding = 3;
     page.drawRectangle({
       x: xStart,
       y: yTop - height,
@@ -185,16 +253,8 @@ export async function generarRelacionAcreenciasPdf(
     });
     let cx = xStart;
     for (const col of COLS) {
-      drawCellText(
-        col.label,
-        cx,
-        yTop - height + (height - FONT_HEADER) / 2 + 1,
-        col.w,
-        col.align,
-        FONT_HEADER,
-        fontBold,
-        white
-      );
+      const lines = wrapToLines(col.label, col.w - padding * 2, FONT_HEADER, fontBold);
+      drawCellLines(lines, cx, yTop, height, col.w, col.align, FONT_HEADER, fontBold, white);
       cx += col.w;
     }
   }
@@ -238,8 +298,19 @@ export async function generarRelacionAcreenciasPdf(
   drawMetadatos();
 
   // ── Tabla ──
-  const ROW_H = FONT_BODY + ROW_PAD_Y * 2 + 2; // ~13 pt
-  const HEADER_H = FONT_HEADER + ROW_PAD_Y * 2 + 4;
+  const HEADER_H = computeHeaderHeight();
+  const LINE_H_BODY = FONT_BODY + 1;
+  const MIN_ROW_H = LINE_H_BODY + ROW_PAD_Y * 2 + 2;
+
+  function rowHeightFor(values: Record<string, string>): number {
+    const padding = 3;
+    let maxLines = 1;
+    for (const col of COLS) {
+      const lines = wrapToLines(values[col.key] ?? "", col.w - padding * 2, FONT_BODY, fontRegular);
+      if (lines.length > maxLines) maxLines = lines.length;
+    }
+    return Math.max(MIN_ROW_H, ROW_PAD_Y * 2 + maxLines * LINE_H_BODY + 2);
+  }
 
   // Header
   drawHeaderRow(MARGIN_HOR, y, HEADER_H);
@@ -254,13 +325,6 @@ export async function generarRelacionAcreenciasPdf(
   let totalOtros = 0;
 
   filas.forEach((f, idx) => {
-    // Nueva página si no cabe (dejamos espacio para totales + leyenda)
-    if (y - ROW_H < MARGIN_VER + 80) {
-      nuevaPagina();
-      drawHeaderRow(MARGIN_HOR, y, HEADER_H);
-      y -= HEADER_H;
-    }
-
     const capital = Number(f.a.con_capital);
     const intCorr = Number(f.a.con_intereses_corrientes);
     const intMora = Number(f.a.con_intereses_moratorios);
@@ -273,11 +337,6 @@ export async function generarRelacionAcreenciasPdf(
     totalSeguros += seguros;
     totalOtros += otros;
 
-    const fill = idx % 2 === 1 ? rgb(248 / 255, 250 / 255, 253 / 255) : undefined;
-    drawGridRow(MARGIN_HOR, y, ROW_H, fill);
-
-    const textY = y - ROW_H + ROW_PAD_Y + 1;
-    let cx = MARGIN_HOR;
     const values: Record<string, string> = {
       n: String(idx + 1),
       acreedor: f.a.acreedor_nombre,
@@ -294,34 +353,40 @@ export async function generarRelacionAcreenciasPdf(
       peq: f.a.es_pequeno_acreedor ? "Sí" : "-",
     };
 
+    const rowH = rowHeightFor(values);
+
+    // Nueva página si no cabe (dejamos espacio para totales + leyenda)
+    if (y - rowH < MARGIN_VER + 80) {
+      nuevaPagina();
+      drawHeaderRow(MARGIN_HOR, y, HEADER_H);
+      y -= HEADER_H;
+    }
+
+    const fill = idx % 2 === 1 ? rgb(248 / 255, 250 / 255, 253 / 255) : undefined;
+    drawGridRow(MARGIN_HOR, y, rowH, fill);
+
+    const padding = 3;
+    let cx = MARGIN_HOR;
     for (const col of COLS) {
       const isTotal = col.key === "total";
-      drawCellText(
-        values[col.key],
+      const lines = wrapToLines(values[col.key] ?? "", col.w - padding * 2, FONT_BODY, fontRegular);
+      drawCellLines(
+        lines,
         cx,
-        textY,
+        y,
+        rowH,
         col.w,
         col.align,
         FONT_BODY,
-        isTotal ? fontBold : fontRegular
+        isTotal ? fontBold : fontRegular,
       );
       cx += col.w;
     }
 
-    y -= ROW_H;
+    y -= rowH;
   });
 
   // Fila de totales
-  if (y - ROW_H < MARGIN_VER + 60) {
-    nuevaPagina();
-    drawHeaderRow(MARGIN_HOR, y, HEADER_H);
-    y -= HEADER_H;
-  }
-
-  const totalGeneral = totalCapital + totalIntCorr + totalIntMora + totalSeguros + totalOtros;
-  drawGridRow(MARGIN_HOR, y, ROW_H + 2, softBg);
-  const totalTextY = y - (ROW_H + 2) + ROW_PAD_Y + 1;
-  let tx = MARGIN_HOR;
   const totalValues: Record<string, { text: string; align: "left" | "right" | "center" }> = {
     n: { text: "", align: "center" },
     acreedor: { text: "TOTALES", align: "left" },
@@ -333,16 +398,30 @@ export async function generarRelacionAcreenciasPdf(
     intMora: { text: money(totalIntMora), align: "right" },
     seguros: { text: money(totalSeguros), align: "right" },
     otros: { text: money(totalOtros), align: "right" },
-    total: { text: money(totalGeneral), align: "right" },
+    total: { text: money(totalCapital + totalIntCorr + totalIntMora + totalSeguros + totalOtros), align: "right" },
     pctVoto: { text: "100.00%", align: "center" },
     peq: { text: "", align: "center" },
   };
+  const totalRowH = rowHeightFor(
+    Object.fromEntries(Object.entries(totalValues).map(([k, v]) => [k, v.text])),
+  ) + 2;
+
+  if (y - totalRowH < MARGIN_VER + 60) {
+    nuevaPagina();
+    drawHeaderRow(MARGIN_HOR, y, HEADER_H);
+    y -= HEADER_H;
+  }
+
+  drawGridRow(MARGIN_HOR, y, totalRowH, softBg);
+  const paddingT = 3;
+  let tx = MARGIN_HOR;
   for (const col of COLS) {
     const v = totalValues[col.key];
-    drawCellText(v.text, tx, totalTextY, col.w, v.align, FONT_TOTAL, fontBold, navy);
+    const lines = wrapToLines(v.text, col.w - paddingT * 2, FONT_TOTAL, fontBold);
+    drawCellLines(lines, tx, y, totalRowH, col.w, v.align, FONT_TOTAL, fontBold, navy);
     tx += col.w;
   }
-  y -= ROW_H + 2;
+  y -= totalRowH;
 
   // Leyenda
   y -= 16;
