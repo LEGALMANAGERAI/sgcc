@@ -423,18 +423,21 @@ export async function generateRelacionAcreenciasDocx(
   // Anchos por columna en twips. Suma = 10800 ≈ 19 cm. Con margenes
   // horizontales reducidos a 1.5 cm la pagina carta tiene 18.5 cm utiles,
   // suficientes para esta tabla sin que Word parta palabras letra por letra.
+  // Suma debe ser <= 10512 (ancho util en pagina carta vertical con
+  // margenes horizontales de 864 twips cada lado). Antes era 10800 y la
+  // tabla se desbordaba comiendo el margen izquierdo.
   const COL_WIDTHS = [
-    400,   // #
-    1900,  // Acreedor
-    900,   // Documento
-    1000,  // Identif. credito
-    500,   // Clase
-    1000,  // Capital
-    900,   // Int. corr.
-    900,   // Int. mora
-    750,   // Seguros
-    750,   // Otros
-    1100,  // Total
+    380,   // #
+    1750,  // Acreedor
+    880,   // Documento
+    900,   // Identif. credito
+    480,   // Clase
+    980,   // Capital
+    880,   // Int. corr.
+    880,   // Int. mora
+    720,   // Seguros
+    720,   // Otros
+    1042,  // Total
     400,   // % Voto
     300,   // Peq.
   ];
