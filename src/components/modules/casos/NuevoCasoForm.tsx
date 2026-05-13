@@ -169,6 +169,24 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
       }
     }
 
+    // Validar tamaño TOTAL del payload: Vercel rechaza el request completo si
+    // la suma supera 4.5 MB, no solo cada archivo individual. Dejamos ~500 KB
+    // de margen para el JSON de partes y el boundary del FormData.
+    const PAYLOAD_LIMIT_BYTES = 4 * 1024 * 1024; // 4 MB para archivos
+    const totalPoderesBytes = allPartes.reduce(
+      (sum, p) => sum + (p.poderFile?.size ?? 0),
+      0,
+    );
+    if (totalPoderesBytes > PAYLOAD_LIMIT_BYTES) {
+      const totalMb = (totalPoderesBytes / 1024 / 1024).toFixed(1);
+      setError(
+        `Los poderes pesan ${totalMb} MB en total y exceden el limite por solicitud (4 MB). ` +
+          `Crea el caso primero sin los poderes (desmarca "Tiene apoderado" o quita los archivos) ` +
+          `y subelos despues uno por uno desde la pestana Apoderados del expediente.`,
+      );
+      return;
+    }
+
     setLoading(true);
 
     // Preparar datos de partes sin archivos para JSON
