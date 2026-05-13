@@ -497,7 +497,7 @@ export async function generateRelacionAcreenciasDocx(
           alignment: align,
         }),
       ],
-      shading: { fill: "DCE9F8" },
+      shading: { fill: "E8EEF7" },
       margins: { top: 50, bottom: 50, left: 40, right: 40 },
       ...(band ? { borders: band === "main" ? bandMain : bandChild } : {}),
     });

@@ -319,7 +319,10 @@ export async function generarRelacionAcreenciasPdf(
   y -= HEADER_H;
 
   const grupos = prepararGruposRelacion(input.acreencias);
-  const parentFill = rgb(220 / 255, 233 / 255, 248 / 255);
+  // Mismo tono claro que softBg (TOTALES) para que ninguna fila de datos
+  // se vea mas oscura que el subtotal final. La barra azul a la izquierda
+  // y la negrita ya distinguen las filas de acreedor principales.
+  const parentFill = softBg;
   const subRowFill = rgb(248 / 255, 250 / 255, 253 / 255);
   // Barra azul que identifica cada credito. Color fuerte para filas
   // principales (acreedor) y mas tenue para sub-filas (acreencias hijas).
