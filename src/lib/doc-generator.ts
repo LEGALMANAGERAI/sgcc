@@ -316,13 +316,17 @@ export interface GrupoAcreedor {
 }
 
 export function prepararGruposRelacion(acreencias: SgccAcreencia[]): GrupoAcreedor[] {
-  // Agrupar por (party_id || documento normalizado || nombre normalizado)
+  // Agrupar prioritariamente por DOCUMENTO normalizado. Si dos acreencias
+  // comparten documento (NIT/CC) son el mismo acreedor aunque tengan
+  // party_id distintos (datos creados antes del fix de findOrCreateParty).
+  // Fallback: party_id si no hay documento, y al final por nombre.
   const map = new Map<string, FilaAcreencia[]>();
   for (const a of acreencias) {
-    const key = a.party_id
-      ? `p:${a.party_id}`
-      : normDocAcreedor(a.acreedor_documento)
-        ? `d:${normDocAcreedor(a.acreedor_documento)}`
+    const docNorm = normDocAcreedor(a.acreedor_documento);
+    const key = docNorm
+      ? `d:${docNorm}`
+      : a.party_id
+        ? `p:${a.party_id}`
         : `n:${(a.acreedor_nombre ?? "").trim().toUpperCase() || a.id}`;
     const fila: FilaAcreencia = {
       a,
