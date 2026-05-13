@@ -51,11 +51,12 @@ export async function generarRelacionAcreenciasPdf(
   const MARGIN_HOR = 43;
   const USABLE_W = PAGE_W - 2 * MARGIN_HOR; // 526 pt
 
-  // Distribucion ponderada. Sin columna Identif. — la identificacion del
-  // credito va debajo del nombre del acreedor en la columna Acreedor.
+  // Sin columna Identif. — la identificacion va debajo del nombre del
+  // acreedor. Espacio extra repartido a las columnas finales (% Voto y
+  // Peq.) que antes quedaban muy apretadas contra el margen derecho.
   const COLS = [
     { key: "n", label: "#", w: 18, align: "center" as const },
-    { key: "acreedor", label: "Acreedor", w: 130, align: "left" as const },
+    { key: "acreedor", label: "Acreedor", w: 110, align: "left" as const },
     { key: "doc", label: "Doc.", w: 50, align: "left" as const },
     { key: "clase", label: "Clase", w: 30, align: "center" as const },
     { key: "capital", label: "Capital", w: 56, align: "right" as const },
@@ -64,8 +65,8 @@ export async function generarRelacionAcreenciasPdf(
     { key: "seguros", label: "Seguros", w: 38, align: "right" as const },
     { key: "otros", label: "Otros", w: 38, align: "right" as const },
     { key: "total", label: "Total", w: 60, align: "right" as const },
-    { key: "pctVoto", label: "% Voto", w: 28, align: "center" as const },
-    { key: "peq", label: "Peq.", w: 22, align: "center" as const },
+    { key: "pctVoto", label: "% Voto", w: 40, align: "center" as const },
+    { key: "peq", label: "Peq.", w: 30, align: "center" as const },
   ];
   const SUM_W = COLS.reduce((s, c) => s + c.w, 0);
   const SCALE = USABLE_W / SUM_W;
