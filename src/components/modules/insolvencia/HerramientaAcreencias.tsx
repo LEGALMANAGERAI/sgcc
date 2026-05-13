@@ -1670,18 +1670,18 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
             </div>
           </div>
           <AcreenciasTableShell>
-            <table className="w-full min-w-[1200px] text-xs">
+            <table className="w-full text-xs">
               <thead>
                 <tr className="bg-[#0D2340] text-white">
-                  <th className="px-3 py-2.5 text-left font-semibold min-w-[200px]">Acreedor</th>
-                  <th className="px-2 py-2.5 text-center font-semibold min-w-[80px]">Clase</th>
+                  <th className="px-3 py-2.5 text-left font-semibold min-w-[180px]">Acreedor</th>
+                  <th className="px-2 py-2.5 text-center font-semibold">Clase</th>
                   {conceptos.map((c) => (
-                    <th key={c.key} className="px-2 py-2.5 text-right font-semibold min-w-[110px] whitespace-nowrap">{c.label}</th>
+                    <th key={c.key} className="px-2 py-2.5 text-right font-semibold">{c.label}</th>
                   ))}
-                  <th className="px-2 py-2.5 text-right font-semibold min-w-[120px] whitespace-nowrap">Total</th>
-                  <th className="px-2 py-2.5 text-center font-semibold min-w-[100px] whitespace-nowrap">Fecha conc.</th>
-                  <th className="px-2 py-2.5 text-center font-semibold min-w-[70px] whitespace-nowrap">% Voto</th>
-                  <th className="px-2 py-2.5 text-center font-semibold min-w-[80px] whitespace-nowrap">Pequeño</th>
+                  <th className="px-2 py-2.5 text-right font-semibold">Total</th>
+                  <th className="px-2 py-2.5 text-center font-semibold">Fecha conc.</th>
+                  <th className="px-2 py-2.5 text-center font-semibold">% Voto</th>
+                  <th className="px-2 py-2.5 text-center font-semibold">Pequeño</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
