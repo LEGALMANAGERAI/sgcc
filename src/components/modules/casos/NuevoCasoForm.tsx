@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { PlusCircle, Trash2, ChevronDown, ChevronUp, Briefcase } from "lucide-react";
 import { parseApiError, validarTamanoArchivo } from "@/lib/api-error";
+import { uploadPoderViaSignedUrl } from "@/lib/poderes-client";
 
 interface Conciliador { id: string; nombre: string }
 interface Sala { id: string; nombre: string; tipo: string }
@@ -158,7 +159,9 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
       }
     }
 
-    // Validar tamaño de cada poder antes de enviar (Vercel rechaza > 4.5 MB)
+    // Validar tamaño individual de cada poder (limite del bucket: 50 MB).
+    // Ya no validamos el total porque los poderes se suben directo a Supabase
+    // via signed URL, no pasan por Vercel.
     for (const [idx, p] of allPartes.entries()) {
       if (p.poderFile) {
         const err = validarTamanoArchivo(p.poderFile, `El poder de la parte ${idx + 1}`);
@@ -169,28 +172,26 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
       }
     }
 
-    // Validar tamaño TOTAL del payload: Vercel rechaza el request completo si
-    // la suma supera 4.5 MB, no solo cada archivo individual. Dejamos ~500 KB
-    // de margen para el JSON de partes y el boundary del FormData.
-    const PAYLOAD_LIMIT_BYTES = 4 * 1024 * 1024; // 4 MB para archivos
-    const totalPoderesBytes = allPartes.reduce(
-      (sum, p) => sum + (p.poderFile?.size ?? 0),
-      0,
-    );
-    if (totalPoderesBytes > PAYLOAD_LIMIT_BYTES) {
-      const totalMb = (totalPoderesBytes / 1024 / 1024).toFixed(1);
-      setError(
-        `Los poderes pesan ${totalMb} MB en total y exceden el limite por solicitud (4 MB). ` +
-          `Crea el caso primero sin los poderes (desmarca "Tiene apoderado" o quita los archivos) ` +
-          `y subelos despues uno por uno desde la pestana Apoderados del expediente.`,
-      );
+    setLoading(true);
+
+    // Subir poderes directo a Supabase via signed URL antes de crear el caso.
+    // Si alguno falla, abortamos para no crear casos a medio configurar.
+    const tmpPathByIdx: Record<number, string> = {};
+    try {
+      for (const [idx, p] of allPartes.entries()) {
+        if (p.poderFile) {
+          const { path } = await uploadPoderViaSignedUrl(p.poderFile);
+          tmpPathByIdx[idx] = path;
+        }
+      }
+    } catch (err: any) {
+      setError(`No se pudo subir un poder: ${err?.message ?? "intenta de nuevo"}`);
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
-
-    // Preparar datos de partes sin archivos para JSON
-    const partesData = allPartes.map((p) => ({
+    // Preparar datos de partes (incluye tmp_poder_path si se subio archivo)
+    const partesData = allPartes.map((p, idx) => ({
       rol: p.rol,
       tipo_persona: p.tipo_persona,
       nombres: p.nombres,
@@ -208,33 +209,24 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
         email: p.apoderado.email,
         telefono: p.apoderado.telefono,
       } : null,
+      tmp_poder_path: tmpPathByIdx[idx] ?? null,
     }));
-
-    // Usar FormData para incluir archivos de poder
-    const fd = new FormData();
-    fd.append("data", JSON.stringify({
-      centerId,
-      tipo_tramite: tipoTramite,
-      materia: tipoTramite === "insolvencia" ? "civil" : materia,
-      descripcion,
-      cuantia: cuantiaIndet ? null : cuantia ? Number(cuantia) : null,
-      cuantia_indeterminada: cuantiaIndet,
-      conciliador_id: conciliadorId || null,
-      sala_id: salaId || null,
-      partes: partesData,
-    }));
-
-    // Adjuntar archivos de poder con índice
-    allPartes.forEach((p, idx) => {
-      if (p.poderFile) {
-        fd.append(`poder_${idx}`, p.poderFile);
-      }
-    });
 
     try {
       const res = await fetch("/api/casos", {
         method: "POST",
-        body: fd,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          centerId,
+          tipo_tramite: tipoTramite,
+          materia: tipoTramite === "insolvencia" ? "civil" : materia,
+          descripcion,
+          cuantia: cuantiaIndet ? null : cuantia ? Number(cuantia) : null,
+          cuantia_indeterminada: cuantiaIndet,
+          conciliador_id: conciliadorId || null,
+          sala_id: salaId || null,
+          partes: partesData,
+        }),
       });
 
       if (!res.ok) {

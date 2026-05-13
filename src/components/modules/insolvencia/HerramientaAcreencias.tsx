@@ -47,6 +47,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { uploadPoderViaSignedUrl } from "@/lib/poderes-client";
 
 /* ─── Props ─────────────────────────────────────────────────────────── */
 
@@ -842,22 +843,25 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
   ) {
     setSaving(payload.acreenciaId ?? "add-completo");
     try {
-      let res: Response;
       const data: any = { acreedor: payload.acreedor, apoderado: payload.apoderado };
       if (payload.acreenciaId) data.acreencia_id = payload.acreenciaId;
 
+      // Subir poder directo a Supabase via signed URL antes de crear el registro.
       if (payload.poderFile) {
-        const fd = new FormData();
-        fd.append("data", JSON.stringify(data));
-        fd.append("poderFile", payload.poderFile);
-        res = await fetch(`/api/expediente/${caseId}/acreencias/crear-con-convocado`, { method: "POST", body: fd });
-      } else {
-        res = await fetch(`/api/expediente/${caseId}/acreencias/crear-con-convocado`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
+        try {
+          const { path } = await uploadPoderViaSignedUrl(payload.poderFile);
+          data.tmp_poder_path = path;
+        } catch (err: any) {
+          flash("error", `No se pudo subir el poder: ${err?.message ?? "intenta de nuevo"}`);
+          return false;
+        }
       }
+
+      const res = await fetch(`/api/expediente/${caseId}/acreencias/crear-con-convocado`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));

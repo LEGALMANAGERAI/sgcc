@@ -8,6 +8,7 @@ import { Users, ShieldCheck, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { ApoderadosActions } from "./ApoderadosActions";
 import { PoderesButton } from "./PoderesButton";
+import { createSignedDownloadUrl } from "@/lib/poderes-storage";
 import type { SgccAttorney } from "@/types";
 
 interface Props {
@@ -74,9 +75,12 @@ export default async function ApoderadosPage({ searchParams }: Props) {
   for (const r of (caRaw ?? []) as any[]) {
     if (r.caso?.center_id !== centerId) continue;
     const list = (poderesByAttorney[r.attorney_id] = poderesByAttorney[r.attorney_id] ?? []);
+    // r.poder_url ahora guarda el path en el bucket privado; generamos
+    // signed URL temporal (TTL 1h) para que el cliente pueda abrir el PDF.
+    const signedUrl = r.poder_url ? await createSignedDownloadUrl(r.poder_url) : null;
     list.push({
       caseAttorneyId: r.id,
-      url: r.poder_url ?? null,
+      url: signedUrl,
       radicado: r.caso?.numero_radicado ?? "Sin radicado",
       activo: !!r.activo,
     });

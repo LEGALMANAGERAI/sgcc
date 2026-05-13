@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
+import { createSignedDownloadUrl } from "@/lib/poderes-storage";
 
 /**
  * GET /api/apoderados/[id]/historial
@@ -40,5 +41,14 @@ export async function GET(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json(data ?? []);
+  // Sustituir poder_url (path en BD) por signed URL temporal para que el cliente
+  // pueda descargar sin que el bucket sea publico.
+  const enriched = await Promise.all(
+    (data ?? []).map(async (row) => ({
+      ...row,
+      poder_url: await createSignedDownloadUrl(row.poder_url),
+    })),
+  );
+
+  return NextResponse.json(enriched);
 }

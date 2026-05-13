@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { partyDisplayName } from "@/types";
+import { uploadPoderViaSignedUrl } from "@/lib/poderes-client";
 import {
   Shield,
   ShieldAlert,
@@ -118,26 +119,30 @@ export function TabChecklistPoderes({
 
     setSubmitting(true);
     try {
-      const fd = new FormData();
-      fd.append("data", JSON.stringify({
-        party_id: formData.party_id,
-        attorney: {
-          nombre: formData.nombre,
-          tipo_doc: formData.tipo_doc,
-          numero_doc: formData.numero_doc,
-          tarjeta_profesional: formData.tarjeta_profesional || null,
-          email: formData.email || null,
-          telefono: formData.telefono || null,
-        },
-        motivo_cambio: formData.motivo_cambio,
-        poder_vigente_desde: formData.vigencia_desde || null,
-        poder_vigente_hasta: formData.vigencia_hasta || null,
-      }));
-      if (poderFile) fd.append("poderFile", poderFile);
+      let tmpPoderPath: string | null = null;
+      if (poderFile) {
+        const { path } = await uploadPoderViaSignedUrl(poderFile);
+        tmpPoderPath = path;
+      }
 
       const res = await fetch(`/api/expediente/${caseId}/apoderados`, {
         method: "POST",
-        body: fd,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          party_id: formData.party_id,
+          attorney: {
+            nombre: formData.nombre,
+            tipo_doc: formData.tipo_doc,
+            numero_doc: formData.numero_doc,
+            tarjeta_profesional: formData.tarjeta_profesional || null,
+            email: formData.email || null,
+            telefono: formData.telefono || null,
+          },
+          motivo_cambio: formData.motivo_cambio,
+          poder_vigente_desde: formData.vigencia_desde || null,
+          poder_vigente_hasta: formData.vigencia_hasta || null,
+          tmp_poder_path: tmpPoderPath,
+        }),
       });
 
       if (!res.ok) {

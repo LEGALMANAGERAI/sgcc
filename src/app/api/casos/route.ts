@@ -7,6 +7,12 @@ import { randomUUID } from "crypto";
 import { asignarConciliador } from "@/lib/asignacion-conciliador";
 import bcrypt from "bcryptjs";
 import { normalizeEmail } from "@/lib/normalize-email";
+import {
+  isTempPoderPath,
+  movePoderToFinal,
+  verifyPoderIsPdf,
+  deletePoder,
+} from "@/lib/poderes-storage";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -48,17 +54,9 @@ export async function POST(req: NextRequest) {
   const centerId = resolveCenterId(session);
   if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
 
-  // Soportar JSON y FormData
-  const contentType = req.headers.get("content-type") ?? "";
-  let body: any;
-  let formData: FormData | null = null;
-
-  if (contentType.includes("multipart/form-data")) {
-    formData = await req.formData();
-    body = JSON.parse(formData.get("data") as string);
-  } else {
-    body = await req.json();
-  }
+  // Solo JSON. Los poderes se suben aparte via signed URL al bucket privado
+  // y aqui llegan como `tmp_poder_path` dentro de cada parte.
+  const body = await req.json();
 
   const {
     tipo_tramite,
@@ -291,25 +289,26 @@ export async function POST(req: NextRequest) {
 
     // Crear case_attorney
     const caseAttorneyId = randomUUID();
-    let poderUrl: string | null = null;
-    let poderPathSubido: string | null = null; // para limpiar si el insert falla
+    let poderPathFinal: string | null = null;
 
-    // Subir poder si hay archivo
-    if (formData) {
-      const poderFile = formData.get(`poder_${idx}`) as File | null;
-      if (poderFile && poderFile.size > 0) {
-        const buffer = Buffer.from(await poderFile.arrayBuffer());
-        const filePath = `${caseId}/${caseAttorneyId}.pdf`;
-        const { error: upErr } = await supabaseAdmin.storage
-          .from("poderes")
-          .upload(filePath, buffer, { contentType: "application/pdf", upsert: true });
-        if (upErr) {
-          console.error(`[CASOS] upload poder falló: ${upErr.message}`);
-          apoderadosWarnings.push({ idx, nombre: att.nombre, error: `No se pudo subir el archivo del poder: ${upErr.message}` });
+    // Mover poder desde tmp/ al path final, si el frontend ya lo subio
+    const tmpPoderPath = p.tmp_poder_path as string | undefined;
+    if (tmpPoderPath && isTempPoderPath(tmpPoderPath)) {
+      const isPdf = await verifyPoderIsPdf(tmpPoderPath);
+      if (!isPdf) {
+        await deletePoder(tmpPoderPath);
+        apoderadosWarnings.push({
+          idx,
+          nombre: att.nombre,
+          error: "El archivo del poder no es un PDF valido (firma magica incorrecta).",
+        });
+      } else {
+        const moveResult = await movePoderToFinal(tmpPoderPath, caseId, caseAttorneyId);
+        if ("error" in moveResult) {
+          await deletePoder(tmpPoderPath);
+          apoderadosWarnings.push({ idx, nombre: att.nombre, error: moveResult.error });
         } else {
-          const { data: urlData } = supabaseAdmin.storage.from("poderes").getPublicUrl(filePath);
-          poderUrl = urlData.publicUrl;
-          poderPathSubido = filePath;
+          poderPathFinal = moveResult.path;
         }
       }
     }
@@ -320,7 +319,7 @@ export async function POST(req: NextRequest) {
       party_id: partyRecord.party_id,
       attorney_id: attorneyId,
       motivo_cambio: "inicial",
-      poder_url: poderUrl,
+      poder_url: poderPathFinal,
       registrado_por: (session.user as any).id,
       activo: true,
       created_at: now,
@@ -330,9 +329,8 @@ export async function POST(req: NextRequest) {
     if (insCaErr) {
       console.error(`[CASOS] insert case_attorney falló: ${insCaErr.message}`);
       apoderadosWarnings.push({ idx, nombre: att.nombre, error: `No se pudo vincular el apoderado al caso: ${insCaErr.message}` });
-      // Limpiar archivo huérfano para no dejar basura en storage
-      if (poderPathSubido) {
-        await supabaseAdmin.storage.from("poderes").remove([poderPathSubido]).catch(() => {});
+      if (poderPathFinal) {
+        await deletePoder(poderPathFinal);
       }
     }
   }

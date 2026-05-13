@@ -3,6 +3,12 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
+import {
+  isTempPoderPath,
+  movePoderToFinal,
+  verifyPoderIsPdf,
+  deletePoder,
+} from "@/lib/poderes-storage";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -45,18 +51,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     .single();
   if (!caso) return NextResponse.json({ error: "Caso no encontrado" }, { status: 404 });
 
-  const contentType = req.headers.get("content-type") ?? "";
-  let body: any;
-  let poderFile: File | null = null;
-  if (contentType.includes("multipart/form-data")) {
-    const fd = await req.formData();
-    body = JSON.parse(fd.get("data") as string);
-    poderFile = (fd.get("poderFile") as File | null) ?? null;
-  } else {
-    body = await req.json();
-  }
-
-  const { acreedor, apoderado, acreencia_id } = body ?? {};
+  // Solo JSON. El PDF del poder se sube aparte via signed URL al bucket
+  // privado y aqui llega como `tmp_poder_path`.
+  const body = await req.json();
+  const { acreedor, apoderado, acreencia_id, tmp_poder_path } = body ?? {};
   if (!acreedor) return NextResponse.json({ error: "Datos del acreedor requeridos" }, { status: 400 });
 
   const tipoPersona: "natural" | "juridica" = acreedor.tipo_persona === "juridica" ? "juridica" : "natural";
@@ -253,19 +251,21 @@ export async function POST(req: NextRequest, { params }: Params) {
     });
     if (caErr) return NextResponse.json({ error: `Error registrando apoderado del caso: ${caErr.message}` }, { status: 500 });
 
-    // Subir PDF del poder si vino archivo
-    if (poderFile) {
-      const buffer = Buffer.from(await poderFile.arrayBuffer());
-      const filePath = `${caseId}/${caseAttorneyId}.pdf`;
-      const { error: upErr } = await supabaseAdmin.storage
-        .from("poderes")
-        .upload(filePath, buffer, { contentType: "application/pdf", upsert: true });
-      if (!upErr) {
-        const { data: urlData } = supabaseAdmin.storage.from("poderes").getPublicUrl(filePath);
-        await supabaseAdmin
-          .from("sgcc_case_attorneys")
-          .update({ poder_url: urlData.publicUrl })
-          .eq("id", caseAttorneyId);
+    // Mover poder desde tmp/ al path final si el frontend ya lo subio
+    if (tmp_poder_path && isTempPoderPath(tmp_poder_path)) {
+      const isPdf = await verifyPoderIsPdf(tmp_poder_path);
+      if (!isPdf) {
+        await deletePoder(tmp_poder_path);
+      } else {
+        const moveResult = await movePoderToFinal(tmp_poder_path, caseId, caseAttorneyId);
+        if ("error" in moveResult) {
+          await deletePoder(tmp_poder_path);
+        } else {
+          await supabaseAdmin
+            .from("sgcc_case_attorneys")
+            .update({ poder_url: moveResult.path })
+            .eq("id", caseAttorneyId);
+        }
       }
     }
   }
