@@ -5,8 +5,7 @@ import { resolveCenterId, generateRadicado, addBusinessDays } from "@/lib/server
 import { notify } from "@/lib/notifications";
 import { randomUUID } from "crypto";
 import { asignarConciliador } from "@/lib/asignacion-conciliador";
-import bcrypt from "bcryptjs";
-import { normalizeEmail } from "@/lib/normalize-email";
+import { findOrCreateParty } from "@/lib/parties";
 import {
   isTempPoderPath,
   movePoderToFinal,
@@ -130,52 +129,28 @@ export async function POST(req: NextRequest) {
 
   if (caseError) return NextResponse.json({ error: caseError.message }, { status: 500 });
 
-  // Crear o encontrar partes y vincular al caso
+  // Crear o encontrar partes (match por documento, NUNCA por email) y vincular al caso
   const casePartyRecords: any[] = [];
 
   for (const p of partes) {
-    const partyEmail = normalizeEmail(p.email);
-
-    // Buscar parte existente por email (case-insensitive)
-    let { data: party } = await supabaseAdmin
-      .from("sgcc_parties")
-      .select("id")
-      .ilike("email", partyEmail)
-      .maybeSingle();
-
-    if (!party) {
-      // Crear la parte (sin contraseña — será invitada)
-      const partyId = randomUUID();
-      const now = new Date().toISOString();
-      const inviteToken = randomUUID();
-      const inviteExpires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
-
-      await supabaseAdmin.from("sgcc_parties").insert({
-        id: partyId,
+    const { partyId } = await findOrCreateParty(
+      {
         tipo_persona: p.tipo_persona,
-        nombres: p.nombres || null,
-        apellidos: p.apellidos || null,
-        razon_social: p.razon_social || null,
-        nit_empresa: p.tipo_persona === "juridica" ? p.numero_doc : null,
-        tipo_doc: p.tipo_persona === "natural" ? p.tipo_doc : null,
-        numero_doc: p.tipo_persona === "natural" ? p.numero_doc : null,
-        email: partyEmail,
-        telefono: p.telefono || null,
-        invite_token: inviteToken,
-        invite_expires: inviteExpires,
-        invited_at: now,
-        created_at: now,
-        updated_at: now,
-      });
+        nombres: p.nombres,
+        apellidos: p.apellidos,
+        razon_social: p.razon_social,
+        tipo_doc: p.tipo_doc,
+        numero_doc: p.numero_doc,
+        email: p.email,
+        telefono: p.telefono,
+      },
+      { comoInvitado: true },
+    );
 
-      party = { id: partyId };
-    }
-
-    // Vincular al caso
     casePartyRecords.push({
       id: randomUUID(),
       case_id: caseId,
-      party_id: party.id,
+      party_id: partyId,
       rol: p.rol,
       created_at: new Date().toISOString(),
     });
