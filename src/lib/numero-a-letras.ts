@@ -6,6 +6,8 @@
  *   "dieciséis (16) de abril del año dos mil veintiséis (16/04/2026)".
  */
 
+import { partesFechaBogota } from "./fecha-colombia";
+
 const UNIDADES = [
   "",
   "uno",
@@ -143,16 +145,18 @@ export function montoEnLetras(monto: number): string {
 
 /**
  * Convierte una fecha al formato jurídico colombiano extenso:
- *   new Date("2026-04-17") → "miércoles diecisiete (17) de abril del año dos mil veintiséis (17/04/2026)"
+ *   "2026-04-17" → "viernes diecisiete (17) de abril del año dos mil veintiséis (17/04/2026)"
+ * Los instantes (Date / ISO con hora) se proyectan a horario de Colombia.
  */
 export function fechaEnLetras(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  if (isNaN(d.getTime())) return "";
+  const esFechaSolo = typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date);
+  if (!esFechaSolo) {
+    const d = typeof date === "string" ? new Date(date) : date;
+    if (isNaN(d.getTime())) return "";
+  }
 
-  const dia = d.getDate();
-  const mes = d.getMonth();
-  const anio = d.getFullYear();
-  const diaSemana = DIAS_SEMANA[d.getDay()];
+  const { year: anio, month: mes, day: dia, weekday } = partesFechaBogota(date);
+  const diaSemana = DIAS_SEMANA[weekday];
 
   const diaLetras = numeroALetras(dia);
   const anioLetras = numeroALetras(anio);
@@ -167,20 +171,17 @@ export function fechaEnLetras(date: Date | string): string {
 export function horaEnLetras(date: Date | string): string {
   let h: number;
   let m: number;
-  if (typeof date === "string") {
-    // Soporta "HH:MM" o ISO
-    if (/^\d{1,2}:\d{2}/.test(date)) {
-      const [hh, mm] = date.split(":").map(Number);
-      h = hh;
-      m = mm;
-    } else {
-      const d = new Date(date);
-      h = d.getHours();
-      m = d.getMinutes();
-    }
+  if (typeof date === "string" && /^\d{1,2}:\d{2}/.test(date)) {
+    // Hora suelta "HH:MM": ya viene en hora local, sin instante asociado.
+    const [hh, mm] = date.split(":").map(Number);
+    h = hh;
+    m = mm;
   } else {
-    h = date.getHours();
-    m = date.getMinutes();
+    const d = typeof date === "string" ? new Date(date) : date;
+    if (isNaN(d.getTime())) return "";
+    const partes = partesFechaBogota(d);
+    h = partes.hour;
+    m = partes.minute;
   }
 
   const ampm = h >= 12 ? "pm" : "am";
