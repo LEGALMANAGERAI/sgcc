@@ -407,7 +407,7 @@ export async function generarRelacionAcreenciasPdf(
           otros: money(Number(f.a.con_otros)),
           total: money(f.totalConciliado),
           pctVoto: pctFmt(Number(f.a.porcentaje_voto)),
-          peq: f.a.es_pequeno_acreedor ? "Sí" : "-",
+          peq: grupo.todosPequenos ? "Sí" : "-",
         },
         { fill: parentFill, bold: true, band: "main" },
       );
@@ -450,7 +450,7 @@ export async function generarRelacionAcreenciasPdf(
           otros: money(Number(f.a.con_otros)),
           total: money(f.totalConciliado),
           pctVoto: pctFmt(Number(f.a.porcentaje_voto)),
-          peq: f.a.es_pequeno_acreedor ? "Sí" : "-",
+          peq: grupo.todosPequenos ? "Sí" : "-",
         },
         { fill: subRowFill, band: "child" },
       );
