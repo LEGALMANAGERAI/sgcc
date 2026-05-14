@@ -9,10 +9,18 @@ import { normalizeEmail } from "@/lib/normalize-email";
 function getAllowlist(): Set<string> {
   const raw = process.env.SUPERADMIN_EMAILS ?? "";
   const list = raw
-    .split(/[,\s]+/)
+    .split(/[,\s;]+/)
+    // Tolerar que el valor venga con comillas envolventes (error comun al
+    // pegar en el panel de Vercel) o comillas alrededor de cada correo.
+    .map((e) => e.replace(/^["']+|["']+$/g, ""))
     .map((e) => normalizeEmail(e))
     .filter((e) => e.length > 0);
   return new Set(list);
+}
+
+/** Diagnostico no sensible: cuantos correos quedaron parseados de la env. */
+export function superAdminAllowlistSize(): number {
+  return getAllowlist().size;
 }
 
 export function isSuperAdminEmail(email: string | null | undefined): boolean {
