@@ -16,6 +16,7 @@ import type { SgccCase, SgccCenter, SgccParty, SgccStaff, SgccActa, ObligacionIt
 import { partyDisplayName } from "@/types";
 import type { SgccHearing } from "@/types";
 import { fechaEnLetras, horaEnLetras } from "./numero-a-letras";
+import { BOGOTA_TZ } from "./fecha-colombia";
 
 interface CaseContext {
   caso: SgccCase;
@@ -35,6 +36,7 @@ export function renderTemplate(template: string, ctx: CaseContext): string {
     ? new Date(ctx.caso.fecha_audiencia).toLocaleString("es-CO", {
         dateStyle: "long",
         timeStyle: "short",
+        timeZone: BOGOTA_TZ,
       })
     : "Por definir";
 
@@ -52,10 +54,14 @@ export function renderTemplate(template: string, ctx: CaseContext): string {
       : ctx.caso.cuantia
       ? `$${ctx.caso.cuantia.toLocaleString("es-CO")}`
       : "Sin cuantía",
-    "caso.fecha_solicitud": new Date(ctx.caso.fecha_solicitud).toLocaleDateString("es-CO"),
+    "caso.fecha_solicitud": new Date(ctx.caso.fecha_solicitud).toLocaleDateString("es-CO", {
+      timeZone: BOGOTA_TZ,
+    }),
     "caso.fecha_audiencia": fechaAudiencia,
+    // fecha_limite_citacion es columna DATE (fecha de calendario): se lee en UTC
+    // para no correrla un día al proyectarla a una zona con offset negativo.
     "caso.fecha_limite_citacion": ctx.caso.fecha_limite_citacion
-      ? new Date(ctx.caso.fecha_limite_citacion).toLocaleDateString("es-CO")
+      ? new Date(ctx.caso.fecha_limite_citacion).toLocaleDateString("es-CO", { timeZone: "UTC" })
       : "",
     "convocante.nombre": partyDisplayName(ctx.convocante),
     "convocante.doc": ctx.convocante.numero_doc ?? ctx.convocante.nit_empresa ?? "",
@@ -82,7 +88,10 @@ export function renderTemplate(template: string, ctx: CaseContext): string {
     "audiencia.hora_letras": ctx.audiencia?.fecha_hora
       ? horaEnLetras(ctx.audiencia.fecha_hora)
       : "",
-    "fecha.hoy": new Date().toLocaleDateString("es-CO", { dateStyle: "long" }),
+    "fecha.hoy": new Date().toLocaleDateString("es-CO", {
+      dateStyle: "long",
+      timeZone: BOGOTA_TZ,
+    }),
     "fecha.hoy_letras": fechaEnLetras(new Date()),
     "acta.numero": ctx.acta?.numero_acta ?? "",
     "acta.tipo": ctx.acta?.tipo ?? "",
@@ -668,7 +677,10 @@ export async function generateRelacionAcreenciasDocx(
     },
   });
 
-  const fechaHoy = new Date().toLocaleDateString("es-CO", { dateStyle: "long" });
+  const fechaHoy = new Date().toLocaleDateString("es-CO", {
+    dateStyle: "long",
+    timeZone: BOGOTA_TZ,
+  });
 
   const children: (Paragraph | Table)[] = [
     new Paragraph({

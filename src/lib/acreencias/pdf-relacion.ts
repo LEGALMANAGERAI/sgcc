@@ -1,6 +1,7 @@
 import type { SgccAcreencia, SgccCase, SgccCenter, SgccParty, ClaseCredito } from "@/types";
 import { partyDisplayName } from "@/types";
 import { prepararGruposRelacion } from "@/lib/doc-generator";
+import { BOGOTA_TZ } from "@/lib/fecha-colombia";
 
 export interface RelacionAcreenciasPdfInput {
   caso: Pick<SgccCase, "numero_radicado" | "materia">;
@@ -134,7 +135,10 @@ export async function generarRelacionAcreenciasPdf(
       y -= 12;
     }
 
-    const fechaHoy = new Date().toLocaleDateString("es-CO", { dateStyle: "long" });
+    const fechaHoy = new Date().toLocaleDateString("es-CO", {
+      dateStyle: "long",
+      timeZone: BOGOTA_TZ,
+    });
     page.drawText("Fecha:", { x: MARGIN_HOR, y, ...labelOpts });
     page.drawText(fechaHoy, { x: MARGIN_HOR + 60, y, ...valueOpts });
     y -= 16;
