@@ -30,4 +30,8 @@ supabase/.temp/
 # Superpowers brainstorm
 .superpowers/
 
+# Scripts de diagnóstico de una sola vez
+scripts/debug-*
+scripts/inspect-*
+
 .vercel
