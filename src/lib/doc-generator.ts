@@ -342,40 +342,65 @@ export function prepararGruposRelacion(acreencias: SgccAcreencia[]): GrupoAcreed
     map.set(key, arr);
   }
 
-  const grupos: GrupoAcreedor[] = Array.from(map.values()).map((filasGrupo) => {
-    const first = filasGrupo[0].a;
-    const totales = filasGrupo.reduce(
-      (acc, f) => ({
-        capital: acc.capital + Number(f.a.con_capital),
-        intCorr: acc.intCorr + Number(f.a.con_intereses_corrientes),
-        intMora: acc.intMora + Number(f.a.con_intereses_moratorios),
-        seguros: acc.seguros + Number(f.a.con_seguros),
-        otros: acc.otros + Number(f.a.con_otros),
-      }),
-      { capital: 0, intCorr: 0, intMora: 0, seguros: 0, otros: 0 },
-    );
-    const totalConciliado =
-      totales.capital + totales.intCorr + totales.intMora + totales.seguros + totales.otros;
-    const pctVotoGrupo = filasGrupo.reduce(
-      (s, f) => s + Number(f.a.porcentaje_voto || 0),
-      0,
-    );
-    const todosPequenos = filasGrupo.every((f) => f.a.es_pequeno_acreedor);
-    const clases = new Set(filasGrupo.map((f) => f.a.clase_credito));
-    const claseMixta = clases.size > 1;
-    const claseLabel = claseMixta ? null : CLASE_LABEL[[...clases][0]];
+  const gruposBase: Array<Omit<GrupoAcreedor, "todosPequenos"> & { capitalGrupo: number }> =
+    Array.from(map.values()).map((filasGrupo) => {
+      const first = filasGrupo[0].a;
+      const totales = filasGrupo.reduce(
+        (acc, f) => ({
+          capital: acc.capital + Number(f.a.con_capital),
+          intCorr: acc.intCorr + Number(f.a.con_intereses_corrientes),
+          intMora: acc.intMora + Number(f.a.con_intereses_moratorios),
+          seguros: acc.seguros + Number(f.a.con_seguros),
+          otros: acc.otros + Number(f.a.con_otros),
+        }),
+        { capital: 0, intCorr: 0, intMora: 0, seguros: 0, otros: 0 },
+      );
+      const totalConciliado =
+        totales.capital + totales.intCorr + totales.intMora + totales.seguros + totales.otros;
+      const pctVotoGrupo = filasGrupo.reduce(
+        (s, f) => s + Number(f.a.porcentaje_voto || 0),
+        0,
+      );
+      const clases = new Set(filasGrupo.map((f) => f.a.clase_credito));
+      const claseMixta = clases.size > 1;
+      const claseLabel = claseMixta ? null : CLASE_LABEL[[...clases][0]];
 
-    return {
-      acreedorNombre: first.acreedor_nombre,
-      acreedorDocumento: first.acreedor_documento,
-      acreencias: filasGrupo,
-      totales,
-      totalConciliado,
-      pctVotoGrupo,
-      todosPequenos,
-      claseLabel,
-      claseMixta,
-    };
+      return {
+        acreedorNombre: first.acreedor_nombre,
+        acreedorDocumento: first.acreedor_documento,
+        acreencias: filasGrupo,
+        totales,
+        totalConciliado,
+        pctVotoGrupo,
+        claseLabel,
+        claseMixta,
+        capitalGrupo: totales.capital,
+      };
+    });
+
+  // Marca de pequeno acreedor — Art. 553 #8 Ley 2445/2025: se calcula
+  // sobre la suma del CAPITAL por acreedor (no por acreencia individual)
+  // y se compara contra el 5% del capital total reconocido. Recalculamos
+  // aqui en lugar de depender del flag persistido en BD para que el
+  // export sea internamente consistente: si un acreedor consolidado no
+  // cabe bajo el umbral, ninguna de sus sub-acreencias se muestra como
+  // pequena. Esto evita el caso donde una acreencia individual chica
+  // de un acreedor grande quedaba con flag obsoleto y el sub-row del
+  // PDF/Word decia "Si" mientras la fila padre decia "-".
+  const totalCapitalGeneral = gruposBase.reduce((s, g) => s + g.capitalGrupo, 0);
+  const umbral5 = totalCapitalGeneral * 0.05;
+  const ordenAsc = [...gruposBase].sort((a, b) => a.capitalGrupo - b.capitalGrupo);
+  const pequenoPorClave = new Map<typeof gruposBase[number], boolean>();
+  let acumulado = 0;
+  for (const g of ordenAsc) {
+    if (acumulado + g.capitalGrupo > umbral5) break;
+    acumulado += g.capitalGrupo;
+    pequenoPorClave.set(g, true);
+  }
+
+  const grupos: GrupoAcreedor[] = gruposBase.map((g) => {
+    const { capitalGrupo: _capital, ...rest } = g;
+    return { ...rest, todosPequenos: pequenoPorClave.get(g) ?? false };
   });
 
   // No reordenamos los grupos: respetamos el orden en que vienen las
@@ -538,7 +563,7 @@ export async function generateRelacionAcreenciasDocx(
             parentCell(money(Number(f.a.con_otros)), COL_WIDTHS[7], AlignmentType.RIGHT),
             parentCell(money(f.totalConciliado), COL_WIDTHS[8], AlignmentType.RIGHT),
             parentCell(pctFmt(Number(f.a.porcentaje_voto)), COL_WIDTHS[9], AlignmentType.CENTER),
-            parentCell(f.a.es_pequeno_acreedor ? "Sí" : "-", COL_WIDTHS[10], AlignmentType.CENTER),
+            parentCell(grupo.todosPequenos ? "Sí" : "-", COL_WIDTHS[10], AlignmentType.CENTER),
           ],
         }),
       );
@@ -590,7 +615,7 @@ export async function generateRelacionAcreenciasDocx(
             bodyCell(money(Number(f.a.con_otros)), COL_WIDTHS[7], AlignmentType.RIGHT),
             bodyCell(money(f.totalConciliado), COL_WIDTHS[8], AlignmentType.RIGHT),
             bodyCell(pctFmt(Number(f.a.porcentaje_voto)), COL_WIDTHS[9], AlignmentType.CENTER),
-            bodyCell(f.a.es_pequeno_acreedor ? "Sí" : "-", COL_WIDTHS[10], AlignmentType.CENTER),
+            bodyCell(grupo.todosPequenos ? "Sí" : "-", COL_WIDTHS[10], AlignmentType.CENTER),
           ],
         }),
       );
