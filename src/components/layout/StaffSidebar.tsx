@@ -19,6 +19,7 @@ import {
   Eye,
   PenTool,
   LifeBuoy,
+  ShieldCheck,
   PanelLeftClose,
   PanelLeftOpen,
   type LucideIcon,
@@ -109,16 +110,33 @@ interface Props {
   centerName: string;
   vigilanciaNoLeidas?: number;
   sgccRol?: StaffRol;
+  // SuperAdmin del SaaS (env SUPERADMIN_EMAILS). No es un rol de centro —
+  // solo añade el acceso al panel global; lo determina el server layout.
+  isSuperAdmin?: boolean;
 }
 
 const STORAGE_KEY = "sgcc-sidebar";
 
-export function StaffSidebar({ centerName, vigilanciaNoLeidas = 0, sgccRol }: Props) {
+export function StaffSidebar({
+  centerName,
+  vigilanciaNoLeidas = 0,
+  sgccRol,
+  isSuperAdmin = false,
+}: Props) {
   const pathname = usePathname();
   const badges: Badges = { vigilancia: vigilanciaNoLeidas };
 
   // Filtrar items según el rol del staff y colapsar secciones vacías.
-  const seccionesVisibles = sections
+  const seccionesBase = isSuperAdmin
+    ? [
+        ...sections,
+        {
+          title: "SaaS",
+          items: [{ label: "Panel SuperAdmin", href: "/admin", icon: ShieldCheck }],
+        },
+      ]
+    : sections;
+  const seccionesVisibles = seccionesBase
     .map((s) => ({
       ...s,
       items: s.items.filter((i) => !i.rolesPermitidos || (sgccRol && i.rolesPermitidos.includes(sgccRol))),
