@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { StaffSidebar } from "@/components/layout/StaffSidebar";
+import { isSuperAdminSession } from "@/lib/superadmin";
 
 export default async function StaffLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -33,6 +34,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
         centerName={center?.nombre ?? "Centro"}
         vigilanciaNoLeidas={vigilanciaNoLeidas ?? 0}
         sgccRol={sgccRol}
+        isSuperAdmin={isSuperAdminSession(session)}
       />
       <main
         data-staff-main
