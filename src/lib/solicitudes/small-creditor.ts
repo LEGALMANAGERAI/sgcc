@@ -16,16 +16,21 @@ export function calcularPequenosAcreedores<T extends AcreedorMinimo>(
   if (acreedores.length === 0) return [];
 
   const total = acreedores.reduce((s, a) => s + (a.capital || 0), 0);
-  const umbral = total * UMBRAL_PEQUENO_ACREEDOR;
 
-  const ordenados = [...acreedores].sort((a, b) => a.capital - b.capital);
+  // Sin capital reconocido (suma 0), el Art. 553 #8 no aplica todavía y
+  // nadie califica como pequeño acreedor. Sin este guard, `0 + 0 > 0` es
+  // falso y el loop marcaría a todos.
   const pequenos = new Set<string>();
-  let acumulado = 0;
+  if (total > 0) {
+    const umbral = total * UMBRAL_PEQUENO_ACREEDOR;
+    const ordenados = [...acreedores].sort((a, b) => a.capital - b.capital);
+    let acumulado = 0;
 
-  for (const a of ordenados) {
-    if (acumulado + a.capital > umbral) break;
-    acumulado += a.capital;
-    pequenos.add(a.id);
+    for (const a of ordenados) {
+      if (acumulado + a.capital > umbral) break;
+      acumulado += a.capital;
+      pequenos.add(a.id);
+    }
   }
 
   return acreedores.map((a) => ({
