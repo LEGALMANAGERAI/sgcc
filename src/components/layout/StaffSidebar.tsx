@@ -86,6 +86,7 @@ const sections: NavSection[] = [
       },
       { label: "Salas", href: "/salas", icon: DoorOpen },
       { label: "Plantillas", href: "/plantillas", icon: FileText },
+      { label: "SICAAC", href: "/sicaac", icon: ShieldCheck },
       { label: "Tickets", href: "/tickets", icon: LifeBuoy },
     ],
   },
