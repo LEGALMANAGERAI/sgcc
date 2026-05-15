@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, MessageSquare, X, Filter } from "lucide-react";
 import { AdjuntosUpload } from "@/components/tickets/AdjuntosUpload";
+import { AdjuntosUploadBuffered } from "@/components/tickets/AdjuntosUploadBuffered";
 
 interface StaffLite {
   id: string;
@@ -376,6 +377,7 @@ function TicketForm({
   const [categoria, setCategoria] = useState<"soporte" | "administrativo" | "operativo">("soporte");
   const [prioridad, setPrioridad] = useState<"Normal" | "Media" | "Alta">("Normal");
   const [asignadoId, setAsignadoId] = useState("");
+  const [adjuntos, setAdjuntos] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -402,6 +404,30 @@ function TicketForm({
         const err = await res.json().catch(() => ({}));
         setError(err.error ?? "Error creando ticket");
         return;
+      }
+      const data = await res.json().catch(() => null);
+      const ticketId = data?.id as string | undefined;
+
+      // Subir adjuntos secuencialmente al ticket recién creado. Si alguno
+      // falla, avisamos pero igual cerramos el modal: el ticket ya quedó
+      // creado y desde el detalle se puede reintentar.
+      if (ticketId && adjuntos.length > 0) {
+        const fallidos: string[] = [];
+        for (const file of adjuntos) {
+          const fd = new FormData();
+          fd.append("file", file);
+          const upRes = await fetch(`/api/tickets/${ticketId}/adjuntos`, {
+            method: "POST",
+            body: fd,
+          });
+          if (!upRes.ok) fallidos.push(file.name);
+        }
+        if (fallidos.length > 0) {
+          const sufijo = fallidos.length === 1 ? "" : "s";
+          alert(
+            `Ticket creado, pero no se pudo subir ${fallidos.length} adjunto${sufijo}: ${fallidos.join(", ")}. Reintenta desde el detalle.`,
+          );
+        }
       }
       onCreated();
     });
@@ -488,6 +514,18 @@ function TicketForm({
               rows={4}
               placeholder="Detalla el requerimiento o la consulta..."
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340] resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-[#3D5068] mb-1.5">
+              Adjuntos (opcional)
+            </label>
+            <AdjuntosUploadBuffered
+              value={adjuntos}
+              onChange={setAdjuntos}
+              disabled={isPending}
+              maxFiles={5}
             />
           </div>
 

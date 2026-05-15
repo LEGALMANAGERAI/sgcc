@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
+import { AdjuntosUploadBuffered } from "@/components/tickets/AdjuntosUploadBuffered";
 
 interface CasoOpcion {
   id: string;
@@ -12,12 +13,15 @@ interface CasoOpcion {
   tipo_tramite: string;
 }
 
+const MAX_ADJUNTOS = 5;
+
 export function NuevoTicketForm({ casos }: { casos: CasoOpcion[] }) {
   const router = useRouter();
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [caseId, setCaseId] = useState("");
   const [prioridad, setPrioridad] = useState<"Normal" | "Media" | "Alta">("Normal");
+  const [adjuntos, setAdjuntos] = useState<File[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
 
@@ -46,7 +50,28 @@ export function NuevoTicketForm({ casos }: { casos: CasoOpcion[] }) {
         return;
       }
       const data = await res.json();
-      router.push(`/mis-tickets/${data.id}`);
+      const ticketId = data.id as string;
+
+      // Subir adjuntos secuencialmente al ticket recién creado. Si alguno
+      // falla, avisamos pero igual llevamos al usuario al detalle: el
+      // ticket ya quedó creado y desde ahí puede reintentar los faltantes.
+      const fallidos: string[] = [];
+      for (const file of adjuntos) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const upRes = await fetch(`/api/partes/tickets/${ticketId}/adjuntos`, {
+          method: "POST",
+          body: fd,
+        });
+        if (!upRes.ok) fallidos.push(file.name);
+      }
+      if (fallidos.length > 0) {
+        const sufijo = fallidos.length === 1 ? "" : "s";
+        alert(
+          `Ticket creado, pero no se pudo subir ${fallidos.length} adjunto${sufijo}: ${fallidos.join(", ")}. Reintenta desde el detalle.`,
+        );
+      }
+      router.push(`/mis-tickets/${ticketId}`);
     } catch {
       setError("Error de conexión");
     } finally {
@@ -122,9 +147,17 @@ export function NuevoTicketForm({ casos }: { casos: CasoOpcion[] }) {
           </div>
         </div>
 
-        <p className="text-xs text-gray-400">
-          Podrás adjuntar archivos después de crear el ticket.
-        </p>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Adjuntos (opcional)
+          </label>
+          <AdjuntosUploadBuffered
+            value={adjuntos}
+            onChange={setAdjuntos}
+            disabled={enviando}
+            maxFiles={MAX_ADJUNTOS}
+          />
+        </div>
 
         {error && (
           <div className="flex items-center gap-2 text-sm text-red-600">
