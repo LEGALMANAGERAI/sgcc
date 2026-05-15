@@ -150,6 +150,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     conciliador_id: caso.conciliador_id,
     fecha_acta: now.toISOString().split("T")[0],
     es_constancia: es_constancia ?? false,
+    sicaac_estado: "pendiente" as const,
+    sicaac_numero_registro: null,
+    sicaac_fecha_registro: null,
     created_at: now.toISOString(),
     updated_at: now.toISOString(),
   };

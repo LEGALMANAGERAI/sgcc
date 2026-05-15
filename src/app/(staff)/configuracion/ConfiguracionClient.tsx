@@ -18,7 +18,14 @@ interface Props {
 
 /* ─── Constantes ────────────────────────────────────────────────────────── */
 
-const TABS = ["Datos del Centro", "Horarios", "Asignación", "Personalización", "Checklists"] as const;
+const TABS = [
+  "Datos del Centro",
+  "Horarios",
+  "Asignación",
+  "Personalización",
+  "Reglamento Interno",
+  "Checklists",
+] as const;
 type Tab = (typeof TABS)[number];
 
 const TIPO_TRAMITE_LABELS: Record<TipoTramite, string> = {
@@ -62,6 +69,15 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
   const [colorSecundario, setColorSecundario] = useState(center.color_secundario ?? "#1B4F9B");
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Reglamento interno
+  const [reglamento, setReglamento] = useState({
+    url: center.reglamento_url ?? "",
+    nombre: center.reglamento_nombre ?? "",
+    subido_at: center.reglamento_subido_at ?? "",
+  });
+  const [uploadingReglamento, setUploadingReglamento] = useState(false);
+  const reglamentoInputRef = useRef<HTMLInputElement>(null);
 
   // Estado de checklists
   const [checklists, setChecklists] = useState<SgccChecklist[]>(initialChecklists);
@@ -138,6 +154,53 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
       if (!res.ok) throw new Error(data.error ?? "Error al eliminar logo");
       setLogoUrl("");
       flash("ok", "Logo eliminado");
+    } catch (err: any) {
+      flash("error", err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /* ─── Reglamento interno ───────────────────────────────────────────── */
+
+  const uploadReglamento = async (file: File) => {
+    if (file.type !== "application/pdf") {
+      flash("error", "Solo se permite PDF");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      flash("error", "El archivo excede 10 MB");
+      return;
+    }
+    setUploadingReglamento(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/configuracion/reglamento", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Error al subir el reglamento");
+      setReglamento({
+        url: data.reglamento_url,
+        nombre: data.reglamento_nombre,
+        subido_at: new Date().toISOString(),
+      });
+      flash("ok", "Reglamento actualizado correctamente");
+    } catch (err: any) {
+      flash("error", err.message);
+    } finally {
+      setUploadingReglamento(false);
+    }
+  };
+
+  const deleteReglamento = async () => {
+    if (!confirm("¿Eliminar el reglamento interno vigente?")) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/configuracion/reglamento", { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Error al eliminar");
+      setReglamento({ url: "", nombre: "", subido_at: "" });
+      flash("ok", "Reglamento eliminado");
     } catch (err: any) {
       flash("error", err.message);
     } finally {
@@ -607,6 +670,85 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
                 {saving ? "Guardando..." : "Guardar colores"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tab: Reglamento Interno ───────────────────────────────────── */}
+      {activeTab === "Reglamento Interno" && (
+        <div className="space-y-4">
+          <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+            <div>
+              <h3 className="text-lg font-bold text-[#0D2340]">Reglamento interno del centro</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Documento PDF con el reglamento operativo del centro. Solo un archivo vigente; al
+                subir uno nuevo se reemplaza el anterior.
+              </p>
+            </div>
+
+            {reglamento.url ? (
+              <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="min-w-0">
+                  <a
+                    href={reglamento.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#1B4F9B] hover:underline font-medium text-sm break-all"
+                  >
+                    {reglamento.nombre || "Reglamento vigente.pdf"}
+                  </a>
+                  {reglamento.subido_at && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Subido el{" "}
+                      {new Date(reglamento.subido_at).toLocaleDateString("es-CO", {
+                        dateStyle: "long",
+                      })}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    onClick={() => reglamentoInputRef.current?.click()}
+                    disabled={uploadingReglamento}
+                    className="px-3 py-1.5 text-xs font-medium bg-[#1B4F9B]/10 text-[#1B4F9B] hover:bg-[#1B4F9B]/20 rounded-md disabled:opacity-50"
+                  >
+                    {uploadingReglamento ? "Subiendo..." : "Reemplazar"}
+                  </button>
+                  <button
+                    onClick={deleteReglamento}
+                    disabled={saving || uploadingReglamento}
+                    className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-md disabled:opacity-50"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <p className="text-sm text-gray-600 mb-3">
+                  Aún no hay reglamento cargado.
+                </p>
+                <button
+                  onClick={() => reglamentoInputRef.current?.click()}
+                  disabled={uploadingReglamento}
+                  className="px-4 py-2 bg-[#0D2340] text-white rounded-md text-sm font-medium hover:bg-[#0D2340]/90 disabled:opacity-50"
+                >
+                  {uploadingReglamento ? "Subiendo..." : "Subir reglamento (PDF, máx 10 MB)"}
+                </button>
+              </div>
+            )}
+
+            <input
+              ref={reglamentoInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) uploadReglamento(f);
+                e.target.value = "";
+              }}
+            />
           </div>
         </div>
       )}

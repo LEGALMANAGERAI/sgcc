@@ -29,6 +29,9 @@ export interface SgccCenter {
   metodo_asignacion: "manual" | "aleatorio" | "orden_lista";
   color_primario: string | null;
   color_secundario: string | null;
+  reglamento_url: string | null;
+  reglamento_nombre: string | null;
+  reglamento_subido_at: string | null;
   activo: boolean;
   created_at: string;
   updated_at: string;
@@ -260,6 +263,9 @@ export interface SgccActa {
   conciliador_id: string | null;
   fecha_acta: string;
   es_constancia: boolean;
+  sicaac_estado: "pendiente" | "registrada";
+  sicaac_numero_registro: string | null;
+  sicaac_fecha_registro: string | null;
   created_at: string;
   updated_at: string;
 }
