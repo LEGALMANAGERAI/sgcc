@@ -25,7 +25,6 @@ import { HistorialObservacionesAudiencias } from "@/components/modules/expedient
 import type { TipoTramite } from "@/types";
 import { sumarDiasHabiles, diasHabilesEntre } from "@/lib/dias-habiles-colombia";
 import { sincronizarApoderadosDePartes } from "@/lib/sincronizar-apoderados";
-import { createSignedDownloadUrl } from "@/lib/poderes-storage";
 import { puedeVerCaso } from "@/lib/server-utils";
 import { EliminarExpediente } from "@/components/modules/expediente/EliminarExpediente";
 
@@ -150,15 +149,14 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
   ]);
 
   const parties = rawParties ?? [];
-  // poder_url en BD es ahora un path en bucket privado; convertir a signed URL
-  // temporal para que los <a href={poder_url}> funcionen en el cliente.
+  // poder_url en BD es un path; emitimos la URL del endpoint /view que firma
+  // al clic con TTL corto en vez de pre-firmar aquí (que era propenso a TTL
+  // expirado mientras la pestaña quedaba abierta).
   const attorneysRaw = rawAttorneys ?? [];
-  const attorneys = await Promise.all(
-    attorneysRaw.map(async (a: any) => ({
-      ...a,
-      poder_url: await createSignedDownloadUrl(a.poder_url),
-    })),
-  );
+  const attorneys = attorneysRaw.map((a: any) => ({
+    ...a,
+    poder_url: a.poder_url ? `/api/apoderados-poder/${a.id}/view` : null,
+  }));
   const hearings = rawHearings ?? [];
   const documentos = rawDocumentos ?? [];
   const timelineRaw = rawTimeline ?? [];

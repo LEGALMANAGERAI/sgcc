@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
-import { createSignedDownloadUrl } from "@/lib/poderes-storage";
 
 /**
  * GET /api/expediente/[id]/acreencias/[acreenciaId]/detalle-edicion
@@ -69,7 +68,7 @@ export async function GET(
       apoderado = {
         case_attorney_id: caRow.id,
         attorney_id: caRow.attorney_id,
-        poder_url: await createSignedDownloadUrl(caRow.poder_url),
+        poder_url: caRow.poder_url ? `/api/apoderados-poder/${caRow.id}/view` : null,
         poder_vigente_desde: caRow.poder_vigente_desde,
         poder_vigente_hasta: caRow.poder_vigente_hasta,
         attorney: caRow.attorney ?? null,

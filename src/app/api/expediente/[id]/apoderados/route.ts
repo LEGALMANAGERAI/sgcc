@@ -8,7 +8,6 @@ import {
   movePoderToFinal,
   verifyPoderIsPdf,
   deletePoder,
-  createSignedDownloadUrl,
 } from "@/lib/poderes-storage";
 
 /**
@@ -37,13 +36,12 @@ export async function GET(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // poder_url en BD ahora guarda el path; convertir a signed URL temporal.
-  const enriched = await Promise.all(
-    (data ?? []).map(async (row: any) => ({
-      ...row,
-      poder_url: await createSignedDownloadUrl(row.poder_url),
-    })),
-  );
+  // poder_url en BD es un path; emitimos la URL del endpoint /view que
+  // firma al clic con TTL corto en vez de pre-firmar acá.
+  const enriched = (data ?? []).map((row: any) => ({
+    ...row,
+    poder_url: row.poder_url ? `/api/apoderados-poder/${row.id}/view` : null,
+  }));
 
   return NextResponse.json(enriched);
 }

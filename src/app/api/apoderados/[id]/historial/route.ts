@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
-import { createSignedDownloadUrl } from "@/lib/poderes-storage";
 
 /**
  * GET /api/apoderados/[id]/historial
@@ -41,14 +40,11 @@ export async function GET(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Sustituir poder_url (path en BD) por signed URL temporal para que el cliente
-  // pueda descargar sin que el bucket sea publico.
-  const enriched = await Promise.all(
-    (data ?? []).map(async (row) => ({
-      ...row,
-      poder_url: await createSignedDownloadUrl(row.poder_url),
-    })),
-  );
+  // poder_url (path en BD) → URL del endpoint /view que firma al clic.
+  const enriched = (data ?? []).map((row: any) => ({
+    ...row,
+    poder_url: row.poder_url ? `/api/apoderados-poder/${row.id}/view` : null,
+  }));
 
   return NextResponse.json(enriched);
 }

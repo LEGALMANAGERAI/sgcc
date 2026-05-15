@@ -8,7 +8,6 @@ import { Users, ShieldCheck, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { ApoderadosActions } from "./ApoderadosActions";
 import { PoderesButton } from "./PoderesButton";
-import { createSignedDownloadUrl } from "@/lib/poderes-storage";
 import type { SgccAttorney } from "@/types";
 
 interface Props {
@@ -75,12 +74,12 @@ export default async function ApoderadosPage({ searchParams }: Props) {
   for (const r of (caRaw ?? []) as any[]) {
     if (r.caso?.center_id !== centerId) continue;
     const list = (poderesByAttorney[r.attorney_id] = poderesByAttorney[r.attorney_id] ?? []);
-    // r.poder_url ahora guarda el path en el bucket privado; generamos
-    // signed URL temporal (TTL 1h) para que el cliente pueda abrir el PDF.
-    const signedUrl = r.poder_url ? await createSignedDownloadUrl(r.poder_url) : null;
+    // En vez de generar signed URL aquí (TTL fijo, propenso a expirar),
+    // emitimos la URL del endpoint /view que firma al clic con TTL corto.
+    const url = r.poder_url ? `/api/apoderados-poder/${r.id}/view` : null;
     list.push({
       caseAttorneyId: r.id,
-      url: signedUrl,
+      url,
       radicado: r.caso?.numero_radicado ?? "Sin radicado",
       activo: !!r.activo,
     });
