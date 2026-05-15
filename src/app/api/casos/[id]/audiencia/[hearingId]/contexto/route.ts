@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
-import { createSignedDownloadUrl } from "@/lib/poderes-storage";
 
 export async function GET(
   _req: NextRequest,
@@ -125,19 +124,15 @@ export async function GET(
     .eq("case_id", caseId)
     .order("created_at", { ascending: false });
 
-  // Convertir poder_url (path en BD) a signed URL temporal
-  const apoderadosVigentesEnriched = await Promise.all(
-    (apoderadosVigentes ?? []).map(async (a) => ({
-      ...a,
-      poder_url: await createSignedDownloadUrl(a.poder_url),
-    })),
-  );
-  const historialApoderadosEnriched = await Promise.all(
-    (historialApoderados ?? []).map(async (a) => ({
-      ...a,
-      poder_url: await createSignedDownloadUrl(a.poder_url),
-    })),
-  );
+  // poder_url (path en BD) → URL del endpoint /view que firma al clic.
+  const apoderadosVigentesEnriched = (apoderadosVigentes ?? []).map((a: any) => ({
+    ...a,
+    poder_url: a.poder_url ? `/api/apoderados-poder/${a.id}/view` : null,
+  }));
+  const historialApoderadosEnriched = (historialApoderados ?? []).map((a: any) => ({
+    ...a,
+    poder_url: a.poder_url ? `/api/apoderados-poder/${a.id}/view` : null,
+  }));
 
   return NextResponse.json({
     caso,
