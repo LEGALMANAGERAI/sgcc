@@ -93,17 +93,23 @@ export async function recalcularPorcentajesAcreencias(
     grupos.set(key, g);
   }
 
-  const umbral5 = totalCapital * 0.05;
-  const gruposOrdenados = Array.from(grupos.values()).sort(
-    (a, b) => a.capital - b.capital,
-  );
-
-  let acumulado = 0;
+  // El Art. 553 #8 se calcula sobre el capital total reconocido. Si nada
+  // se ha reconocido aún (todos los con_capital en 0), el concepto no
+  // aplica: no hay umbral ni acreedores pequeños. Sin este guard, el loop
+  // marcaría a todos porque `0 + 0 > 0` nunca rompe.
   const pequenosIds = new Set<string>();
-  for (const g of gruposOrdenados) {
-    if (acumulado + g.capital > umbral5) break;
-    acumulado += g.capital;
-    for (const id of g.ids) pequenosIds.add(id);
+  if (totalCapital > 0) {
+    const umbral5 = totalCapital * 0.05;
+    const gruposOrdenados = Array.from(grupos.values()).sort(
+      (a, b) => a.capital - b.capital,
+    );
+
+    let acumulado = 0;
+    for (const g of gruposOrdenados) {
+      if (acumulado + g.capital > umbral5) break;
+      acumulado += g.capital;
+      for (const id of g.ids) pequenosIds.add(id);
+    }
   }
 
   for (const u of updates) {

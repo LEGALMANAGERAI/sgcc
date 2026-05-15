@@ -396,15 +396,20 @@ export function prepararGruposRelacion(acreencias: SgccAcreencia[]): GrupoAcreed
   // pequena. Esto evita el caso donde una acreencia individual chica
   // de un acreedor grande quedaba con flag obsoleto y el sub-row del
   // PDF/Word decia "Si" mientras la fila padre decia "-".
+  // Sin capital reconocido (todos los con_capital en 0), el Art. 553 #8 no
+  // aplica todavía: nadie es pequeño acreedor. Sin este guard, `0 + 0 > 0`
+  // es falso para todos los grupos y el export marcaría a todos como "Si".
   const totalCapitalGeneral = gruposBase.reduce((s, g) => s + g.capitalGrupo, 0);
-  const umbral5 = totalCapitalGeneral * 0.05;
-  const ordenAsc = [...gruposBase].sort((a, b) => a.capitalGrupo - b.capitalGrupo);
   const pequenoPorClave = new Map<typeof gruposBase[number], boolean>();
-  let acumulado = 0;
-  for (const g of ordenAsc) {
-    if (acumulado + g.capitalGrupo > umbral5) break;
-    acumulado += g.capitalGrupo;
-    pequenoPorClave.set(g, true);
+  if (totalCapitalGeneral > 0) {
+    const umbral5 = totalCapitalGeneral * 0.05;
+    const ordenAsc = [...gruposBase].sort((a, b) => a.capitalGrupo - b.capitalGrupo);
+    let acumulado = 0;
+    for (const g of ordenAsc) {
+      if (acumulado + g.capitalGrupo > umbral5) break;
+      acumulado += g.capitalGrupo;
+      pequenoPorClave.set(g, true);
+    }
   }
 
   const grupos: GrupoAcreedor[] = gruposBase.map((g) => {
