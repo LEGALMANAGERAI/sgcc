@@ -87,7 +87,7 @@ interface Props {
   isAdmin: boolean;
 }
 
-export default function TicketsClient({ initialTickets, staff, currentStaffId, isAdmin }: Props) {
+export default function TicketsClient({ initialTickets, staff }: Props) {
   const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
   const [respondingTo, setRespondingTo] = useState<TicketRow | null>(null);
@@ -240,11 +240,10 @@ export default function TicketsClient({ initialTickets, staff, currentStaffId, i
               {filtered.map((t) => {
                 const borderColor = PRIORIDAD_BORDER[t.prioridad] ?? "#9ca3af";
                 const cerrado = t.estado === "Cerrado";
-                const puedeResponder =
-                  !cerrado &&
-                  (isAdmin ||
-                    t.asignado?.id === currentStaffId ||
-                    t.solicitante?.id === currentStaffId);
+                // Cualquier staff del centro puede actuar sobre los tickets
+                // del centro. El filtro por center_id en el SELECT del SSR ya
+                // garantiza que solo se ven los tickets propios.
+                const puedeResponder = !cerrado;
 
                 return (
                   <div
