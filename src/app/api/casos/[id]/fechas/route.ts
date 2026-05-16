@@ -40,9 +40,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const caseField = ETAPA_TO_CASE_FIELD[etapa];
   if (caseField) {
+    const update: Record<string, any> = { [caseField]: fechaIso, updated_at: now };
+    // Propagar fecha_admision → fecha_inicio_termino para que el contador de
+    // términos refleje correcciones de admisión en procesos viejos. El campo
+    // es DATE en BD, así que mandamos solo la fecha sin hora.
+    if (etapa === "admision") {
+      update.fecha_inicio_termino = fecha ? fecha.slice(0, 10) : null;
+    }
     const { error } = await supabaseAdmin
       .from("sgcc_cases")
-      .update({ [caseField]: fechaIso, updated_at: now })
+      .update(update)
       .eq("id", caseId)
       .eq("center_id", centerId);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
