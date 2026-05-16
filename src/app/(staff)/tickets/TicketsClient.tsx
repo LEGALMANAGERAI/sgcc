@@ -254,7 +254,7 @@ export default function TicketsClient({ initialTickets, staff, currentStaffId, i
                           )}
                         </div>
                         {t.descripcion && (
-                          <p className="text-xs text-[#7A8FA6] line-clamp-2 mt-0.5">{t.descripcion}</p>
+                          <p className="text-xs text-[#7A8FA6] whitespace-pre-line mt-0.5">{t.descripcion}</p>
                         )}
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-[11px] text-[#7A8FA6]">
                           <span className="flex items-center gap-1.5">
