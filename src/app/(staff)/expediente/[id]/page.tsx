@@ -488,6 +488,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
           documentos={documentos}
           expedienteDigitalUrl={caso.expediente_digital_url ?? null}
           puedeEditarLink={(session.user as any).userType === "staff"}
+          puedeEliminar={(session.user as any).userType === "staff"}
         />
       )}
 

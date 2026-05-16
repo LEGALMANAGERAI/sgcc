@@ -25,6 +25,7 @@ interface TabDocumentosProps {
   documentos: any[];
   expedienteDigitalUrl: string | null;
   puedeEditarLink: boolean;
+  puedeEliminar: boolean;
 }
 
 /* ─── Constantes ────────────────────────────────────────────────────────── */
@@ -63,7 +64,29 @@ export function TabDocumentos({
   documentos,
   expedienteDigitalUrl,
   puedeEditarLink,
+  puedeEliminar,
 }: TabDocumentosProps) {
+  const [eliminandoId, setEliminandoId] = useState<string | null>(null);
+
+  async function eliminarDoc(docId: string, nombre: string) {
+    if (!confirm(`¿Eliminar "${nombre}"? El archivo se borrará del expediente.`)) return;
+    setEliminandoId(docId);
+    try {
+      const res = await fetch(`/api/expediente/${caseId}/documentos/${docId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error ?? "Error al eliminar el documento");
+        return;
+      }
+      window.location.reload();
+    } catch {
+      alert("Error de conexión");
+    } finally {
+      setEliminandoId(null);
+    }
+  }
   const [filtroTipo, setFiltroTipo] = useState("todos");
   const [showUpload, setShowUpload] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -470,6 +493,20 @@ export function TabDocumentos({
                                 <Download className="w-3.5 h-3.5" />
                               </a>
                             </>
+                          )}
+                          {puedeEliminar && (
+                            <button
+                              onClick={() => eliminarDoc(doc.id, doc.nombre)}
+                              disabled={eliminandoId === doc.id}
+                              className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 transition-colors disabled:opacity-50"
+                              title="Eliminar documento"
+                            >
+                              {eliminandoId === doc.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3.5 h-3.5" />
+                              )}
+                            </button>
                           )}
                         </div>
                       </td>
