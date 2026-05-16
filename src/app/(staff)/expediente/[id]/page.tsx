@@ -486,6 +486,8 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
         <TabDocumentos
           caseId={id}
           documentos={documentos}
+          expedienteDigitalUrl={caso.expediente_digital_url ?? null}
+          puedeEditarLink={(session.user as any).userType === "staff"}
         />
       )}
 
