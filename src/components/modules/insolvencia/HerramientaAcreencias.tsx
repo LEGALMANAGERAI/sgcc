@@ -686,14 +686,19 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     setTimeout(() => { setSuccess(""); setError(""); }, 4000);
   }, []);
 
-  async function descargarRelacion(format: "docx" | "pdf") {
+  async function descargarRelacion(format: "docx" | "pdf", ids?: string[]) {
     if (acreencias.length === 0) {
       flash("error", "No hay acreencias registradas para exportar");
       return;
     }
+    if (ids && ids.length === 0) {
+      flash("error", "No hay créditos para exportar");
+      return;
+    }
     setDownloading(format);
     try {
-      const res = await fetch(`/api/expediente/${caseId}/acreencias/export?format=${format}`);
+      const idsQuery = ids && ids.length > 0 ? `&ids=${ids.join(",")}` : "";
+      const res = await fetch(`/api/expediente/${caseId}/acreencias/export?format=${format}${idsQuery}`);
       if (!res.ok) {
         const msg = await res.json().catch(() => ({ error: "Error al generar el documento" }));
         flash("error", msg.error ?? "Error al generar el documento");
@@ -1599,6 +1604,39 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                             Capitalizar<br />seguros
                           </button>
                         )}
+                        {(() => {
+                          const docNorm = normalizarDocumento(a.acreedor_documento);
+                          const sameAcreedorIds = docNorm
+                            ? acreencias
+                                .filter((x) => normalizarDocumento(x.acreedor_documento) === docNorm)
+                                .map((x) => x.id)
+                            : [a.id];
+                          const hayVarios = sameAcreedorIds.length > 1;
+                          return (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => descargarRelacion("docx", [a.id])}
+                                disabled={downloading !== null}
+                                className="text-[9px] font-medium bg-blue-50 text-[#1B4F9B] border border-blue-200 rounded px-1.5 py-0.5 hover:bg-blue-100 disabled:opacity-50 leading-tight"
+                                title="Descargar solo este crédito (Word)"
+                              >
+                                ↓ Solo<br />este
+                              </button>
+                              {hayVarios && (
+                                <button
+                                  type="button"
+                                  onClick={() => descargarRelacion("docx", sameAcreedorIds)}
+                                  disabled={downloading !== null}
+                                  className="text-[9px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 rounded px-1.5 py-0.5 hover:bg-indigo-100 disabled:opacity-50 leading-tight"
+                                  title={`Descargar los ${sameAcreedorIds.length} créditos de este acreedor (Word)`}
+                                >
+                                  ↓ Acreedor<br />({sameAcreedorIds.length})
+                                </button>
+                              )}
+                            </>
+                          );
+                        })()}
                         <button
                           onClick={() => deleteAcreencia(a.id)}
                           disabled={saving === a.id}
