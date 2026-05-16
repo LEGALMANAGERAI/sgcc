@@ -76,6 +76,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       for (const f of ["conciliador_id", "secretario_id", "motivo_rechazo", "fecha_admision"]) {
         if (data[f] !== undefined) caseUpdate[f] = data[f] || null;
       }
+      // El contador de términos (ContadorTermino) usa fecha_inicio_termino,
+      // que históricamente se seteaba con el botón "Iniciar término" al día
+      // en que se hacía clic. Cuando el staff corrige fecha_admision de un
+      // proceso viejo, el contador seguía contando desde la fecha vieja.
+      // Propagamos fecha_admision → fecha_inicio_termino (solo la fecha,
+      // sin hora, porque el campo en BD es DATE).
+      if (data.fecha_admision !== undefined) {
+        const v = data.fecha_admision;
+        if (!v) {
+          caseUpdate.fecha_inicio_termino = null;
+        } else {
+          // Aceptamos ISO timestamp ("2026-05-15T10:00:00.000Z") o "YYYY-MM-DD".
+          const fechaSolo = typeof v === "string" && v.length >= 10 ? v.slice(0, 10) : null;
+          if (fechaSolo) caseUpdate.fecha_inicio_termino = fechaSolo;
+        }
+      }
       const { error } = await supabaseAdmin.from("sgcc_cases").update(caseUpdate).eq("id", caseId).eq("center_id", centerId);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       return NextResponse.json({ ok: true });
