@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, MessageSquare, X, Filter } from "lucide-react";
+import { Plus, MessageSquare, X, Filter, CheckCircle2, Loader2 } from "lucide-react";
 import { AdjuntosUpload } from "@/components/tickets/AdjuntosUpload";
 import { AdjuntosUploadBuffered } from "@/components/tickets/AdjuntosUploadBuffered";
 
@@ -91,10 +91,33 @@ export default function TicketsClient({ initialTickets, staff, currentStaffId, i
   const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
   const [respondingTo, setRespondingTo] = useState<TicketRow | null>(null);
+  const [cerrandoId, setCerrandoId] = useState<string | null>(null);
   const [filterCategoria, setFilterCategoria] = useState<string>("");
   const [filterEstado, setFilterEstado] = useState<string>("");
   const [filterPrioridad, setFilterPrioridad] = useState<string>("");
   const [origen, setOrigen] = useState<"todos" | "parte" | "staff">("todos");
+
+  async function cerrarTicket(ticketId: string, titulo: string) {
+    if (!confirm(`¿Cerrar el ticket "${titulo}"? No podrá reabrirse desde la UI.`)) return;
+    setCerrandoId(ticketId);
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: "Cerrado" }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error ?? "Error al cerrar el ticket");
+        return;
+      }
+      router.refresh();
+    } catch {
+      alert("Error de conexión");
+    } finally {
+      setCerrandoId(null);
+    }
+  }
 
   const filtered = useMemo(() => {
     const list = initialTickets.filter((t) => {
@@ -316,13 +339,28 @@ export default function TicketsClient({ initialTickets, staff, currentStaffId, i
                           {ESTADO_LABEL[t.estado]}
                         </span>
                         {puedeResponder && (
-                          <button
-                            onClick={() => setRespondingTo(t)}
-                            className="text-[11px] font-medium text-[#1B4F9B] hover:bg-[#1B4F9B]/10 px-2 py-1 rounded flex items-center gap-1"
-                          >
-                            <MessageSquare className="w-3 h-3" />
-                            Responder
-                          </button>
+                          <>
+                            <button
+                              onClick={() => setRespondingTo(t)}
+                              className="text-[11px] font-medium text-[#1B4F9B] hover:bg-[#1B4F9B]/10 px-2 py-1 rounded flex items-center gap-1"
+                            >
+                              <MessageSquare className="w-3 h-3" />
+                              Responder
+                            </button>
+                            <button
+                              onClick={() => cerrarTicket(t.id, t.titulo)}
+                              disabled={cerrandoId === t.id}
+                              className="text-[11px] font-medium text-green-700 hover:bg-green-50 px-2 py-1 rounded flex items-center gap-1 disabled:opacity-50"
+                              title="Cerrar ticket"
+                            >
+                              {cerrandoId === t.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <CheckCircle2 className="w-3 h-3" />
+                              )}
+                              Cerrar
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
