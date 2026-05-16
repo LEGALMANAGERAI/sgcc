@@ -65,13 +65,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Ticket no encontrado" }, { status: 404 });
   }
 
-  // Permisos: admin, asignado o solicitante pueden editar
-  const admin = isAdmin(session);
-  const esAsignado = ticket.asignado_staff_id === staffId;
-  const esSolicitante = ticket.solicitante_staff_id === staffId;
-  if (!admin && !esAsignado && !esSolicitante) {
-    return NextResponse.json({ error: "Sin permisos para editar este ticket" }, { status: 403 });
-  }
+  // Permisos: cualquier staff del centro puede actuar. El filtro
+  // .eq("center_id", centerId) arriba ya garantiza que no se cruce
+  // información entre centros.
 
   const update: Record<string, any> = { updated_at: new Date().toISOString() };
 
