@@ -9,9 +9,11 @@ import type { SgccAcreencia } from "@/types";
 type Params = { params: Promise<{ id: string }> };
 
 /**
- * GET /api/expediente/[id]/acreencias/export?format=docx|pdf
+ * GET /api/expediente/[id]/acreencias/export?format=docx|pdf&ids=uuid,uuid
  * Descarga la relación definitiva de acreencias como tabla (Word o PDF)
- * con márgenes y estilo del acta.
+ * con márgenes y estilo del acta. Si se pasa `ids`, filtra solo a esas
+ * acreencias (útil para descargar un solo crédito conciliado o todos
+ * los de un mismo acreedor durante la audiencia).
  */
 export async function GET(req: NextRequest, { params }: Params) {
   const session = await auth();
@@ -26,6 +28,14 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (format !== "docx" && format !== "pdf") {
     return NextResponse.json({ error: "Formato inválido (docx|pdf)" }, { status: 400 });
   }
+
+  const idsParam = req.nextUrl.searchParams.get("ids");
+  const idsFilter = idsParam
+    ? idsParam
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => /^[0-9a-f-]{36}$/i.test(s))
+    : null;
 
   // Caso + convocante (deudor) para encabezado
   const { data: caso, error: casoError } = await supabaseAdmin
@@ -58,7 +68,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Centro no encontrado" }, { status: 404 });
   }
 
-  const { data: acreencias, error: acrError } = await supabaseAdmin
+  let acrQuery = supabaseAdmin
     .from("sgcc_acreencias")
     .select("*")
     .eq("case_id", caseId)
@@ -66,6 +76,12 @@ export async function GET(req: NextRequest, { params }: Params) {
     .order("display_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true })
     .order("id", { ascending: true });
+
+  if (idsFilter && idsFilter.length > 0) {
+    acrQuery = acrQuery.in("id", idsFilter);
+  }
+
+  const { data: acreencias, error: acrError } = await acrQuery;
 
   if (acrError) return NextResponse.json({ error: acrError.message }, { status: 500 });
 
