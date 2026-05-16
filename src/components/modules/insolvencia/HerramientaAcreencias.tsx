@@ -1311,6 +1311,45 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
 
       {seccion === "acreencias" && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          {/* Barra de descarga: misma plantilla que la relación definitiva, útil
+              cuando en una audiencia se concilia un crédito y hay que pegar la
+              tabla actualizada en el acta del día. */}
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50/60">
+            <div className="text-xs text-gray-600">
+              Descarga la relación con los valores conciliados actuales (mismos márgenes del acta) para pegarla en el auto del día.
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => descargarRelacion("docx")}
+                disabled={downloading !== null || acreencias.length === 0}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#0D2340] bg-[#0D2340] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#1B4F9B] disabled:cursor-not-allowed disabled:opacity-50"
+                title="Descargar relación de acreencias en Word (.docx)"
+              >
+                {downloading === "docx" ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <FileDown className="w-3.5 h-3.5" />
+                )}
+                Word
+              </button>
+              <button
+                type="button"
+                onClick={() => descargarRelacion("pdf")}
+                disabled={downloading !== null || acreencias.length === 0}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D2340] shadow-sm transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                title="Descargar relación de acreencias en PDF"
+              >
+                {downloading === "pdf" ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <FileDown className="w-3.5 h-3.5" />
+                )}
+                PDF
+              </button>
+            </div>
+          </div>
+
           {/* Listas de autocompletado: al escribir nombre o documento, sugiere acreedores ya capturados. */}
           <datalist id={`acreedores-nombres-${caseId}`}>
             {sugerenciasAcreedores.map((s) => (
