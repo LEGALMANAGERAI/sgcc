@@ -150,6 +150,7 @@ export interface SgccCase {
   fecha_inicio_termino: string | null;
   dias_termino: number;
   prorrogado: boolean;
+  expediente_digital_url: string | null;
   created_by_staff: string | null;
   created_by_party: string | null;
   created_at: string;

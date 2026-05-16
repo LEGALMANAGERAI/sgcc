@@ -379,6 +379,17 @@ export default async function CasoDetallePage({
           )}
         </div>
 
+        {caso.expediente_digital_url && (
+          <a
+            href={caso.expediente_digital_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 mb-4 bg-[#1B4F9B]/10 text-[#1B4F9B] hover:bg-[#1B4F9B]/20 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            🔗 Abrir expediente digital
+          </a>
+        )}
+
         {documentos.length === 0 ? (
           <p className="text-gray-500 text-sm">
             No hay documentos disponibles para este caso.

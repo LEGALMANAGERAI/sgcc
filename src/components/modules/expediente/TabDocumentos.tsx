@@ -12,6 +12,10 @@ import {
   ChevronUp,
   Loader2,
   X,
+  ExternalLink,
+  Link2,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
 /* ─── Props ─────────────────────────────────────────────────────────────── */
@@ -19,6 +23,8 @@ import {
 interface TabDocumentosProps {
   caseId: string;
   documentos: any[];
+  expedienteDigitalUrl: string | null;
+  puedeEditarLink: boolean;
 }
 
 /* ─── Constantes ────────────────────────────────────────────────────────── */
@@ -55,6 +61,8 @@ const TIPO_BADGE_COLORS: Record<string, string> = {
 export function TabDocumentos({
   caseId,
   documentos,
+  expedienteDigitalUrl,
+  puedeEditarLink,
 }: TabDocumentosProps) {
   const [filtroTipo, setFiltroTipo] = useState("todos");
   const [showUpload, setShowUpload] = useState(false);
@@ -64,6 +72,40 @@ export function TabDocumentos({
   const [file, setFile] = useState<File | null>(null);
   const [tipoDoc, setTipoDoc] = useState("otro");
   const [nombreDoc, setNombreDoc] = useState("");
+
+  // Expediente digital
+  const [drvUrl, setDrvUrl] = useState(expedienteDigitalUrl ?? "");
+  const [editandoLink, setEditandoLink] = useState(!expedienteDigitalUrl);
+  const [guardandoLink, setGuardandoLink] = useState(false);
+  const [linkError, setLinkError] = useState("");
+
+  async function guardarLink(nuevoUrl: string | null) {
+    setLinkError("");
+    setGuardandoLink(true);
+    try {
+      const res = await fetch(`/api/casos/${caseId}/expediente-digital`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: nuevoUrl }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setLinkError(data.error ?? "Error al guardar");
+        return;
+      }
+      setDrvUrl(data.expediente_digital_url ?? "");
+      setEditandoLink(!data.expediente_digital_url);
+    } catch {
+      setLinkError("Error de conexión");
+    } finally {
+      setGuardandoLink(false);
+    }
+  }
+
+  async function eliminarLink() {
+    if (!confirm("¿Quitar el link al expediente digital?")) return;
+    await guardarLink(null);
+  }
 
   // Filtrar documentos
   const filtered =
@@ -123,6 +165,89 @@ export function TabDocumentos({
 
   return (
     <div className="space-y-6">
+      {/* ── Expediente digital (link a Drive) ─────────────────────────── */}
+      <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2">
+            <Link2 className="w-4 h-4 text-[#1B4F9B]" />
+            <h3 className="font-semibold text-gray-900 text-sm">Expediente digital</h3>
+          </div>
+          {drvUrl && puedeEditarLink && !editandoLink && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setEditandoLink(true)}
+                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-[#0D2340] px-2 py-1 rounded hover:bg-gray-100"
+                title="Editar link"
+              >
+                <Pencil className="w-3 h-3" /> Editar
+              </button>
+              <button
+                onClick={eliminarLink}
+                disabled={guardandoLink}
+                className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 disabled:opacity-50"
+                title="Quitar link"
+              >
+                <Trash2 className="w-3 h-3" /> Quitar
+              </button>
+            </div>
+          )}
+        </div>
+
+        {editandoLink && puedeEditarLink ? (
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={drvUrl}
+                onChange={(e) => setDrvUrl(e.target.value)}
+                placeholder="https://drive.google.com/drive/folders/..."
+                className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B]"
+              />
+              <button
+                onClick={() => guardarLink(drvUrl.trim() || null)}
+                disabled={guardandoLink}
+                className="bg-[#0D2340] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#0d2340dd] disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                {guardandoLink && <Loader2 className="w-4 h-4 animate-spin" />}
+                Guardar
+              </button>
+              {expedienteDigitalUrl && (
+                <button
+                  onClick={() => {
+                    setDrvUrl(expedienteDigitalUrl);
+                    setEditandoLink(false);
+                    setLinkError("");
+                  }}
+                  className="text-sm text-gray-500 px-3"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-gray-400">
+              Pega el link de la carpeta o archivo (Drive, OneDrive, etc.). Debe empezar con http:// o https://.
+            </p>
+            {linkError && <p className="text-xs text-red-600">{linkError}</p>}
+          </div>
+        ) : drvUrl ? (
+          <a
+            href={drvUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-[#1B4F9B]/10 text-[#1B4F9B] hover:bg-[#1B4F9B]/20 px-4 py-2 rounded-lg text-sm font-medium transition-colors max-w-full"
+          >
+            <ExternalLink className="w-4 h-4 shrink-0" />
+            <span className="truncate">Abrir expediente digital</span>
+          </a>
+        ) : (
+          <p className="text-xs text-gray-400 italic">
+            {puedeEditarLink
+              ? "Aún no se ha registrado el link al expediente digital."
+              : "El centro aún no ha registrado el link al expediente digital."}
+          </p>
+        )}
+      </section>
+
       {/* ── Controles superiores ──────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         {/* Filtro tipo */}
