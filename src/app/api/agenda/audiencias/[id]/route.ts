@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
+import { recomputeCaseEstadoTrasAudiencia } from "@/lib/casos/audiencia-estado";
 
 const ESTADOS_VALIDOS = new Set([
   "programada",
@@ -123,6 +124,12 @@ export async function PATCH(
       .from("sgcc_cases")
       .update({ fecha_audiencia: update.fecha_hora, updated_at: new Date().toISOString() })
       .eq("id", hearing.case_id);
+  }
+
+  // Si cambió el estado de la audiencia, propagar al estado del caso para
+  // que no se quede en "en audiencia" cuando ya no hay ninguna activa.
+  if (update.estado !== undefined) {
+    await recomputeCaseEstadoTrasAudiencia(hearing.case_id);
   }
 
   return NextResponse.json({ ok: true });

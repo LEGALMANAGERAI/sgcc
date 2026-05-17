@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
 import { notify } from "@/lib/notifications";
 import { randomUUID } from "crypto";
+import { recomputeCaseEstadoTrasAudiencia } from "@/lib/casos/audiencia-estado";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: caseId } = await params;
@@ -194,6 +195,12 @@ export async function PATCH(
 
   if (hearingError) {
     return NextResponse.json({ error: hearingError.message }, { status: 500 });
+  }
+
+  // Si cambió el estado de la audiencia, recalcular el estado del caso para
+  // que no se quede en "en audiencia" cuando ya no hay ninguna activa.
+  if (estado !== undefined) {
+    await recomputeCaseEstadoTrasAudiencia(caseId);
   }
 
   // Si hay resultado, guardarlo en sgcc_cases.sub_estado (solo valores permitidos por el CHECK)
