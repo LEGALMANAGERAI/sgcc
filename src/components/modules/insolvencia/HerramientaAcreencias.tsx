@@ -1368,7 +1368,50 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
           </datalist>
           <AcreenciasTableShell>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <table className="w-full text-xs">
+            <table
+              className="w-full text-xs"
+              onKeyDown={(e) => {
+                // Navegación vertical: ↑/↓ mueven el foco a la misma columna en la
+                // fila anterior/siguiente. Soporta inputs y textareas; se respeta el
+                // comportamiento nativo de <select> (cambiar de opción) y de inputs
+                // tipo date/number/datetime-local (incrementar valor).
+                if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+                const target = e.target as HTMLElement;
+                const tag = target.tagName.toLowerCase();
+                if (tag === "select") return;
+                if (tag === "input") {
+                  const type = (target as HTMLInputElement).type;
+                  if (type === "number" || type === "date" || type === "datetime-local" || type === "time") return;
+                } else if (tag !== "textarea") {
+                  return;
+                }
+                const cell = target.closest("td");
+                if (!cell || !cell.parentElement || cell.parentElement.tagName !== "TR") return;
+                const row = cell.parentElement as HTMLTableRowElement;
+                const cells = Array.from(row.cells);
+                const colIndex = cells.indexOf(cell as HTMLTableCellElement);
+                if (colIndex < 0) return;
+                const direction = e.key === "ArrowUp" ? "previousElementSibling" : "nextElementSibling";
+                let cursor: Element | null = row[direction];
+                while (cursor && cursor.tagName === "TR") {
+                  const targetCell = (cursor as HTMLTableRowElement).cells[colIndex];
+                  if (targetCell) {
+                    const candidate = targetCell.querySelector(
+                      "input:not([type='hidden']):not([disabled]), textarea:not([disabled])",
+                    ) as HTMLInputElement | HTMLTextAreaElement | null;
+                    if (candidate) {
+                      e.preventDefault();
+                      candidate.focus();
+                      if (typeof (candidate as HTMLInputElement).select === "function") {
+                        (candidate as HTMLInputElement).select();
+                      }
+                      return;
+                    }
+                  }
+                  cursor = cursor[direction];
+                }
+              }}
+            >
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="w-8"></th>
