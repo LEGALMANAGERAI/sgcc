@@ -17,7 +17,6 @@ export interface ArchivoCentro {
 
 interface Props {
   archivosIniciales: ArchivoCentro[];
-  isAdmin: boolean;
 }
 
 function formatBytes(bytes: number): string {
@@ -26,7 +25,7 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function ArchivosCentroClient({ archivosIniciales, isAdmin }: Props) {
+export function ArchivosCentroClient({ archivosIniciales }: Props) {
   const router = useRouter();
   const [archivos, setArchivos] = useState<ArchivoCentro[]>(archivosIniciales);
   const [showUpload, setShowUpload] = useState(false);
@@ -232,20 +231,18 @@ export function ArchivosCentroClient({ archivosIniciales, isAdmin }: Props) {
                         <Download className="w-3.5 h-3.5" />
                         Descargar
                       </a>
-                      {isAdmin && (
-                        <button
-                          onClick={() => eliminar(a.id, a.nombre)}
-                          disabled={eliminandoId === a.id}
-                          className="inline-flex items-center gap-1 text-xs text-red-600 hover:bg-red-50 px-2 py-1 rounded disabled:opacity-50"
-                          title="Eliminar (solo admin)"
-                        >
-                          {eliminandoId === a.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      )}
+                      <button
+                        onClick={() => eliminar(a.id, a.nombre)}
+                        disabled={eliminandoId === a.id}
+                        className="inline-flex items-center gap-1 text-xs text-red-600 hover:bg-red-50 px-2 py-1 rounded disabled:opacity-50"
+                        title="Eliminar archivo"
+                      >
+                        {eliminandoId === a.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
+                      </button>
                     </div>
                   </td>
                 </tr>
