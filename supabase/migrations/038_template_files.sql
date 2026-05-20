@@ -22,3 +22,9 @@ CREATE TABLE IF NOT EXISTS sgcc_template_files (
 
 CREATE INDEX IF NOT EXISTS idx_sgcc_template_files_center
   ON sgcc_template_files(center_id);
+
+-- RLS: igual que el resto de tablas sgcc_* (blindaje migración 099).
+-- Sin policies abiertas — los endpoints usan el service_role key que
+-- bypassa RLS. Anon/authenticated quedan en deny-by-default.
+ALTER TABLE sgcc_template_files ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sgcc_template_files FORCE ROW LEVEL SECURITY;
