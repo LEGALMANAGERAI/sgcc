@@ -88,11 +88,35 @@ export async function GET(req: NextRequest, { params }: Params) {
   const partesAny = (caso.partes ?? []) as Array<{ rol: string; party: any }>;
   const convocante = partesAny.find((p) => p.rol === "convocante")?.party ?? null;
 
+  // modo=trabajo: descarga desde la "Relación de acreencias" (antes de
+  // conciliar). El doc/PDF siempre lee los campos con_* (conciliado), pero
+  // en esa etapa están en 0. Coalesce por concepto: con_* si > 0, si no
+  // acr_* (lo que reclama el acreedor), si no sol_* (lo solicitado). Así el
+  // documento muestra los valores registrados aunque no se haya conciliado.
+  // modo=definitiva (default): estricto con_*, sin tocar nada.
+  const modo = (req.nextUrl.searchParams.get("modo") ?? "definitiva").toLowerCase();
+  const CONCEPTOS = ["capital", "intereses_corrientes", "intereses_moratorios", "seguros", "otros"];
+  const acreenciasFuente = (acreencias ?? []) as SgccAcreencia[];
+  const acreenciasCtx =
+    modo === "trabajo"
+      ? acreenciasFuente.map((a) => {
+          const next = { ...a } as any;
+          for (const c of CONCEPTOS) {
+            const con = Number((a as any)[`con_${c}`]) || 0;
+            if (con > 0) continue;
+            const acr = Number((a as any)[`acr_${c}`]) || 0;
+            const sol = Number((a as any)[`sol_${c}`]) || 0;
+            next[`con_${c}`] = acr > 0 ? acr : sol;
+          }
+          return next as SgccAcreencia;
+        })
+      : acreenciasFuente;
+
   const ctx = {
     caso: { numero_radicado: caso.numero_radicado, materia: caso.materia },
     centro,
     convocante,
-    acreencias: (acreencias ?? []) as SgccAcreencia[],
+    acreencias: acreenciasCtx,
   };
 
   const filenameBase = `relacion-acreencias-${caso.numero_radicado}`;
