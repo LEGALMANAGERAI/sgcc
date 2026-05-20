@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, Puzzle } from "lucide-react";
+import { FileText, Puzzle, FolderOpen } from "lucide-react";
 
 const TABS = [
   { href: "/plantillas", label: "Plantillas", icon: FileText },
   { href: "/plantillas/clausulas", label: "Cláusulas", icon: Puzzle },
+  { href: "/plantillas/archivos", label: "Archivos del centro", icon: FolderOpen },
 ];
 
 export function PlantillasTabs() {
