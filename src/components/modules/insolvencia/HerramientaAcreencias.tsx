@@ -686,7 +686,11 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     setTimeout(() => { setSuccess(""); setError(""); }, 4000);
   }, []);
 
-  async function descargarRelacion(format: "docx" | "pdf", ids?: string[]) {
+  async function descargarRelacion(
+    format: "docx" | "pdf",
+    ids?: string[],
+    modo: "trabajo" | "definitiva" = "definitiva",
+  ) {
     if (acreencias.length === 0) {
       flash("error", "No hay acreencias registradas para exportar");
       return;
@@ -698,7 +702,8 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     setDownloading(format);
     try {
       const idsQuery = ids && ids.length > 0 ? `&ids=${ids.join(",")}` : "";
-      const res = await fetch(`/api/expediente/${caseId}/acreencias/export?format=${format}${idsQuery}`);
+      const modoQuery = `&modo=${modo}`;
+      const res = await fetch(`/api/expediente/${caseId}/acreencias/export?format=${format}${idsQuery}${modoQuery}`);
       if (!res.ok) {
         const msg = await res.json().catch(() => ({ error: "Error al generar el documento" }));
         flash("error", msg.error ?? "Error al generar el documento");
@@ -1326,7 +1331,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => descargarRelacion("docx")}
+                onClick={() => descargarRelacion("docx", undefined, "trabajo")}
                 disabled={downloading !== null || acreencias.length === 0}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-[#0D2340] bg-[#0D2340] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#1B4F9B] disabled:cursor-not-allowed disabled:opacity-50"
                 title="Descargar relación de acreencias en Word (.docx)"
@@ -1340,7 +1345,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
               </button>
               <button
                 type="button"
-                onClick={() => descargarRelacion("pdf")}
+                onClick={() => descargarRelacion("pdf", undefined, "trabajo")}
                 disabled={downloading !== null || acreencias.length === 0}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D2340] shadow-sm transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                 title="Descargar relación de acreencias en PDF"
@@ -1659,7 +1664,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                             <>
                               <button
                                 type="button"
-                                onClick={() => descargarRelacion("docx", [a.id])}
+                                onClick={() => descargarRelacion("docx", [a.id], "trabajo")}
                                 disabled={downloading !== null}
                                 className="text-[9px] font-medium bg-blue-50 text-[#1B4F9B] border border-blue-200 rounded px-1.5 py-0.5 hover:bg-blue-100 disabled:opacity-50 leading-tight"
                                 title="Descargar solo este crédito (Word)"
@@ -1669,7 +1674,7 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                               {hayVarios && (
                                 <button
                                   type="button"
-                                  onClick={() => descargarRelacion("docx", sameAcreedorIds)}
+                                  onClick={() => descargarRelacion("docx", sameAcreedorIds, "trabajo")}
                                   disabled={downloading !== null}
                                   className="text-[9px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 rounded px-1.5 py-0.5 hover:bg-indigo-100 disabled:opacity-50 leading-tight"
                                   title={`Descargar los ${sameAcreedorIds.length} créditos de este acreedor (Word)`}
