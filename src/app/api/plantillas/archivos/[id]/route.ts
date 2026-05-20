@@ -15,9 +15,9 @@ export async function DELETE(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  if ((session.user as any).sgccRol !== "admin") {
+  if ((session.user as any).userType !== "staff") {
     return NextResponse.json(
-      { error: "Solo el admin puede eliminar archivos de plantilla" },
+      { error: "Solo el personal del centro puede eliminar archivos de plantilla" },
       { status: 403 }
     );
   }

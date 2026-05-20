@@ -15,8 +15,6 @@ export default async function PlantillasArchivosPage() {
   const centerId = resolveCenterId(session);
   if (!centerId) redirect("/login");
 
-  const isAdmin = (session.user as any).sgccRol === "admin";
-
   const { data } = await supabaseAdmin
     .from("sgcc_template_files")
     .select(
@@ -46,7 +44,7 @@ export default async function PlantillasArchivosPage() {
         subtitle="Formatos propios del centro — el staff los sube y todos los descargan"
       />
       <PlantillasTabs />
-      <ArchivosCentroClient archivosIniciales={archivos} isAdmin={isAdmin} />
+      <ArchivosCentroClient archivosIniciales={archivos} />
     </div>
   );
 }
