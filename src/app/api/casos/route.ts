@@ -68,7 +68,10 @@ export async function POST(req: NextRequest) {
     partes,
   } = body;
 
-  if (!materia || !descripcion || !partes?.length) {
+  // En insolvencia no se captura "hechos y pretensiones", así que la
+  // descripción no es obligatoria para ese trámite.
+  const descripcionRequerida = tipo_tramite !== "insolvencia";
+  if (!materia || (descripcionRequerida && !descripcion) || !partes?.length) {
     return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
   }
 
@@ -104,7 +107,7 @@ export async function POST(req: NextRequest) {
         numero_radicado,
         tipo_tramite: tipo_tramite || "conciliacion",
         materia,
-        descripcion,
+        descripcion: descripcion ?? "",
         cuantia: cuantia ?? null,
         cuantia_indeterminada: cuantia_indeterminada ?? false,
         conciliador_id: conciliadorAsignado,

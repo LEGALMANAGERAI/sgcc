@@ -336,19 +336,23 @@ export function NuevoCasoForm({ centerId, conciliadores, salas }: Props) {
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Hechos y pretensiones *
-          </label>
-          <textarea
-            required
-            rows={5}
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            placeholder="Describa los hechos del conflicto y las pretensiones de las partes..."
-            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340] resize-none"
-          />
-        </div>
+        {/* Hechos y pretensiones: no aplica para insolvencia (no se captura
+            ese acápite). Conciliación / acuerdo de apoyo sí lo requieren. */}
+        {tipoTramite !== "insolvencia" && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Hechos y pretensiones *
+            </label>
+            <textarea
+              required
+              rows={5}
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              placeholder="Describa los hechos del conflicto y las pretensiones de las partes..."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340] resize-none"
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-5">
           <div>
