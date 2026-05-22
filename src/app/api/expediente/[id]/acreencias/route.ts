@@ -11,7 +11,7 @@ type Params = { params: Promise<{ id: string }> };
  * GET /api/expediente/[id]/acreencias
  * Listar acreencias del caso con cálculos de % y pequeño acreedor.
  */
-export async function GET(_req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
@@ -20,14 +20,25 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const { id: caseId } = await params;
 
-  const { data, error } = await supabaseAdmin
+  // ?eliminadas=1 → papelera: devuelve solo las acreencias borradas (deleted_at)
+  // para poder restaurarlas. Sin el parámetro, devuelve solo las activas.
+  const soloEliminadas = req.nextUrl.searchParams.get("eliminadas") === "1";
+
+  let query = supabaseAdmin
     .from("sgcc_acreencias")
     .select("*")
     .eq("case_id", caseId)
-    .eq("center_id", centerId)
-    .order("display_order", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: true })
-    .order("id", { ascending: true });
+    .eq("center_id", centerId);
+
+  query = soloEliminadas
+    ? query.not("deleted_at", "is", null).order("deleted_at", { ascending: false })
+    : query
+        .is("deleted_at", null)
+        .order("display_order", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true });
+
+  const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -153,12 +164,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   // Recalcular porcentajes de voto y pequeños acreedores para TODO el caso
   await recalcularPorcentajes(caseId, centerId);
 
-  // Retornar todas las acreencias actualizadas
+  // Retornar todas las acreencias activas actualizadas
   const { data: all } = await supabaseAdmin
     .from("sgcc_acreencias")
     .select("*")
     .eq("case_id", caseId)
     .eq("center_id", centerId)
+    .is("deleted_at", null)
     .order("display_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true })
     .order("id", { ascending: true });
@@ -168,7 +180,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 /**
  * DELETE /api/expediente/[id]/acreencias
- * Eliminar acreencia. Body: { acreencia_id }
+ * Eliminar acreencia (borrado lógico: marca deleted_at, recuperable desde la
+ * papelera con PUT). Body: { acreencia_id }
  */
 export async function DELETE(req: NextRequest, { params }: Params) {
   const session = await auth();
@@ -180,18 +193,58 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { id: caseId } = await params;
   const body = await req.json();
 
-  const { error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from("sgcc_acreencias")
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", body.acreencia_id)
     .eq("case_id", caseId)
-    .eq("center_id", centerId);
+    .eq("center_id", centerId)
+    .is("deleted_at", null)
+    .select()
+    .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   await recalcularPorcentajes(caseId, centerId);
 
-  return NextResponse.json({ ok: true });
+  // Devolvemos la acreencia eliminada para que el cliente pueda mostrar el
+  // aviso "Deshacer" con su nombre.
+  return NextResponse.json({ ok: true, acreencia: data ?? null });
+}
+
+/**
+ * PUT /api/expediente/[id]/acreencias
+ * Restaurar una acreencia eliminada (deshacer). Body: { acreencia_id }
+ */
+export async function PUT(req: NextRequest, { params }: Params) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const centerId = resolveCenterId(session);
+  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
+
+  const { id: caseId } = await params;
+  const body = await req.json();
+
+  if (!body.acreencia_id) {
+    return NextResponse.json({ error: "acreencia_id es requerido" }, { status: 400 });
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("sgcc_acreencias")
+    .update({ deleted_at: null })
+    .eq("id", body.acreencia_id)
+    .eq("case_id", caseId)
+    .eq("center_id", centerId)
+    .select()
+    .maybeSingle();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data) return NextResponse.json({ error: "Acreencia no encontrada" }, { status: 404 });
+
+  await recalcularPorcentajes(caseId, centerId);
+
+  return NextResponse.json({ ok: true, acreencia: data });
 }
 
 /* ─── Recalcular porcentajes ─────────────────────────────────────────── */

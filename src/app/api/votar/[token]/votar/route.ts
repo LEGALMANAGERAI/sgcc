@@ -109,7 +109,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { data: todasAcreencias } = await supabaseAdmin
     .from("sgcc_acreencias")
     .select("party_id, acreedor_documento, acreedor_nombre")
-    .eq("case_id", propuesta.case_id);
+    .eq("case_id", propuesta.case_id)
+    .is("deleted_at", null);
   const acreedoresUnicos = new Set<string>();
   for (const a of todasAcreencias ?? []) acreedoresUnicos.add(claveAcreedor(a));
   const votantes = new Set<string>([...positivosSet, ...negativosSet]);

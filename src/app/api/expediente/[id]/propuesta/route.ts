@@ -130,7 +130,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       .from("sgcc_acreencias")
       .select("id, acreedor_nombre, acreedor_documento, party_id, porcentaje_voto, con_capital")
       .eq("case_id", caseId)
-      .eq("center_id", centerId);
+      .eq("center_id", centerId)
+      .is("deleted_at", null);
 
     // Cargar documentos de parties referenciados como fallback cuando una acreencia no
     // tiene documento propio (caso típico: importadas de convocados con doc vacío).

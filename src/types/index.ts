@@ -676,6 +676,8 @@ export interface SgccAcreencia {
   display_order: number | null;
   created_at: string;
   updated_at: string;
+  /** Borrado lógico: NULL = activa; con fecha = eliminada (recuperable desde la papelera). */
+  deleted_at?: string | null;
 }
 
 export type ClaseCredito = "primera" | "segunda" | "tercera" | "cuarta" | "quinta";

@@ -80,6 +80,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     .select("*")
     .eq("case_id", caseId)
     .eq("center_id", centerId)
+    .is("deleted_at", null)
     .order("clase_credito")
     .order("created_at");
 
