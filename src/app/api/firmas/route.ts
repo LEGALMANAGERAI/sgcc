@@ -30,6 +30,8 @@ export async function GET(req: NextRequest) {
     .order("created_at", { ascending: false });
 
   if (estado) query = query.eq("estado", estado);
+  // Sin filtro explícito, ocultar los cancelados de la lista.
+  else query = query.neq("estado", "cancelado");
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

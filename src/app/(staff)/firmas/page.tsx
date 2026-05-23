@@ -56,10 +56,13 @@ export default async function FirmasPage({ searchParams }: PageProps) {
 
   /* ─── Queries ────────────────────────────────────────────────────── */
 
+  // Excluir documentos cancelados: no se muestran en la lista (siguen en la
+  // base de datos para trazabilidad/auditoría, pero no deben quedar a la vista).
   const { data: rawDocs } = await supabaseAdmin
     .from("sgcc_firma_documentos")
     .select("*, caso:sgcc_cases(id, numero_radicado)")
     .eq("center_id", centerId)
+    .neq("estado", "cancelado")
     .order("created_at", { ascending: false });
 
   const allDocs = (rawDocs ?? []) as (SgccFirmaDocumento & {
