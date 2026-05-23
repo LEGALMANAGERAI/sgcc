@@ -392,9 +392,9 @@ export default function NuevaFirmaPage() {
                   : "border-gray-200 hover:border-gray-300"
               }`}
             >
-              <span className="block text-sm font-semibold text-gray-900">Firma certificada por Legal Manager</span>
+              <span className="block text-sm font-semibold text-gray-900">Firma electrónica por Legal Manager</span>
               <span className="block text-xs text-gray-500 mt-1">
-                El firmante firma en el portal de Legal Manager (OTP + foto + trazabilidad, Ley 527).
+                El firmante firma en el portal de Legal Manager (OTP + foto + trazabilidad, Ley 527 de 1999).
               </span>
             </button>
           </div>
