@@ -14,9 +14,9 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { data: firmante, error } = await supabaseAdmin
     .from("sgcc_firmantes")
     .select(`
-      id, nombre, cedula, email, estado, visto_at, firmado_at, motivo_rechazo, orden,
+      id, nombre, cedula, email, estado, visto_at, firmado_at, motivo_rechazo, orden, lm_signing_url,
       documento:sgcc_firma_documentos(
-        id, nombre, descripcion, archivo_url, estado, fecha_expiracion, orden_secuencial
+        id, nombre, descripcion, archivo_url, estado, fecha_expiracion, orden_secuencial, proveedor
       )
     `)
     .eq("token", token)
@@ -27,6 +27,12 @@ export async function GET(req: NextRequest, { params }: Params) {
   }
 
   const documento = firmante.documento as any;
+
+  // Documento de Legal Manager: la firma ocurre en el portal de LM. Devolvemos
+  // la URL de firma para que la página redirija allá (branding LM).
+  if (documento?.proveedor === "lm" && firmante.lm_signing_url) {
+    return NextResponse.json({ redirect_url: firmante.lm_signing_url });
+  }
 
   // Verificar que no esté firmado
   if (firmante.estado === "firmado") {
