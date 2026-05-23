@@ -32,7 +32,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     .from("sgcc_firma_documentos")
     .select(`
       *,
-      firmantes:sgcc_firmantes(id, nombre, cedula, email, telefono, token, orden, estado, lm_firmante_id, lm_signing_url)
+      firmantes:sgcc_firmantes(id, nombre, cedula, email, telefono, token, orden, estado, canal_notificacion, lm_firmante_id, lm_signing_url)
     `)
     .eq("id", id)
     .eq("center_id", centerId)
@@ -176,6 +176,7 @@ async function enviarViaLM(
           cedula: f.cedula,
           email: f.email,
           telefono: f.telefono,
+          canal: f.canal_notificacion || "email",
           orden: f.orden,
         })),
         orden_secuencial: documento.orden_secuencial,
@@ -214,56 +215,31 @@ async function enviarViaLM(
     }
   }
 
-  // 2) Enviar el signing_url a cada firmante pendiente (todos, o el primero si es secuencial).
+  // 2) La notificación al firmante (correo con su signing_url) la envía
+  //    Legal Manager con su propio branding al crear la solicitud — SIGECC NO
+  //    manda correo en este flujo (no depende de Resend). Aquí solo marcamos
+  //    los firmantes pendientes como "enviado" para reflejar el estado.
   const pendientes = firmantes
     .filter((f) => f.estado === "pendiente" && f.lm_signing_url)
     .sort((a, b) => a.orden - b.orden);
-  const aEnviar = documento.orden_secuencial ? pendientes.slice(0, 1) : pendientes;
+  const aMarcar = documento.orden_secuencial ? pendientes.slice(0, 1) : pendientes;
   const enviados: string[] = [];
 
-  for (const firmante of aEnviar) {
-    try {
-      await getResend().emails.send({
-        from: "SIGECC <notificaciones@sgcc.app>",
-        to: firmante.email,
-        subject: `Documento pendiente de firma: ${documento.nombre}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background:#0D2340;padding:20px;border-radius:8px 8px 0 0;text-align:center;">
-              <h2 style="color:white;margin:0;">Firma Electrónica</h2>
-            </div>
-            <div style="padding: 24px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px;">
-              <p>Estimado/a <strong>${firmante.nombre}</strong>,</p>
-              <p>Tiene un documento pendiente de firma: <strong>${documento.nombre}</strong>.</p>
-              <p>La firma se realiza de forma segura en el portal de <strong>Legal Manager</strong>:</p>
-              <div style="text-align: center; margin: 24px 0;">
-                <a href="${firmante.lm_signing_url}" style="display: inline-block; padding: 12px 32px; background: #0D2340; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
-                  Firmar en Legal Manager
-                </a>
-              </div>
-              <p style="color: #6b7280; font-size: 14px;">Este enlace es personal e intransferible. No lo comparta con terceros.</p>
-            </div>
-          </div>
-        `,
-      });
+  for (const firmante of aMarcar) {
+    await supabaseAdmin
+      .from("sgcc_firmantes")
+      .update({ estado: "enviado", enviado_at: new Date().toISOString() })
+      .eq("id", firmante.id);
+    enviados.push(firmante.id);
 
-      await supabaseAdmin
-        .from("sgcc_firmantes")
-        .update({ estado: "enviado", enviado_at: new Date().toISOString() })
-        .eq("id", firmante.id);
-      enviados.push(firmante.id);
-
-      await supabaseAdmin.from("sgcc_firma_registros").insert({
-        firma_documento_id: docId,
-        firmante_id: firmante.id,
-        accion: "enviado",
-        ip: req.headers.get("x-forwarded-for") || "unknown",
-        user_agent: req.headers.get("user-agent") || "unknown",
-        metadatos: { email: firmante.email, proveedor: "lm" },
-      });
-    } catch (err: any) {
-      console.error(`Error enviando (LM) a ${firmante.email}:`, err.message);
-    }
+    await supabaseAdmin.from("sgcc_firma_registros").insert({
+      firma_documento_id: docId,
+      firmante_id: firmante.id,
+      accion: "enviado",
+      ip: req.headers.get("x-forwarded-for") || "unknown",
+      user_agent: req.headers.get("user-agent") || "unknown",
+      metadatos: { email: firmante.email, proveedor: "lm", notifica: "lm" },
+    });
   }
 
   if (enviados.length > 0) {
