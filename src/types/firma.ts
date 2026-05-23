@@ -2,8 +2,8 @@
 // SGCC — Tipos del módulo de Firma Electrónica
 // ============================================================
 
-export type FirmaEstado = "pendiente" | "enviado" | "en_proceso" | "completado" | "rechazado" | "expirado";
-export type FirmanteEstado = "pendiente" | "enviado" | "visto" | "firmado" | "rechazado" | "expirado";
+export type FirmaEstado = "pendiente" | "enviado" | "en_proceso" | "completado" | "rechazado" | "expirado" | "cancelado";
+export type FirmanteEstado = "pendiente" | "enviado" | "visto" | "firmado" | "rechazado" | "expirado" | "cancelado";
 export type FirmaAccion = "otp_solicitado" | "otp_verificado" | "firmado" | "rechazado" | "visto" | "enviado";
 
 /** Proveedor de firma del documento: OTP nativo de SIGECC o Legal Manager (redirect). */
