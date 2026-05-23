@@ -6,7 +6,7 @@ export default auth((req) => {
   const session = req.auth;
 
   // Rutas públicas
-  const publicPaths = ["/login", "/registro", "/invitacion", "/widget", "/firmar", "/verificar", "/votar", "/centro"];
+  const publicPaths = ["/login", "/registro", "/invitacion", "/widget", "/firmar", "/firma/retorno", "/verificar", "/votar", "/centro"];
   if (publicPaths.some((p) => pathname.startsWith(p))) return NextResponse.next();
 
   // API routes de auth, health y activación siempre permitidas

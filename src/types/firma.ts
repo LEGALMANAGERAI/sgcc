@@ -6,6 +6,9 @@ export type FirmaEstado = "pendiente" | "enviado" | "en_proceso" | "completado" 
 export type FirmanteEstado = "pendiente" | "enviado" | "visto" | "firmado" | "rechazado" | "expirado";
 export type FirmaAccion = "otp_solicitado" | "otp_verificado" | "firmado" | "rechazado" | "visto" | "enviado";
 
+/** Proveedor de firma del documento: OTP nativo de SIGECC o Legal Manager (redirect). */
+export type FirmaProveedor = "propio" | "lm";
+
 export interface SgccFirmaDocumento {
   id: string;
   center_id: string;
@@ -24,6 +27,11 @@ export interface SgccFirmaDocumento {
   creado_por: string | null;
   created_at: string;
   updated_at: string;
+  // Firma vía Legal Manager (proveedor "lm")
+  proveedor: FirmaProveedor;
+  lm_solicitud_id: string | null;
+  lm_verificacion_url: string | null;
+  lm_pdf_firmado_url: string | null;
   // joins
   firmantes?: SgccFirmante[];
 }
@@ -44,6 +52,9 @@ export interface SgccFirmante {
   visto_at: string | null;
   enviado_at: string | null;
   created_at: string;
+  // Firma vía Legal Manager
+  lm_firmante_id: string | null;
+  lm_signing_url: string | null;
 }
 
 export interface SgccFirmaRegistro {

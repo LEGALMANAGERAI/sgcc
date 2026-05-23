@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { redirect } from "next/navigation";
 import { SigningClient } from "./SigningClient";
 
 interface PageProps {
@@ -15,6 +16,7 @@ export default async function FirmarPage({ params }: PageProps) {
 
   let firmaData = null;
   let error = null;
+  let redirectUrl: string | null = null;
 
   try {
     const res = await fetch(`${baseUrl}/api/firmar/${token}`, {
@@ -24,12 +26,18 @@ export default async function FirmarPage({ params }: PageProps) {
 
     if (!res.ok) {
       error = data.error ?? "Enlace inv\u00e1lido o expirado";
+    } else if (data.redirect_url) {
+      redirectUrl = data.redirect_url;
     } else {
       firmaData = data;
     }
   } catch {
     error = "No se pudo validar el enlace. Intenta de nuevo m\u00e1s tarde.";
   }
+
+  // Documento de Legal Manager: redirigir al portal de LM (fuera del try para
+  // que el throw interno de redirect() no se capture como error).
+  if (redirectUrl) redirect(redirectUrl);
 
   if (error) {
     return (

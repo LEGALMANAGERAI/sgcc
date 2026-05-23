@@ -60,6 +60,8 @@ export async function POST(req: NextRequest) {
     const diasExpiracion = parseInt(formData.get("dias_expiracion") as string) || 30;
     const caseId = formData.get("case_id") as string | null;
     const firmantesJson = formData.get("firmantes") as string | null;
+    // Proveedor de firma: "propio" (OTP nativo, default) o "lm" (Legal Manager redirect).
+    const proveedor = (formData.get("proveedor") as string) === "lm" ? "lm" : "propio";
 
     // Validaciones
     if (!file || !nombre) {
@@ -118,6 +120,7 @@ export async function POST(req: NextRequest) {
         total_firmantes: firmantes.length,
         firmantes_completados: 0,
         creado_por: userId,
+        proveedor,
       })
       .select()
       .single();
