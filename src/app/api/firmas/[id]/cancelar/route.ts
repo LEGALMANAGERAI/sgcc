@@ -45,18 +45,33 @@ export async function POST(
   const motivo = body.motivo ?? "Cancelado por el operador";
   const now = new Date().toISOString();
 
-  // Actualizar estado del documento
-  await supabaseAdmin
+  // Actualizar estado del documento. Si esto falla, abortamos y reportamos el
+  // error (antes se ignoraba y se devolvía ok aunque no se guardara nada).
+  const { error: docErr } = await supabaseAdmin
     .from("sgcc_firma_documentos")
     .update({ estado: "cancelado", updated_at: now })
     .eq("id", id);
 
-  // Actualizar firmantes pendientes a cancelado
-  await supabaseAdmin
+  if (docErr) {
+    return NextResponse.json(
+      { error: `No se pudo cancelar el documento: ${docErr.message}` },
+      { status: 500 },
+    );
+  }
+
+  // Actualizar firmantes pendientes a cancelado.
+  // OJO: sgcc_firmantes NO tiene columna updated_at — no la incluyas o el
+  // UPDATE falla. Si esto falla no es fatal (el documento ya quedó cancelado),
+  // pero lo logueamos.
+  const { error: firmErr } = await supabaseAdmin
     .from("sgcc_firmantes")
-    .update({ estado: "cancelado", updated_at: now })
+    .update({ estado: "cancelado" })
     .eq("firma_documento_id", id)
     .in("estado", ["pendiente", "enviado", "visto"]);
+
+  if (firmErr) {
+    console.error("Error cancelando firmantes:", firmErr.message);
+  }
 
   // Registrar en audit trail
   await supabaseAdmin.from("sgcc_firma_registros").insert({
