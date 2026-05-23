@@ -32,7 +32,10 @@ const estadoDocConfig: Record<FirmaEstado, { label: string; bg: string; text: st
   completado: { label: "Completado", bg: "bg-green-100", text: "text-green-800" },
   rechazado: { label: "Rechazado", bg: "bg-red-100", text: "text-red-800" },
   expirado: { label: "Expirado", bg: "bg-gray-100", text: "text-gray-600" },
+  cancelado: { label: "Cancelado", bg: "bg-gray-100", text: "text-gray-600" },
 };
+
+const ESTADO_FALLBACK = { label: "Desconocido", bg: "bg-gray-100", text: "text-gray-600" };
 
 const estadoFirmanteConfig: Record<FirmanteEstado, { label: string; bg: string; text: string }> = {
   pendiente: { label: "Pendiente", bg: "bg-yellow-100", text: "text-yellow-800" },
@@ -41,9 +44,11 @@ const estadoFirmanteConfig: Record<FirmanteEstado, { label: string; bg: string; 
   firmado: { label: "Firmado", bg: "bg-green-100", text: "text-green-800" },
   rechazado: { label: "Rechazado", bg: "bg-red-100", text: "text-red-800" },
   expirado: { label: "Expirado", bg: "bg-gray-100", text: "text-gray-600" },
+  cancelado: { label: "Cancelado", bg: "bg-gray-100", text: "text-gray-600" },
 };
 
 const accionLabels: Record<string, string> = {
+  cancelado: "Documento cancelado",
   otp_solicitado: "C\u00f3digo OTP solicitado",
   otp_verificado: "C\u00f3digo OTP verificado",
   firmado: "Documento firmado",
@@ -102,7 +107,7 @@ export default async function FirmaDetailPage({ params }: PageProps) {
     firmante: { nombre: string } | null;
   })[];
 
-  const estado = estadoDocConfig[doc.estado];
+  const estado = estadoDocConfig[doc.estado] ?? ESTADO_FALLBACK;
   const progreso = doc.total_firmantes > 0
     ? Math.round((doc.firmantes_completados / doc.total_firmantes) * 100)
     : 0;
@@ -237,7 +242,7 @@ export default async function FirmaDetailPage({ params }: PageProps) {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {firmantes.map((f) => {
-                    const est = estadoFirmanteConfig[f.estado];
+                    const est = estadoFirmanteConfig[f.estado] ?? ESTADO_FALLBACK;
                     return (
                       <tr key={f.id} className="hover:bg-gray-50/50">
                         <td className="px-6 py-3">

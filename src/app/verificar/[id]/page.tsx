@@ -14,6 +14,7 @@ const estadoFirmanteConfig: Record<FirmanteEstado, { label: string; bg: string; 
   firmado: { label: "Firmado", bg: "bg-green-100", text: "text-green-800" },
   rechazado: { label: "Rechazado", bg: "bg-red-100", text: "text-red-800" },
   expirado: { label: "Expirado", bg: "bg-gray-100", text: "text-gray-600" },
+  cancelado: { label: "Cancelado", bg: "bg-gray-100", text: "text-gray-600" },
 };
 
 const estadoDocLabels: Record<string, { label: string; color: string }> = {

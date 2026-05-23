@@ -31,7 +31,7 @@ export function FirmaDetailActions({
 
   const canEnviar = estado === "pendiente";
   const canRecordatorio = estado === "enviado" || estado === "en_proceso";
-  const canCancelar = estado !== "completado" && estado !== "rechazado" && estado !== "expirado";
+  const canCancelar = estado !== "completado" && estado !== "rechazado" && estado !== "expirado" && estado !== "cancelado";
   const canDescargarFirmado = estado === "completado" && archivoFirmadoUrl;
 
   const doAction = async (action: string, method = "POST", body?: object) => {

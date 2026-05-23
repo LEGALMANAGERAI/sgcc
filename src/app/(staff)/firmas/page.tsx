@@ -26,7 +26,10 @@ const estadoConfig: Record<FirmaEstado, { label: string; bg: string; text: strin
   completado: { label: "Completado", bg: "bg-green-100", text: "text-green-800" },
   rechazado: { label: "Rechazado", bg: "bg-red-100", text: "text-red-800" },
   expirado: { label: "Expirado", bg: "bg-gray-100", text: "text-gray-600" },
+  cancelado: { label: "Cancelado", bg: "bg-gray-100", text: "text-gray-600" },
 };
+
+const ESTADO_FALLBACK = { label: "Desconocido", bg: "bg-gray-100", text: "text-gray-600" };
 
 /* ─── Page ───────────────────────────────────────────────────────────── */
 
@@ -137,7 +140,7 @@ export default async function FirmasPage({ searchParams }: PageProps) {
                 </tr>
               ) : (
                 docs.map((doc) => {
-                  const estado = estadoConfig[doc.estado];
+                  const estado = estadoConfig[doc.estado] ?? ESTADO_FALLBACK;
                   return (
                     <tr key={doc.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-5 py-3">
