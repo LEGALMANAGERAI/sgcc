@@ -43,7 +43,9 @@ export default function NuevaFirmaPage() {
   const [caseId, setCaseId] = useState("");
   const [ordenSecuencial, setOrdenSecuencial] = useState(false);
   const [diasExpiracion, setDiasExpiracion] = useState(3);
-  const [proveedor, setProveedor] = useState<"propio" | "lm">("propio");
+  // La firma siempre se hace vía Legal Manager (la firma propia de SIGECC se
+  // deshabilitó en la UI por no usarse). El backend aún la soporta como fallback.
+  const proveedor = "lm" as const;
   const [firmantes, setFirmantes] = useState<Firmante[]>([
     { id: crypto.randomUUID(), nombre: "", cedula: "", email: "", telefono: "", orden: 1 },
   ]);
@@ -359,44 +361,6 @@ export default function NuevaFirmaPage() {
                 <p className="text-xs text-gray-400 mt-1">Entre 1 y 8 d&#237;as</p>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Proveedor de firma */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h2 className="font-semibold text-gray-900 mb-1">Tipo de firma</h2>
-          <p className="text-xs text-gray-400 mb-4">
-            Elige cómo se firmará el documento. Puedes mantener la firma propia o usar Legal Manager.
-          </p>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setProveedor("propio")}
-              className={`text-left rounded-lg border p-4 transition-colors ${
-                proveedor === "propio"
-                  ? "border-[#0D2340] bg-[#0D2340]/5 ring-1 ring-[#0D2340]"
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              <span className="block text-sm font-semibold text-gray-900">Firma propia de SIGECC</span>
-              <span className="block text-xs text-gray-500 mt-1">
-                El firmante recibe un código (OTP) y firma dentro de SIGECC.
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setProveedor("lm")}
-              className={`text-left rounded-lg border p-4 transition-colors ${
-                proveedor === "lm"
-                  ? "border-[#0D2340] bg-[#0D2340]/5 ring-1 ring-[#0D2340]"
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              <span className="block text-sm font-semibold text-gray-900">Firma electrónica por Legal Manager</span>
-              <span className="block text-xs text-gray-500 mt-1">
-                El firmante firma en el portal de Legal Manager (OTP + foto + trazabilidad, Ley 527 de 1999).
-              </span>
-            </button>
           </div>
         </div>
 
