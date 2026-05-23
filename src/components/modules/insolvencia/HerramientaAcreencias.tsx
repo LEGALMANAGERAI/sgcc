@@ -677,6 +677,15 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
 
   const [seccion, setSeccion] = useState<"acreencias" | "definitiva" | "propuesta" | "votacion" | "acuerdo">("acreencias");
   const [fullscreen, setFullscreen] = useState(false);
+
+  // Deshacer eliminación: guarda la última acreencia borrada para ofrecer un
+  // aviso "Deshacer" inmediato. La papelera lista TODAS las eliminadas (incluso
+  // tras recargar) para restaurarlas cuando se quiera.
+  const [ultimaEliminada, setUltimaEliminada] = useState<SgccAcreencia | null>(null);
+  const [restaurando, setRestaurando] = useState<string | null>(null);
+  const [papeleraOpen, setPapeleraOpen] = useState(false);
+  const [papelera, setPapelera] = useState<SgccAcreencia[]>([]);
+  const [papeleraLoading, setPapeleraLoading] = useState(false);
   const [modalAcreedor, setModalAcreedor] = useState<{ open: boolean; acreencia?: SgccAcreencia }>({ open: false });
   const [downloading, setDownloading] = useState<"docx" | "pdf" | "vot-docx" | "vot-pdf" | null>(null);
 
@@ -764,6 +773,14 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     fetchPropuestas();
     fetchAcuerdo();
   }, []);
+
+  // El aviso "Deshacer" se oculta solo a los 12s (la acreencia sigue en la
+  // papelera, así que no se pierde la posibilidad de restaurarla más tarde).
+  useEffect(() => {
+    if (!ultimaEliminada) return;
+    const t = setTimeout(() => setUltimaEliminada(null), 12000);
+    return () => clearTimeout(t);
+  }, [ultimaEliminada]);
 
   // Mientras el form de propuesta esté abierto y la descripción no haya sido editada
   // a mano, regenerarla a partir de los campos estructurados.
@@ -973,8 +990,19 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     flash("ok", "Seguros capitalizados al capital — mira la Relación definitiva");
   }
 
+  // Re-cargar la lista de acreencias activas desde el server (orden y % al día).
+  const refetchAcreencias = useCallback(async () => {
+    const res = await fetch(`/api/expediente/${caseId}/acreencias`);
+    if (res.ok) {
+      const data: SgccAcreencia[] = await res.json();
+      setAcreencias(data);
+    }
+  }, [caseId]);
+
   async function deleteAcreencia(acreenciaId: string) {
-    if (!confirm("¿Eliminar este acreedor?")) return;
+    const acreencia = acreencias.find((a) => a.id === acreenciaId) ?? null;
+    const nombre = acreencia?.acreedor_nombre?.trim() || "este acreedor";
+    if (!confirm(`¿Eliminar a ${nombre}? Podrás deshacerlo desde la papelera.`)) return;
     setSaving(acreenciaId);
     try {
       const res = await fetch(`/api/expediente/${caseId}/acreencias`, {
@@ -982,8 +1010,47 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ acreencia_id: acreenciaId }),
       });
-      if (res.ok) setAcreencias((prev) => prev.filter((a) => a.id !== acreenciaId));
+      if (res.ok) {
+        setAcreencias((prev) => prev.filter((a) => a.id !== acreenciaId));
+        // Mostrar aviso "Deshacer" con la acreencia recién eliminada.
+        setUltimaEliminada(acreencia);
+        // Si la papelera está abierta, refrescarla para que aparezca de una vez.
+        if (papeleraOpen) cargarPapelera();
+      } else {
+        flash("error", "No se pudo eliminar");
+      }
     } finally { setSaving(null); }
+  }
+
+  async function restaurarAcreencia(acreenciaId: string) {
+    setRestaurando(acreenciaId);
+    try {
+      const res = await fetch(`/api/expediente/${caseId}/acreencias`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acreencia_id: acreenciaId }),
+      });
+      if (!res.ok) { flash("error", "No se pudo restaurar el acreedor"); return; }
+      // Quitar de la papelera local + ocultar el aviso si era esa misma.
+      setPapelera((prev) => prev.filter((a) => a.id !== acreenciaId));
+      setUltimaEliminada((prev) => (prev?.id === acreenciaId ? null : prev));
+      await refetchAcreencias();
+      flash("ok", "Acreedor restaurado");
+    } finally { setRestaurando(null); }
+  }
+
+  const cargarPapelera = useCallback(async () => {
+    setPapeleraLoading(true);
+    try {
+      const res = await fetch(`/api/expediente/${caseId}/acreencias?eliminadas=1`);
+      if (res.ok) setPapelera(await res.json());
+    } finally { setPapeleraLoading(false); }
+  }, [caseId]);
+
+  function togglePapelera() {
+    const next = !papeleraOpen;
+    setPapeleraOpen(next);
+    if (next) cargarPapelera();
   }
 
   /* ─── Drag & Drop ────────────────────────────────────────────────── */
@@ -1357,8 +1424,100 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                 )}
                 PDF
               </button>
+              <button
+                type="button"
+                onClick={togglePapelera}
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
+                  papeleraOpen
+                    ? "border-amber-300 bg-amber-50 text-amber-800"
+                    : "border-gray-300 bg-white text-gray-600 hover:bg-gray-100"
+                }`}
+                title="Acreedores eliminados (recuperables)"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Papelera
+                {papelera.length > 0 && (
+                  <span className="ml-0.5 rounded-full bg-amber-200 px-1.5 text-[10px] font-bold text-amber-900">
+                    {papelera.length}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
+
+          {/* Aviso "Deshacer" tras eliminar un acreedor. */}
+          {ultimaEliminada && (
+            <div className="flex items-center justify-between gap-3 border-b border-amber-100 bg-amber-50 px-4 py-2.5">
+              <p className="text-xs text-amber-800">
+                Se eliminó <strong>{ultimaEliminada.acreedor_nombre?.trim() || "el acreedor"}</strong>. Quedó en la papelera por si fue un error.
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => restaurarAcreencia(ultimaEliminada.id)}
+                  disabled={restaurando === ultimaEliminada.id}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400 bg-white px-3 py-1 text-xs font-semibold text-amber-800 shadow-sm transition hover:bg-amber-100 disabled:opacity-50"
+                >
+                  {restaurando === ultimaEliminada.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                  Deshacer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUltimaEliminada(null)}
+                  className="rounded p-1 text-amber-500 hover:bg-amber-100 hover:text-amber-700"
+                  title="Cerrar aviso"
+                >
+                  <XCircle className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Papelera: acreedores eliminados, recuperables incluso tras recargar. */}
+          {papeleraOpen && (
+            <div className="border-b border-gray-100 bg-gray-50/60 px-4 py-3">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-gray-700">
+                <Trash2 className="w-3.5 h-3.5" />
+                Acreedores eliminados
+              </div>
+              {papeleraLoading ? (
+                <p className="flex items-center gap-2 text-xs text-gray-500">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando…
+                </p>
+              ) : papelera.length === 0 ? (
+                <p className="text-xs text-gray-500">No hay acreedores eliminados.</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {papelera.map((a) => (
+                    <li
+                      key={a.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-medium text-gray-800">
+                          {a.acreedor_nombre?.trim() || "(sin nombre)"}
+                        </p>
+                        <p className="text-[11px] text-gray-500">
+                          {a.acreedor_documento ? `Doc. ${a.acreedor_documento} · ` : ""}
+                          Capital conciliado: {fmt(Number(a.con_capital) || 0)}
+                          {a.deleted_at ? ` · eliminado ${new Date(a.deleted_at).toLocaleString("es-CO")}` : ""}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => restaurarAcreencia(a.id)}
+                        disabled={restaurando === a.id}
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#0D2340] bg-white px-3 py-1 text-xs font-semibold text-[#0D2340] shadow-sm transition hover:bg-[#0D2340] hover:text-white disabled:opacity-50"
+                      >
+                        {restaurando === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                        Restaurar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {/* Listas de autocompletado: al escribir nombre o documento, sugiere acreedores ya capturados. */}
           <datalist id={`acreedores-nombres-${caseId}`}>

@@ -146,7 +146,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     .from("sgcc_acreencias")
     .select("party_id, acreedor_documento, acreedor_nombre")
     .eq("case_id", caseId)
-    .eq("center_id", centerId);
+    .eq("center_id", centerId)
+    .is("deleted_at", null);
   const acreedoresUnicosCaso = new Set<string>();
   for (const a of todasAcreencias ?? []) acreedoresUnicosCaso.add(claveAcreedor(a));
   const acreedoresVotantes = new Set<string>([...positivosAcreedoresSet, ...negativosAcreedoresSet]);

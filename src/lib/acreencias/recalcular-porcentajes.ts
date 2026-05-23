@@ -35,7 +35,8 @@ export async function recalcularPorcentajesAcreencias(
     .from("sgcc_acreencias")
     .select("id, party_id, acreedor_documento, acreedor_nombre, con_capital")
     .eq("case_id", caseId)
-    .eq("center_id", centerId);
+    .eq("center_id", centerId)
+    .is("deleted_at", null);
 
   if (!acreencias || acreencias.length === 0) return;
 

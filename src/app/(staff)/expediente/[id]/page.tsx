@@ -274,6 +274,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
       .select("*")
       .eq("case_id", id)
       .eq("center_id", centerId)
+      .is("deleted_at", null)
       .order("display_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true })
       .order("id", { ascending: true });
