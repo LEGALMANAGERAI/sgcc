@@ -8,7 +8,7 @@ import Link from "next/link";
 import {
   FileSignature,
   Clock,
-  Loader2,
+  RefreshCw,
   CheckCircle2,
   XCircle,
   FileText,
@@ -101,7 +101,7 @@ export default async function FirmasPage({ searchParams }: PageProps) {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <StatCard label="Total documentos" value={total} icon={FileText} color="navy" href="/firmas" />
         <StatCard label="Pendientes" value={pendientes} icon={Clock} color="gold" href="/firmas?filtro=pendientes" />
-        <StatCard label="En proceso" value={enProceso} icon={Loader2} color="blue" href="/firmas?filtro=en_proceso" />
+        <StatCard label="En proceso" value={enProceso} icon={RefreshCw} color="blue" href="/firmas?filtro=en_proceso" />
         <StatCard label="Completados" value={completados} icon={CheckCircle2} color="green" href="/firmas?filtro=completados" />
         <StatCard label="Rechazados" value={rechazados} icon={XCircle} color="red" href="/firmas?filtro=rechazados" />
       </div>
