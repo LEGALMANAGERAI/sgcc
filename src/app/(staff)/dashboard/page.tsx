@@ -82,6 +82,10 @@ const TIPO_BADGE: Record<TipoTramite, { label: string; color: string }> = {
   directiva_anticipada: { label: "DA", color: "bg-rose-100 text-rose-800" },
 };
 
+// Fallback para tipos de trámite no contemplados (datos legacy o nulos): evita
+// que TIPO_BADGE[tipo] sea undefined y reviente el render (SSR 500).
+const TIPO_BADGE_FALLBACK = { label: "—", color: "bg-gray-100 text-gray-600" };
+
 /* ─── Page ──────────────────────────────────────────────────────────────── */
 
 interface PageProps {
@@ -502,7 +506,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           value={team.length}
           icon={Users}
           color="gold"
-          trend={team.length > 0 ? team.map((t) => t.nombre.split(" ")[0]).join(", ") : "Sin equipo"}
+          trend={team.length > 0 ? team.map((t) => (t.nombre ?? "").split(" ")[0]).filter(Boolean).join(", ") : "Sin equipo"}
           href="/conciliadores"
         />
       </div>
@@ -603,7 +607,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     const convocados = parties.filter((p) => p.rol === "convocado");
                     const attorney = attorneyByCase.get(c.id);
                     const nextHearing = nextHearingByCase.get(c.id);
-                    const tipoBadge = TIPO_BADGE[c.tipo_tramite];
+                    const tipoBadge = TIPO_BADGE[c.tipo_tramite] ?? TIPO_BADGE_FALLBACK;
                     const hasAlert = caseIdsWithAlerts.has(c.id);
                     const hasCambioApoderado = cambioApoderadoByCase.has(c.id);
                     const hasChecklistIncompleta = checklistIncompleteByCase.has(c.id);
@@ -939,7 +943,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 className="bg-white rounded-xl shadow-sm border border-gray-100 px-5 py-4 flex items-center gap-4"
               >
                 <div className="w-10 h-10 rounded-full bg-[#0D2340] flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                  {member.nombre
+                  {(member.nombre ?? "?")
                     .split(" ")
                     .map((n) => n[0])
                     .slice(0, 2)
