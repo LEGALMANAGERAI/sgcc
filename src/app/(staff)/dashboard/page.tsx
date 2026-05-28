@@ -341,8 +341,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       if (c.estado === "solicitud") continue;
       const cl = rawChecklists.find((ch: any) => ch.tipo_tramite === c.tipo_tramite);
       if (!cl) continue;
-      const items = cl.items as any[];
-      const requeridos = items.filter((it: any) => it.requerido);
+      // cl.items puede venir null o no-array (config legacy) → guardar para no
+      // reventar el render con "Cannot read properties of null (reading 'filter')".
+      const items: any[] = Array.isArray(cl.items) ? cl.items : [];
+      const requeridos = items.filter((it: any) => it && it.requerido);
       if (requeridos.length === 0) continue;
       const completados = responseMap.get(`${c.id}:${cl.id}`) ?? new Set();
       const reqCompletos = requeridos.filter((_: any, idx: number) => {
