@@ -32,6 +32,11 @@ export interface SgccCenter {
   reglamento_url: string | null;
   reglamento_nombre: string | null;
   reglamento_subido_at: string | null;
+  // Formato de radicado configurable por centro
+  radicado_formato: string;
+  radicado_digitos: number;
+  radicado_reinicio: "anual" | "nunca" | "mensual";
+  radicado_codigo: string | null;
   activo: boolean;
   created_at: string;
   updated_at: string;

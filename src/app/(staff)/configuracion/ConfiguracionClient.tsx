@@ -21,12 +21,37 @@ interface Props {
 const TABS = [
   "Datos del Centro",
   "Horarios",
+  "Radicado",
   "Asignación",
   "Personalización",
   "Reglamento Interno",
   "Checklists",
 ] as const;
 type Tab = (typeof TABS)[number];
+
+const RADICADO_TOKENS: { token: string; desc: string }[] = [
+  { token: "{SEC}", desc: "Consecutivo" },
+  { token: "{AAAA}", desc: "Año (2026)" },
+  { token: "{AA}", desc: "Año (26)" },
+  { token: "{MM}", desc: "Mes (05)" },
+  { token: "{CENTRO}", desc: "Código del centro" },
+];
+
+const RADICADO_PRESETS = ["{AAAA}-{SEC}", "{SEC}-{AAAA}", "{CENTRO}-{AAAA}-{SEC}", "{AAAA}-{MM}-{SEC}"];
+
+/** Vista previa del radicado a partir del formato (cliente). */
+function previewRadicado(formato: string, digitos: number, codigo: string): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const seq = String(1).padStart(Math.max(1, Number(digitos) || 4), "0");
+  return (formato || "{AAAA}-{SEC}")
+    .replace(/\{AAAA\}/g, String(year))
+    .replace(/\{AA\}/g, String(year).slice(-2))
+    .replace(/\{MM\}/g, mm)
+    .replace(/\{CENTRO\}/g, (codigo || "").trim() || "CENTRO")
+    .replace(/\{SEC\}/g, seq);
+}
 
 const TIPO_TRAMITE_LABELS: Record<TipoTramite, string> = {
   conciliacion: "Conciliación",
@@ -61,6 +86,14 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
     hora_inicio_audiencias: center.hora_inicio_audiencias,
     hora_fin_audiencias: center.hora_fin_audiencias,
     metodo_asignacion: center.metodo_asignacion ?? "manual",
+  });
+
+  // Estado del formato de radicado
+  const [radicado, setRadicado] = useState({
+    formato: center.radicado_formato || "{AAAA}-{SEC}",
+    digitos: center.radicado_digitos || 4,
+    reinicio: (center.radicado_reinicio || "anual") as "anual" | "nunca" | "mensual",
+    codigo: center.radicado_codigo ?? "",
   });
 
   // Estado de personalización
@@ -219,6 +252,35 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error al guardar colores");
       flash("ok", "Colores guardados correctamente");
+    } catch (err: any) {
+      flash("error", err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /* ─── Guardar formato de radicado ──────────────────────────────────── */
+
+  const saveRadicado = async () => {
+    if (!radicado.formato.includes("{SEC}")) {
+      flash("error", "El formato debe incluir el consecutivo {SEC}");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/configuracion/centro", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          radicado_formato: radicado.formato,
+          radicado_digitos: Number(radicado.digitos),
+          radicado_reinicio: radicado.reinicio,
+          radicado_codigo: radicado.codigo || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Error al guardar");
+      flash("ok", "Formato de radicado guardado. Aplica a los próximos radicados.");
     } catch (err: any) {
       flash("error", err.message);
     } finally {
@@ -462,6 +524,152 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
               className="px-6 py-2.5 bg-[#0D2340] text-white rounded-lg text-sm font-medium hover:bg-[#0D2340]/90 disabled:opacity-50 transition-colors"
             >
               {saving ? "Guardando..." : "Guardar cambios"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tab: Radicado ─────────────────────────────────────────────── */}
+      {activeTab === "Radicado" && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6 max-w-2xl">
+          <div>
+            <h2 className="text-lg font-semibold text-[#0D2340] mb-1">Formato del radicado</h2>
+            <p className="text-sm text-gray-500">
+              Define cómo se numeran las solicitudes de tu centro. El consecutivo es independiente
+              por centro; otros centros tienen su propia numeración.
+            </p>
+          </div>
+
+          {/* Vista previa */}
+          <div className="rounded-lg border border-[#1B4F9B]/30 bg-[#1B4F9B]/5 p-4">
+            <p className="text-xs font-medium text-gray-500 mb-1">Vista previa (primer radicado)</p>
+            <p className="text-2xl font-bold font-mono text-[#0D2340]">
+              {previewRadicado(radicado.formato, radicado.digitos, radicado.codigo)}
+            </p>
+          </div>
+
+          {/* Formato */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Formato</label>
+            <input
+              value={radicado.formato}
+              onChange={(e) => setRadicado((p) => ({ ...p, formato: e.target.value }))}
+              placeholder="{AAAA}-{SEC}"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none"
+            />
+            {!radicado.formato.includes("{SEC}") && (
+              <p className="mt-1 text-xs text-red-600">El formato debe incluir {"{SEC}"} (el consecutivo).</p>
+            )}
+
+            {/* Tokens */}
+            <p className="text-xs text-gray-500 mt-3 mb-1.5">Insertar variable:</p>
+            <div className="flex flex-wrap gap-2">
+              {RADICADO_TOKENS.map((t) => (
+                <button
+                  key={t.token}
+                  type="button"
+                  onClick={() => setRadicado((p) => ({ ...p, formato: p.formato + t.token }))}
+                  className="px-2.5 py-1 rounded-md border border-gray-300 bg-gray-50 hover:bg-gray-100 text-xs font-mono text-[#0D2340]"
+                  title={t.desc}
+                >
+                  {t.token} <span className="text-gray-400 font-sans">· {t.desc}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Presets */}
+            <p className="text-xs text-gray-500 mt-3 mb-1.5">O usa un formato común:</p>
+            <div className="flex flex-wrap gap-2">
+              {RADICADO_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setRadicado((p) => ({ ...p, formato: preset }))}
+                  className="px-2.5 py-1 rounded-md border border-[#1B4F9B]/30 bg-[#1B4F9B]/5 hover:bg-[#1B4F9B]/10 text-xs font-mono text-[#1B4F9B]"
+                >
+                  {previewRadicado(preset, radicado.digitos, radicado.codigo)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Dígitos + Código + Reinicio */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Dígitos del consecutivo</label>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={radicado.digitos}
+                onChange={(e) => setRadicado((p) => ({ ...p, digitos: Number(e.target.value) }))}
+                className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none"
+              />
+              <p className="text-xs text-gray-400 mt-1">Ej: 4 → 0001, 0002…</p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Código del centro <span className="text-gray-400">(para {"{CENTRO}"})</span>
+              </label>
+              <input
+                value={radicado.codigo}
+                onChange={(e) => setRadicado((p) => ({ ...p, codigo: e.target.value.toUpperCase() }))}
+                placeholder="Ej: CORPRO"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-[#1B4F9B]/30 focus:border-[#1B4F9B] outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">El consecutivo se reinicia:</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {[
+                { v: "anual", l: "Cada año", d: "Vuelve a 1 cada enero" },
+                { v: "nunca", l: "Nunca", d: "Sigue subiendo siempre" },
+                { v: "mensual", l: "Cada mes", d: "Vuelve a 1 cada mes" },
+              ].map((opt) => (
+                <label
+                  key={opt.v}
+                  className={`flex flex-col gap-0.5 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                    radicado.reinicio === opt.v ? "border-[#1B4F9B] bg-[#1B4F9B]/5" : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                    <input
+                      type="radio"
+                      name="radicado_reinicio"
+                      value={opt.v}
+                      checked={radicado.reinicio === opt.v}
+                      onChange={() => setRadicado((p) => ({ ...p, reinicio: opt.v as "anual" | "nunca" | "mensual" }))}
+                      className="accent-[#1B4F9B]"
+                    />
+                    {opt.l}
+                  </span>
+                  <span className="text-xs text-gray-500 pl-6">{opt.d}</span>
+                </label>
+              ))}
+            </div>
+            {radicado.reinicio === "mensual" && !radicado.formato.includes("{MM}") && (
+              <p className="mt-2 text-xs text-amber-600">
+                Sugerencia: si reinicias cada mes, incluye {"{MM}"} en el formato para distinguir los meses.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+            <p className="text-xs text-amber-800">
+              Los radicados ya existentes <strong>no cambian</strong>; el nuevo formato aplica a las
+              próximas solicitudes. El consecutivo continúa desde el último número del centro.
+            </p>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              onClick={saveRadicado}
+              disabled={saving}
+              className="px-6 py-2.5 bg-[#0D2340] text-white rounded-lg text-sm font-medium hover:bg-[#0D2340]/90 disabled:opacity-50 transition-colors"
+            >
+              {saving ? "Guardando..." : "Guardar formato"}
             </button>
           </div>
         </div>

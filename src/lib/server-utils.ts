@@ -109,26 +109,77 @@ export async function puedeVerCaso(session: any, centerId: string, caseId: strin
  * Usa MAX(numero_radicado) en vez de COUNT(*) para evitar colisiones
  * cuando se borran casos (huecos en la secuencia).
  */
-export async function generateRadicado(centerId: string): Promise<string> {
-  const year = new Date().getFullYear();
+/** Tokens de la plantilla de radicado: {AAAA} {AA} {MM} {CENTRO} {SEC} */
+export function renderRadicado(
+  formato: string,
+  opts: { seq: number; digitos: number; codigo?: string | null; date?: Date },
+): string {
+  const d = opts.date ?? new Date();
+  const year = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const seqStr = String(opts.seq).padStart(Math.max(1, opts.digitos || 4), "0");
+  return (formato || "{AAAA}-{SEC}")
+    .replace(/\{AAAA\}/g, String(year))
+    .replace(/\{AA\}/g, String(year).slice(-2))
+    .replace(/\{MM\}/g, mm)
+    .replace(/\{CENTRO\}/g, (opts.codigo ?? "").trim())
+    .replace(/\{SEC\}/g, seqStr);
+}
 
-  const { data } = await supabaseAdmin
-    .from("sgcc_cases")
-    .select("numero_radicado")
-    .eq("center_id", centerId)
-    .like("numero_radicado", `${year}-%`)
-    .order("numero_radicado", { ascending: false })
-    .limit(1)
+/**
+ * Genera el siguiente radicado del centro según su formato configurable.
+ * El consecutivo se obtiene de un contador atómico (sgcc_radicado_secuencias
+ * vía RPC sgcc_next_radicado_seq) — concurrency-safe e independiente del
+ * formato visible. El `periodo` define cuándo reinicia el consecutivo.
+ */
+export async function generateRadicado(centerId: string): Promise<string> {
+  const now = new Date();
+  const year = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+
+  // Config del centro (con defaults retrocompatibles).
+  const { data: center } = await supabaseAdmin
+    .from("sgcc_centers")
+    .select("radicado_formato, radicado_digitos, radicado_reinicio, radicado_codigo")
+    .eq("id", centerId)
     .maybeSingle();
 
-  let seq = 1;
-  if (data?.numero_radicado) {
-    const parts = String(data.numero_radicado).split("-");
-    const lastSeq = parseInt(parts[1] ?? "0", 10);
-    if (!Number.isNaN(lastSeq)) seq = lastSeq + 1;
+  const formato = center?.radicado_formato || "{AAAA}-{SEC}";
+  const digitos = Number(center?.radicado_digitos) || 4;
+  const reinicio = center?.radicado_reinicio || "anual";
+  const codigo = center?.radicado_codigo ?? null;
+
+  // periodo = bucket de reinicio del consecutivo
+  const periodo =
+    reinicio === "mensual" ? `${year}-${mm}` : reinicio === "nunca" ? "global" : String(year);
+
+  // Consecutivo atómico
+  let seq: number;
+  const { data: seqData, error: seqError } = await supabaseAdmin.rpc("sgcc_next_radicado_seq", {
+    p_center: centerId,
+    p_periodo: periodo,
+  });
+  if (seqError || seqData == null) {
+    // Fallback (RPC no disponible / migración no aplicada): MAX legacy + 1.
+    const { data } = await supabaseAdmin
+      .from("sgcc_cases")
+      .select("numero_radicado")
+      .eq("center_id", centerId)
+      .like("numero_radicado", `${year}-%`)
+      .order("numero_radicado", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    let last = 0;
+    if (data?.numero_radicado) {
+      const n = parseInt(String(data.numero_radicado).split("-")[1] ?? "0", 10);
+      if (!Number.isNaN(n)) last = n;
+    }
+    seq = last + 1;
+  } else {
+    seq = Number(seqData);
   }
 
-  return `${year}-${String(seq).padStart(4, "0")}`;
+  return renderRadicado(formato, { seq, digitos, codigo, date: now });
 }
 
 /**
