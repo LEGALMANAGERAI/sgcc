@@ -82,10 +82,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Descripción es requerida" }, { status: 400 });
     }
 
-    // 1. Verificar que el centro existe y está activo
+    // 1. Verificar que el centro existe y está activo.
+    // OJO: sgcc_centers usa la columna booleana `activo`, NO `estado` (esta
+    // última no existe en la tabla). Seleccionar `estado` hacía fallar la
+    // consulta y devolvía siempre "Centro no encontrado".
     const { data: center, error: centerError } = await supabaseAdmin
       .from("sgcc_centers")
-      .select("id, nombre, estado")
+      .select("id, nombre, activo")
       .eq("id", body.center_id)
       .single();
 
@@ -93,7 +96,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Centro de conciliación no encontrado" }, { status: 404 });
     }
 
-    if (center.estado !== "activo") {
+    if (!center.activo) {
       return NextResponse.json({ error: "El centro no se encuentra activo" }, { status: 400 });
     }
 
