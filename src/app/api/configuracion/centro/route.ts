@@ -45,6 +45,10 @@ const CAMPOS_PERMITIDOS = [
   "logo_url",
   "color_primario",
   "color_secundario",
+  "radicado_formato",
+  "radicado_digitos",
+  "radicado_reinicio",
+  "radicado_codigo",
 ] as const;
 
 const CAMPOS_PROHIBIDOS = ["nit", "resolucion_habilitacion", "tipo", "id", "created_at", "activo"];
@@ -95,6 +99,31 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Los días hábiles deben estar entre 1 y 90" }, { status: 400 });
     }
     updates.dias_habiles_citacion = dias;
+  }
+
+  // ─── Validaciones del formato de radicado ───────────────────────────────
+  if (updates.radicado_formato !== undefined) {
+    const f = String(updates.radicado_formato);
+    if (!f.includes("{SEC}")) {
+      return NextResponse.json(
+        { error: "El formato del radicado debe incluir el consecutivo {SEC}" },
+        { status: 400 },
+      );
+    }
+    updates.radicado_formato = f.trim();
+  }
+  if (updates.radicado_digitos !== undefined) {
+    const d = Number(updates.radicado_digitos);
+    if (isNaN(d) || d < 1 || d > 10) {
+      return NextResponse.json({ error: "Los dígitos del consecutivo deben estar entre 1 y 10" }, { status: 400 });
+    }
+    updates.radicado_digitos = d;
+  }
+  if (updates.radicado_reinicio !== undefined && !["anual", "nunca", "mensual"].includes(updates.radicado_reinicio)) {
+    return NextResponse.json({ error: "Reinicio inválido (anual | nunca | mensual)" }, { status: 400 });
+  }
+  if (updates.radicado_codigo !== undefined && updates.radicado_codigo) {
+    updates.radicado_codigo = String(updates.radicado_codigo).trim().toUpperCase();
   }
 
   updates.updated_at = new Date().toISOString();
