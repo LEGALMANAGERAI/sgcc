@@ -4,7 +4,19 @@ export async function GET(req: Request) {
   const { origin } = new URL(req.url);
 
   const js = `(function() {
+  // document.currentScript es null si el cache/optimizador (ej. SpeedyCache)
+  // aplaza o combina el JS (defer/async). Buscamos la etiqueta por atributo
+  // como respaldo para que el widget funcione igual.
   var script = document.currentScript;
+  if (!script || !script.getAttribute('data-center-id')) {
+    var cands = document.querySelectorAll('script[data-center-id]');
+    if (cands.length) script = cands[cands.length - 1];
+  }
+  if (!script) {
+    var bySrc = document.querySelectorAll('script[src*="/api/widget/embed"]');
+    if (bySrc.length) script = bySrc[bySrc.length - 1];
+  }
+  if (!script) { console.error('SIGECC Widget: no se encontró la etiqueta <script>.'); return; }
   var centerId = script.getAttribute('data-center-id');
   if (!centerId) { console.error('SIGECC Widget: falta data-center-id'); return; }
   var baseUrl = script.getAttribute('data-url') || '${origin}';
@@ -68,7 +80,7 @@ export async function GET(req: Request) {
   return new NextResponse(js, {
     headers: {
       "Content-Type": "application/javascript; charset=utf-8",
-      "Cache-Control": "public, max-age=3600",
+      "Cache-Control": "public, max-age=600",
       "Access-Control-Allow-Origin": "*",
     },
   });
