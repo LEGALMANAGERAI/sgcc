@@ -26,6 +26,11 @@ CREATE TABLE IF NOT EXISTS sgcc_radicado_secuencias (
   PRIMARY KEY (center_id, periodo)
 );
 
+-- RLS: igual que el resto de tablas sgcc_* (blindadas). Sin políticas: solo la
+-- service_role (que bypassa RLS) puede leer/escribir; la anon/authenticated no.
+ALTER TABLE sgcc_radicado_secuencias ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sgcc_radicado_secuencias FORCE ROW LEVEL SECURITY;
+
 -- 3) Incremento atómico: upsert que devuelve el nuevo consecutivo.
 CREATE OR REPLACE FUNCTION sgcc_next_radicado_seq(p_center uuid, p_periodo text)
 RETURNS integer
