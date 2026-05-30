@@ -147,19 +147,19 @@ export default function LandingPage() {
                 <div className="ml-4 flex-1 h-5 bg-[#E2E8F0] rounded max-w-[200px]" />
               </div>
               <div className="flex">
-                {/* Sidebar */}
-                <div className="hidden sm:flex flex-col w-36 bg-[#0D2340] flex-shrink-0">
-                  <div className="px-3 pt-4 pb-3 border-b border-white/10">
-                    <div className="text-[7px] font-bold tracking-[0.2em] text-white/40 uppercase mb-0.5">
+                {/* Sidebar — refleja el StaffSidebar real: paper claro + items ink + activo ink-on-paper con barra flow lateral */}
+                <div className="hidden sm:flex flex-col w-36 bg-[color:var(--color-paper)] border-r border-[color:var(--color-rule)] flex-shrink-0">
+                  <div className="px-3 pt-4 pb-3 border-b border-[color:var(--color-rule)]">
+                    <div className="text-[7px] font-bold tracking-[0.2em] text-[#7A8FA6] uppercase mb-0.5">
                       Sistema de Gestión
                     </div>
-                    <div className="text-xs font-black text-white tracking-tight">
-                      SIGECC<span className="text-[#1B4F9B]">.</span>
+                    <div className="text-xs font-black text-[color:var(--color-ink)] tracking-tight">
+                      SIGECC<span className="text-[color:var(--color-flow)]">.</span>
                     </div>
-                    <div className="w-5 h-0.5 bg-[#1B4F9B] rounded mt-1.5" />
+                    <div className="w-5 h-0.5 bg-[color:var(--color-flow)] rounded mt-1.5" />
                   </div>
                   <div className="px-1.5 py-2 flex-1 overflow-hidden">
-                    <div className="text-[6px] font-bold tracking-widest text-white/30 uppercase px-2 mb-1">
+                    <div className="text-[6px] font-bold tracking-widest text-[#7A8FA6] uppercase px-2 mb-1">
                       Módulos
                     </div>
                     {[
@@ -177,32 +177,35 @@ export default function LandingPage() {
                     ].map((item) => (
                       <div
                         key={item.label}
-                        className={`flex items-center gap-1.5 px-2 py-1 rounded text-[8px] mb-0.5 border-l-2 ${
+                        className={`relative flex items-center gap-1.5 px-2 py-1 rounded text-[8px] mb-0.5 ${
                           item.active
-                            ? "bg-white/10 text-white font-bold border-[#1B4F9B]"
-                            : "text-white/50 border-transparent"
+                            ? "bg-[color:var(--color-ink)] text-[color:var(--color-paper)] font-medium"
+                            : "text-[color:var(--color-ink)] opacity-80"
                         }`}
                       >
+                        {item.active && (
+                          <span className="absolute left-[-6px] top-1/2 -translate-y-1/2 h-3 w-0.5 rounded-full bg-[color:var(--color-flow)]" />
+                        )}
                         <span className="text-[9px] w-3 text-center">{item.icon}</span>
                         <span className="truncate">{item.label}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="px-2 py-2 border-t border-white/10">
+                  <div className="px-2 py-2 border-t border-[color:var(--color-rule)]">
                     <div className="flex items-center gap-1.5">
-                      <div className="w-5 h-5 rounded-full bg-[#1B4F9B] flex items-center justify-center text-[7px] font-bold text-white flex-shrink-0">
+                      <div className="w-5 h-5 rounded-full bg-[color:var(--color-ink)] flex items-center justify-center text-[7px] font-bold text-[color:var(--color-paper)] flex-shrink-0">
                         E
                       </div>
                       <div className="min-w-0">
-                        <div className="text-[8px] font-bold text-white truncate">Centro Equilibra</div>
-                        <div className="text-[7px] text-white/40">Director</div>
+                        <div className="text-[8px] font-bold text-[color:var(--color-ink)] truncate">Centro Equilibra</div>
+                        <div className="text-[7px] text-[#7A8FA6]">Director</div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Dashboard content */}
-                <div className="flex-1 p-3 sm:p-4 bg-[#F4F6F9]">
+                {/* Dashboard content — bg-gray-50 igual al StaffLayout real */}
+                <div className="flex-1 p-3 sm:p-4 bg-gray-50">
                   <div className="mb-3">
                     <div className="text-sm font-bold text-[#0D2340]">Panel del centro</div>
                     <div className="text-[10px] text-gray-400">Vista consolidada · hoy</div>
@@ -305,8 +308,8 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Bottom fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#F8FAFC] to-transparent z-10" />
+        {/* Bottom fade hacia la siguiente sección blanca */}
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent z-10" />
       </section>
 
       {/* ===== MÓDULOS / PLATAFORMA ===== */}
