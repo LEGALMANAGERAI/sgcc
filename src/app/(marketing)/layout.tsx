@@ -36,7 +36,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-white font-[family-name:var(--font-display)]">
       <ScrollAnimations />
 
       {/* Navbar */}
