@@ -73,22 +73,22 @@ export default function LandingPage() {
       <section className="relative min-h-[90vh] flex items-center overflow-hidden bg-gradient-to-br from-[#0D2340] via-[#0D2340] to-[#1B4F9B]">
         {/* Halos decorativos */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-          <div className="absolute top-1/4 -left-32 w-96 h-96 bg-[#B8860B]/10 rounded-full blur-3xl" />
+          <div className="absolute top-1/4 -left-32 w-96 h-96 bg-[#1B4F9B]/10 rounded-full blur-3xl" />
           <div className="absolute bottom-1/4 -right-32 w-[28rem] h-[28rem] bg-[#1B4F9B]/30 rounded-full blur-3xl" />
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#B8860B]/30 to-transparent" />
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#1B4F9B]/30 to-transparent" />
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-24 grid lg:grid-cols-2 gap-12 items-center w-full">
           {/* Columna izquierda — copy + CTAs */}
           <div>
-            <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#B8860B]/10 border border-[#B8860B]/30 text-[#D4A017] text-xs font-semibold rounded-full mb-6 backdrop-blur-sm">
+            <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1B4F9B]/10 border border-[#1B4F9B]/30 text-[#3A6EBE] text-xs font-semibold rounded-full mb-6 backdrop-blur-sm">
               <Shield className="w-3.5 h-3.5" />
               Habilitación Ley 2445 lista
             </span>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-[1.05] tracking-tight">
               El SaaS de{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#B8860B] to-[#D4A017]">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#1B4F9B] to-[#3A6EBE]">
                 centros de conciliación
               </span>{" "}
               en Colombia
@@ -103,7 +103,7 @@ export default function LandingPage() {
             <div className="mt-8 flex flex-col sm:flex-row items-start gap-4">
               <Link
                 href="/registro"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-sm font-bold text-[#0D2340] bg-gradient-to-r from-[#B8860B] to-[#D4A017] px-7 py-3.5 rounded-full hover:from-[#9A7209] hover:to-[#B8860B] transition-all duration-300 shadow-lg shadow-[#B8860B]/25"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-sm font-bold text-[#0D2340] bg-gradient-to-r from-[#1B4F9B] to-[#3A6EBE] px-7 py-3.5 rounded-full hover:from-[#13407F] hover:to-[#1B4F9B] transition-all duration-300 shadow-lg shadow-[#1B4F9B]/25"
               >
                 Empezar gratis
                 <ArrowRight className="w-4 h-4" />
@@ -120,7 +120,7 @@ export default function LandingPage() {
             {/* Mini stats */}
             <div className="mt-10 flex flex-wrap items-center gap-6 sm:gap-8 text-white/40">
               <div>
-                <span className="block text-base font-black text-[#B8860B]">Cumple Ley 2445</span>
+                <span className="block text-base font-black text-[#1B4F9B]">Cumple Ley 2445</span>
                 <span className="text-xs">Insolvencia PNNC</span>
               </div>
               <div className="w-px h-8 bg-white/10 hidden sm:block" />
@@ -154,9 +154,9 @@ export default function LandingPage() {
                       Sistema de Gestión
                     </div>
                     <div className="text-xs font-black text-white tracking-tight">
-                      SIGECC<span className="text-[#B8860B]">.</span>
+                      SIGECC<span className="text-[#1B4F9B]">.</span>
                     </div>
-                    <div className="w-5 h-0.5 bg-[#B8860B] rounded mt-1.5" />
+                    <div className="w-5 h-0.5 bg-[#1B4F9B] rounded mt-1.5" />
                   </div>
                   <div className="px-1.5 py-2 flex-1 overflow-hidden">
                     <div className="text-[6px] font-bold tracking-widest text-white/30 uppercase px-2 mb-1">
@@ -179,7 +179,7 @@ export default function LandingPage() {
                         key={item.label}
                         className={`flex items-center gap-1.5 px-2 py-1 rounded text-[8px] mb-0.5 border-l-2 ${
                           item.active
-                            ? "bg-white/10 text-white font-bold border-[#B8860B]"
+                            ? "bg-white/10 text-white font-bold border-[#1B4F9B]"
                             : "text-white/50 border-transparent"
                         }`}
                       >
@@ -190,7 +190,7 @@ export default function LandingPage() {
                   </div>
                   <div className="px-2 py-2 border-t border-white/10">
                     <div className="flex items-center gap-1.5">
-                      <div className="w-5 h-5 rounded-full bg-[#B8860B] flex items-center justify-center text-[7px] font-bold text-white flex-shrink-0">
+                      <div className="w-5 h-5 rounded-full bg-[#1B4F9B] flex items-center justify-center text-[7px] font-bold text-white flex-shrink-0">
                         E
                       </div>
                       <div className="min-w-0">
@@ -212,10 +212,10 @@ export default function LandingPage() {
                   <div className="grid grid-cols-3 gap-1.5 mb-3">
                     {[
                       { label: "Casos activos", val: "84", color: "text-[#0D2340]", icon: "📁" },
-                      { label: "Audiencias hoy", val: "6", color: "text-[#1B5FA8]", icon: "📅" },
-                      { label: "Alertas", val: "3", color: "text-[#B8860B]", icon: "🔔" },
+                      { label: "Audiencias hoy", val: "6", color: "text-[#1B4F9B]", icon: "📅" },
+                      { label: "Alertas", val: "3", color: "text-[#1B4F9B]", icon: "🔔" },
                       { label: "En audiencia", val: "2", color: "text-green-700", icon: "🎤" },
-                      { label: "Cerrados mes", val: "27", color: "text-[#1B5FA8]", icon: "✓" },
+                      { label: "Cerrados mes", val: "27", color: "text-[#1B4F9B]", icon: "✓" },
                       { label: "Mi equipo", val: "12", color: "text-[#0D2340]", icon: "👥" },
                     ].map((kpi) => (
                       <div
@@ -313,7 +313,7 @@ export default function LandingPage() {
       <section id="plataforma" className="bg-[#F8FAFC] py-16 sm:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12 scroll-animate animate-fade-in-up">
-            <p className="text-xs font-semibold text-[#B8860B] uppercase tracking-widest mb-3">
+            <p className="text-xs font-semibold text-[#1B4F9B] uppercase tracking-widest mb-3">
               Plataforma
             </p>
             <h2 className="text-2xl sm:text-3xl lg:text-5xl font-black text-[#0D2340] tracking-tight">
@@ -331,10 +331,10 @@ export default function LandingPage() {
               return (
                 <div
                   key={m.nombre}
-                  className={`scroll-animate animate-fade-in-up bg-white rounded-2xl border border-[#E2E8F0] p-6 hover:border-[#B8860B]/40 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 delay-${(i % 5) * 100}`}
+                  className={`scroll-animate animate-fade-in-up bg-white rounded-2xl border border-[#E2E8F0] p-6 hover:border-[#1B4F9B]/40 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 delay-${(i % 5) * 100}`}
                 >
                   <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#0D2340] to-[#1B4F9B] flex items-center justify-center mb-4 shadow-md shadow-[#0D2340]/20">
-                    <Icon className="w-5 h-5 text-[#B8860B]" />
+                    <Icon className="w-5 h-5 text-[#1B4F9B]" />
                   </div>
                   <h3 className="text-sm font-black text-[#0D2340] mb-1">{m.nombre}</h3>
                   <p className="text-xs text-[#64748B] leading-relaxed">{m.desc}</p>
@@ -346,7 +346,7 @@ export default function LandingPage() {
           <div className="text-center mt-10">
             <Link
               href="/modulos"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-[#0D2340] hover:text-[#B8860B] transition-colors"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[#0D2340] hover:text-[#1B4F9B] transition-colors"
             >
               Ver todos los módulos en detalle
               <ArrowRight className="w-4 h-4" />
@@ -359,7 +359,7 @@ export default function LandingPage() {
       <section className="bg-white py-12">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="rounded-2xl border-2 border-dashed border-[#E2E8F0] p-10 text-center bg-[#F8FAFC]">
-            <p className="text-xs font-bold text-[#B8860B] uppercase tracking-widest mb-2">
+            <p className="text-xs font-bold text-[#1B4F9B] uppercase tracking-widest mb-2">
               Próximamente
             </p>
             <h3 className="text-xl font-black text-[#0D2340] mb-2">
@@ -380,7 +380,7 @@ export default function LandingPage() {
       <section id="testimonios" className="bg-[#F8FAFC] pt-16 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12 scroll-animate animate-fade-in-up">
-            <p className="text-xs font-semibold text-[#B8860B] uppercase tracking-widest mb-3">
+            <p className="text-xs font-semibold text-[#1B4F9B] uppercase tracking-widest mb-3">
               Testimonios
             </p>
             <h2 className="text-2xl sm:text-3xl lg:text-5xl font-black text-[#0D2340] tracking-tight">
@@ -403,7 +403,7 @@ export default function LandingPage() {
 
                 <div className="flex gap-1 mb-5" aria-label="5 estrellas">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 text-[#B8860B] fill-[#B8860B]" />
+                    <Star key={i} className="w-4 h-4 text-[#1B4F9B] fill-[#1B4F9B]" />
                   ))}
                 </div>
 
@@ -441,7 +441,7 @@ export default function LandingPage() {
             {NORMAS.map((n) => (
               <span
                 key={n}
-                className="text-xs font-bold text-[#0D2340] bg-white border border-[#B8860B]/40 px-4 py-2 rounded-full hover:bg-[#B8860B]/5 transition-colors"
+                className="text-xs font-bold text-[#0D2340] bg-white border border-[#1B4F9B]/40 px-4 py-2 rounded-full hover:bg-[#1B4F9B]/5 transition-colors"
               >
                 {n}
               </span>
@@ -462,7 +462,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center gap-4 justify-center">
             <Link
               href="/registro"
-              className="inline-flex items-center justify-center gap-2 text-sm font-bold text-[#0D2340] bg-gradient-to-r from-[#B8860B] to-[#D4A017] px-7 py-3.5 rounded-full hover:from-[#9A7209] hover:to-[#B8860B] transition-all duration-300 shadow-lg shadow-[#B8860B]/25"
+              className="inline-flex items-center justify-center gap-2 text-sm font-bold text-[#0D2340] bg-gradient-to-r from-[#1B4F9B] to-[#3A6EBE] px-7 py-3.5 rounded-full hover:from-[#13407F] hover:to-[#1B4F9B] transition-all duration-300 shadow-lg shadow-[#1B4F9B]/25"
             >
               Empezar gratis
               <ArrowRight className="w-4 h-4" />

@@ -11,7 +11,7 @@ const VERSION = "v1.0";
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
     <section id={id} className="mb-12">
-      <h2 className="text-xl font-black text-[#0D2340] mb-4 pb-2 border-b-2 border-[#B8860B]">
+      <h2 className="text-xl font-black text-[#0D2340] mb-4 pb-2 border-b-2 border-[#1B4F9B]">
         {title}
       </h2>
       {children}
@@ -41,7 +41,7 @@ export default function SLAPage() {
             Documento Legal
           </div>
           <div className="text-3xl font-black mb-1">
-            SIGECC<span className="text-[#B8860B]">.</span>
+            SIGECC<span className="text-[#1B4F9B]">.</span>
           </div>
           <h1 className="text-2xl font-black text-white mt-3 mb-2">
             Acuerdo de Nivel de Servicios (SLA)
@@ -230,7 +230,7 @@ export default function SLAPage() {
                       {comp}
                     </td>
                     <td
-                      className={`px-4 py-3 text-center font-bold ${i === 3 ? "text-[#B8860B] text-base" : "text-green-700"}`}
+                      className={`px-4 py-3 text-center font-bold ${i === 3 ? "text-[#1B4F9B] text-base" : "text-green-700"}`}
                     >
                       {sla}
                     </td>
@@ -452,7 +452,7 @@ export default function SLAPage() {
                 ].map(([disp, credito, tiempo], i) => (
                   <tr key={i} className={i % 2 === 0 ? "bg-[#F4F6F9]" : "bg-white"}>
                     <td className="px-4 py-3 text-[#3D5068]">{disp}</td>
-                    <td className="px-4 py-3 text-center font-bold text-[#B8860B]">{credito}</td>
+                    <td className="px-4 py-3 text-center font-bold text-[#1B4F9B]">{credito}</td>
                     <td className="px-4 py-3 text-[#7A8FA6] text-xs">{tiempo}</td>
                   </tr>
                 ))}
@@ -482,7 +482,7 @@ export default function SLAPage() {
               "Ataques de denegación de servicio (DDoS) mientras el Proveedor toma medidas de mitigación.",
             ].map((exc, i) => (
               <li key={i} className="flex gap-2">
-                <span className="text-[#B8860B] font-bold shrink-0 mt-0.5">✕</span>
+                <span className="text-[#1B4F9B] font-bold shrink-0 mt-0.5">✕</span>
                 <span>{exc}</span>
               </li>
             ))}
@@ -558,16 +558,16 @@ export default function SLAPage() {
             </p>
             <ul className="space-y-1 mb-4">
               <li className="flex gap-2">
-                <span className="text-[#B8860B]">→</span> Cambio de proveedor de infraestructura.
+                <span className="text-[#1B4F9B]">→</span> Cambio de proveedor de infraestructura.
               </li>
               <li className="flex gap-2">
-                <span className="text-[#B8860B]">→</span> Modificaciones en los planes o precios.
+                <span className="text-[#1B4F9B]">→</span> Modificaciones en los planes o precios.
               </li>
               <li className="flex gap-2">
-                <span className="text-[#B8860B]">→</span> Revisión anual programada.
+                <span className="text-[#1B4F9B]">→</span> Revisión anual programada.
               </li>
               <li className="flex gap-2">
-                <span className="text-[#B8860B]">→</span> Cumplimiento de nuevas disposiciones legales.
+                <span className="text-[#1B4F9B]">→</span> Cumplimiento de nuevas disposiciones legales.
               </li>
             </ul>
             <p className="text-xs text-[#7A8FA6]">
@@ -580,7 +580,7 @@ export default function SLAPage() {
         <div className="border-t border-[#DDE4ED] pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
             <div className="text-lg font-black text-[#0D2340]">
-              SIGECC<span className="text-[#B8860B]">.</span>
+              SIGECC<span className="text-[#1B4F9B]">.</span>
             </div>
             <div className="text-xs text-[#7A8FA6]">
               © {new Date().getFullYear()} — Todos los derechos reservados

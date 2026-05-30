@@ -10,7 +10,7 @@ import { WhatsAppFloat } from "./whatsapp-float";
 /**
  * Layout público de SIGECC (rutas /inicio, /precios, /modulos).
  * Estructura visual clonada de Legal Manager: navbar glass + footer 4 columnas.
- * Paleta navy #0D2340 + dorado #B8860B.
+ * Paleta navy #0D2340 + azul #1B4F9B.
  */
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -47,13 +47,13 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Wordmark SIGECC: navy con punto dorado */}
+            {/* Wordmark SIGECC: navy con punto azul */}
             <Link href="/" className="flex flex-col items-start flex-shrink-0">
               <span className="text-[10px] font-bold tracking-[0.25em] text-white/60 uppercase leading-none mb-0.5">
                 Sistema de Gestión
               </span>
               <span className="text-xl font-black text-white tracking-tight">
-                SIGECC<span className="text-[#B8860B]">.</span>
+                SIGECC<span className="text-[#1B4F9B]">.</span>
               </span>
             </Link>
 
@@ -83,7 +83,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
               </Link>
               <Link
                 href="/registro"
-                className="text-sm font-bold text-[#0D2340] bg-[#B8860B] px-5 py-2.5 rounded-full hover:bg-[#9A7209] transition-all duration-300 shadow-lg shadow-[#B8860B]/20"
+                className="text-sm font-bold text-[#0D2340] bg-[#1B4F9B] px-5 py-2.5 rounded-full hover:bg-[#13407F] transition-all duration-300 shadow-lg shadow-[#1B4F9B]/20"
               >
                 Empezar gratis
               </Link>
@@ -126,7 +126,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
               <Link
                 href="/registro"
                 onClick={() => setMenuOpen(false)}
-                className="text-lg font-bold text-[#0D2340] bg-[#B8860B] px-8 py-3 rounded-full hover:bg-[#9A7209] transition-all"
+                className="text-lg font-bold text-[#0D2340] bg-[#1B4F9B] px-8 py-3 rounded-full hover:bg-[#13407F] transition-all"
               >
                 Empezar gratis
               </Link>
@@ -153,7 +153,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                   Sistema de Gestión
                 </span>
                 <span className="text-xl font-black text-white tracking-tight">
-                  SIGECC<span className="text-[#B8860B]">.</span>
+                  SIGECC<span className="text-[#1B4F9B]">.</span>
                 </span>
               </Link>
               <p className="text-sm text-white/40 mt-3 leading-relaxed">

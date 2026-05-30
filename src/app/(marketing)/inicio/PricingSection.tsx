@@ -124,7 +124,7 @@ export function PricingSection() {
     <section id="precios" className="bg-white py-16 sm:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12 scroll-animate animate-fade-in-up">
-          <p className="text-xs font-semibold text-[#B8860B] uppercase tracking-widest mb-3">
+          <p className="text-xs font-semibold text-[#1B4F9B] uppercase tracking-widest mb-3">
             Pricing
           </p>
           <h2 className="text-2xl sm:text-3xl lg:text-5xl font-black text-[#0D2340] tracking-tight">
@@ -147,13 +147,13 @@ export function PricingSection() {
           </span>
           <button
             onClick={() => setAnual(!anual)}
-            className="relative w-14 h-7 bg-[#0D2340] rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B8860B] focus-visible:ring-offset-2"
+            className="relative w-14 h-7 bg-[#0D2340] rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1B4F9B] focus-visible:ring-offset-2"
             role="switch"
             aria-checked={anual}
             aria-label="Cambiar entre precios mensuales y anuales"
           >
             <span
-              className={`absolute top-0.5 w-6 h-6 bg-[#B8860B] rounded-full transition-all duration-300 shadow-md ${
+              className={`absolute top-0.5 w-6 h-6 bg-[#1B4F9B] rounded-full transition-all duration-300 shadow-md ${
                 anual ? "left-7" : "left-0.5"
               }`}
             />
@@ -166,7 +166,7 @@ export function PricingSection() {
             Anual
           </span>
           {anual && (
-            <span className="text-xs font-bold text-[#B8860B] bg-[#B8860B]/10 px-3 py-1 rounded-full animate-fade-in">
+            <span className="text-xs font-bold text-[#1B4F9B] bg-[#1B4F9B]/10 px-3 py-1 rounded-full animate-fade-in">
               -20%
             </span>
           )}
@@ -185,13 +185,13 @@ export function PricingSection() {
                 key={plan.key}
                 className={`relative flex flex-col rounded-2xl border p-6 transition-all duration-500 hover:shadow-xl ${
                   plan.highlight
-                    ? "border-[#B8860B] shadow-xl shadow-[#B8860B]/10 ring-1 ring-[#B8860B]/20 xl:scale-105 bg-white z-10"
+                    ? "border-[#1B4F9B] shadow-xl shadow-[#1B4F9B]/10 ring-1 ring-[#1B4F9B]/20 xl:scale-105 bg-white z-10"
                     : "border-[#E2E8F0] hover:border-[#CBD5E1] bg-white"
                 }`}
               >
                 {plan.highlight && (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                    <span className="text-xs font-bold text-white bg-gradient-to-r from-[#B8860B] to-[#D4A017] px-5 py-1.5 rounded-full shadow-lg shadow-[#B8860B]/30 whitespace-nowrap">
+                    <span className="text-xs font-bold text-white bg-gradient-to-r from-[#1B4F9B] to-[#3A6EBE] px-5 py-1.5 rounded-full shadow-lg shadow-[#1B4F9B]/30 whitespace-nowrap">
                       Más popular
                     </span>
                   </div>
@@ -221,7 +221,7 @@ export function PricingSection() {
                       <span className="text-3xl font-black text-[#0D2340]">{formatCOP(precio)}</span>
                       <span className="text-xs text-[#94A3B8] ml-1">COP/mes</span>
                       {anual && (
-                        <p className="text-[11px] text-[#B8860B] mt-1 font-medium">
+                        <p className="text-[11px] text-[#1B4F9B] mt-1 font-medium">
                           Ahorras {formatCOP(ahorroAnual)} al año
                         </p>
                       )}
@@ -233,8 +233,8 @@ export function PricingSection() {
                   href={plan.href}
                   className={`w-full flex items-center justify-center gap-2 text-sm font-bold py-3 rounded-xl transition-all duration-300 mb-6 ${
                     plan.highlight
-                      ? "text-white bg-gradient-to-r from-[#B8860B] to-[#D4A017] hover:from-[#9A7209] hover:to-[#B8860B] shadow-lg shadow-[#B8860B]/20"
-                      : "text-[#0D2340] border-2 border-[#E2E8F0] hover:border-[#B8860B] hover:text-[#B8860B]"
+                      ? "text-white bg-gradient-to-r from-[#1B4F9B] to-[#3A6EBE] hover:from-[#13407F] hover:to-[#1B4F9B] shadow-lg shadow-[#1B4F9B]/20"
+                      : "text-[#0D2340] border-2 border-[#E2E8F0] hover:border-[#1B4F9B] hover:text-[#1B4F9B]"
                   }`}
                 >
                   {plan.ctaLabel}
@@ -246,11 +246,11 @@ export function PricingSection() {
                     <li key={f} className="flex items-start gap-2.5">
                       <div
                         className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                          plan.highlight ? "bg-[#B8860B]/10" : "bg-[#F1F5F9]"
+                          plan.highlight ? "bg-[#1B4F9B]/10" : "bg-[#F1F5F9]"
                         }`}
                       >
                         <Check
-                          className={`w-3 h-3 ${plan.highlight ? "text-[#B8860B]" : "text-[#64748B]"}`}
+                          className={`w-3 h-3 ${plan.highlight ? "text-[#1B4F9B]" : "text-[#64748B]"}`}
                         />
                       </div>
                       <span className="text-xs text-[#475569] leading-snug">{f}</span>
