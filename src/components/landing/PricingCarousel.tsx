@@ -164,43 +164,44 @@ function CenterCard({
       border?: string;
     }
   > = {
-    // Académico — verde académico
+    // Escala azul/navy SIGECC, de claro→oscuro según jerarquía/precio.
+    // Académico — azul claro (entrada, free)
     0: {
-      bg: "linear-gradient(135deg, #2A9D5C, #38B673 40%, #1F7544 70%, #2A9D5C)",
-      chip: "linear-gradient(135deg, #d4a520, #c8920a)",
-      numColor: "#e8f8ed",
-      numShadow: "1px 1px 2px rgba(15,50,30,0.7), 0 0 1px rgba(15,50,30,0.4)",
+      bg: "linear-gradient(135deg, #6B8FCF, #3A6EBE 45%, #4D7AC4)",
+      chip: "linear-gradient(135deg, #1B4F9B, #13407F)",
+      numColor: "#EAF1FB",
+      numShadow: "1px 1px 2px rgba(10,30,80,0.6), 0 0 1px rgba(10,30,80,0.3)",
     },
-    // Esencial — azul acero
+    // Esencial — azul SIGECC
     1: {
-      bg: "linear-gradient(135deg, #2C3E6B, #3A5090 40%, #1A2744 70%, #2C3E6B)",
-      chip: "linear-gradient(135deg, #d4a520, #c8920a)",
-      numColor: "#d8e8ff",
-      numShadow: "1px 1px 2px rgba(10,20,50,0.8), 0 0 1px rgba(10,20,50,0.5)",
+      bg: "linear-gradient(135deg, #3A6EBE, #1B4F9B 45%, #2A60AE)",
+      chip: "linear-gradient(135deg, #0D2340, #13407F)",
+      numColor: "#DCE8FA",
+      numShadow: "1px 1px 2px rgba(10,30,80,0.7), 0 0 1px rgba(10,30,80,0.4)",
     },
-    // Profesional — Dorado (destacado)
+    // Profesional — Navy SIGECC (destacado)
     2: {
-      bg: "linear-gradient(135deg, #c8920a, #e8b030 30%, #b87d08 60%, #d4a020)",
-      chip: "linear-gradient(135deg, #e0e0e0, #a0a0a0)",
-      chipInner: "linear-gradient(135deg, #f5f5f5, #c0c0c0)",
-      numColor: "#fff8e8",
-      numShadow: "1px 1px 2px rgba(80,50,0,0.7), 0 0 1px rgba(80,50,0,0.4)",
+      bg: "linear-gradient(135deg, #1B4F9B, #0D2340 45%, #13407F)",
+      chip: "linear-gradient(135deg, #1B4F9B, #3A6EBE)",
+      chipInner: "linear-gradient(135deg, #DCE8FA, #6B8FCF)",
+      numColor: "#FFFFFF",
+      numShadow: "1px 1px 2px rgba(5,15,40,0.85), 0 0 1px rgba(5,15,40,0.5)",
     },
-    // Notarial — Burdeo
+    // Notarial — Navy oscuro / ink
     3: {
-      bg: "linear-gradient(135deg, #6B1D3A, #8B2A4F 40%, #4F1228 70%, #6B1D3A)",
-      chip: "linear-gradient(135deg, #d4a520, #c8920a)",
-      numColor: "#fde8f0",
-      numShadow: "1px 1px 2px rgba(60,10,25,0.8), 0 0 1px rgba(60,10,25,0.5)",
+      bg: "linear-gradient(135deg, #0D2340, #0a1628 45%, #13407F)",
+      chip: "linear-gradient(135deg, #1B4F9B, #3A6EBE)",
+      numColor: "#DCE8FA",
+      numShadow: "1px 1px 2px rgba(5,15,40,0.9), 0 0 1px rgba(5,15,40,0.5)",
     },
-    // Enterprise — Black
+    // Enterprise — Negro / ink absoluto
     4: {
-      bg: "linear-gradient(135deg, #1a1a1a, #0d0d0d 50%, #222)",
-      chip: "linear-gradient(135deg, #d4a520, #c8920a)",
-      chipInner: "linear-gradient(135deg, #f5e6b8, #d4a520)",
-      numColor: "#fff",
+      bg: "linear-gradient(135deg, #0a1628, #000000 50%, #0a1628)",
+      chip: "linear-gradient(135deg, #1B4F9B, #13407F)",
+      chipInner: "linear-gradient(135deg, #6B8FCF, #1B4F9B)",
+      numColor: "#FFFFFF",
       numShadow: "1px 1px 3px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,0.7)",
-      border: "1px solid #2a2a2a",
+      border: "1px solid #1f2937",
     },
   };
 
@@ -317,8 +318,8 @@ function CenterCard({
             strokeWidth="2"
             strokeLinecap="round"
           />
-          <circle cx="9" cy="18" r="3" fill="#B8860B" />
-          <circle cx="23" cy="18" r="3" fill="#B8860B" />
+          <circle cx="9" cy="18" r="3" fill="#1B4F9B" />
+          <circle cx="23" cy="18" r="3" fill="#1B4F9B" />
         </svg>
       </div>
     </div>
@@ -335,11 +336,12 @@ const BOX_STYLES: Record<
     btnColor: string;
   }
 > = {
-  0: { badgeBg: "#dcfce7", badgeColor: "#1F7544", priceColor: "#1F7544", btnBg: "#1F7544", btnColor: "#fff" },
-  1: { badgeBg: "#dbeafe", badgeColor: "#2C3E6B", priceColor: "#2C3E6B", btnBg: "#2C3E6B", btnColor: "#fff" },
-  2: { badgeBg: "#fef9e7", badgeColor: "#8B6914", priceColor: "#8B6914", btnBg: "#C9A84C", btnColor: "#fff" },
-  3: { badgeBg: "#fdf2f8", badgeColor: "#6B1D3A", priceColor: "#6B1D3A", btnBg: "#6B1D3A", btnColor: "#fff" },
-  4: { badgeBg: "#f1f5f9", badgeColor: "#64748b", priceColor: "#0D2340", btnBg: "#111", btnColor: "#fff" },
+  // Badges/botones por plan — escala azul SIGECC, badgeBg en tonos muy suaves.
+  0: { badgeBg: "#EAF1FB", badgeColor: "#3A6EBE", priceColor: "#3A6EBE", btnBg: "#3A6EBE", btnColor: "#fff" },
+  1: { badgeBg: "#dbeafe", badgeColor: "#1B4F9B", priceColor: "#1B4F9B", btnBg: "#1B4F9B", btnColor: "#fff" },
+  2: { badgeBg: "#dbeafe", badgeColor: "#0D2340", priceColor: "#0D2340", btnBg: "#0D2340", btnColor: "#fff" },
+  3: { badgeBg: "#E2E8F0", badgeColor: "#0a1628", priceColor: "#0a1628", btnBg: "#0a1628", btnColor: "#fff" },
+  4: { badgeBg: "#f1f5f9", badgeColor: "#0a1628", priceColor: "#0a1628", btnBg: "#000000", btnColor: "#fff" },
 };
 
 export function PricingCarousel({ anual = false }: { anual?: boolean } = {}) {

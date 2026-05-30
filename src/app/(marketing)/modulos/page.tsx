@@ -33,7 +33,7 @@ const MODULOS: Modulo[] = [
     titulo: "Audiencias: programa, reprograma y registra",
     nombre: "Audiencias",
     planes: "Todos los planes",
-    planColor: "#1B5FA8",
+    planColor: "#1B4F9B",
     desc:
       "Programación rápida desde el expediente, recordatorios automáticos a las partes, soporte para audiencias presenciales, virtuales o híbridas conforme al Decreto 1136/2025. Asistencia con tres estados (sí / no / sin marcar) y generación de acta directamente desde la pestaña de audiencia.",
     features: [
@@ -50,7 +50,7 @@ const MODULOS: Modulo[] = [
     titulo: "Agenda: vista de cupos en tiempo real",
     nombre: "Agenda",
     planes: "Todos los planes",
-    planColor: "#2A9D5C",
+    planColor: "#3A6EBE",
     desc:
       "Calendario por conciliador con sugerencia automática de cupos disponibles. Programa audiencias en segundos desde el calendario y crea un expediente exprés sin salir de la vista. Pendientes y compromisos visibles para coordinar al equipo.",
     features: [
@@ -67,7 +67,7 @@ const MODULOS: Modulo[] = [
     titulo: "Insolvencia: el módulo más completo del mercado",
     nombre: "Insolvencia (Ley 2445)",
     planes: "Desde Esencial",
-    planColor: "#6B1D3A",
+    planColor: "#0a1628",
     desc:
       "Cumplimiento integral Ley 2445/2025 + Decreto 1136/2025 para insolvencia de Personas Naturales No Comerciantes. Acreencias con consolidación por NIT, propuestas de pago estructuradas, votación 1 acreedor = 1 voto, exportación de actas en Word/PDF con márgenes oficiales.",
     features: [
@@ -85,7 +85,7 @@ const MODULOS: Modulo[] = [
     titulo: "Apoderados y poderes con firma certificada",
     nombre: "Apoderados",
     planes: "Todos los planes",
-    planColor: "#7c3aed",
+    planColor: "#1B4F9B",
     desc:
       "Carga y verificación de poderes con almacenamiento privado en Supabase, signed URLs con expiración de 24 horas, validación de existencia física del archivo. Crea apoderado, convocado y poder PDF desde una tarjeta modal sin salir del expediente.",
     features: [
@@ -119,7 +119,7 @@ const MODULOS: Modulo[] = [
     titulo: "SICAAC integrado: reportes oficiales sin pegar datos",
     nombre: "SICAAC",
     planes: "Desde Esencial",
-    planColor: "#1B5FA8",
+    planColor: "#1B4F9B",
     desc:
       "Registro paralelo de expedientes y registros manuales para SICAAC. Diseñado para exportar lo que el Ministerio de Justicia exige sin duplicar trabajo en su plataforma. Plantillas por centro y bibliotecas de cláusulas reutilizables.",
     features: [
@@ -136,7 +136,7 @@ const MODULOS: Modulo[] = [
     titulo: "Plantillas y actas: documentos en segundos",
     nombre: "Plantillas y Actas",
     planes: "Todos los planes",
-    planColor: "#d97706",
+    planColor: "#1B4F9B",
     desc:
       "Biblioteca de actas y plantillas con generación PDF y Word. Márgenes oficiales, fechas en horario Colombia (no UTC), variables que se llenan desde el expediente automáticamente. Cada centro puede subir sus propios archivos.",
     features: [
@@ -153,7 +153,7 @@ const MODULOS: Modulo[] = [
     titulo: "Reglamento interno digital",
     nombre: "Reglamento interno",
     planes: "Desde Profesional",
-    planColor: "#1F7544",
+    planColor: "#13407F",
     desc:
       "Documento del reglamento del centro versionado y disponible para todo el staff. Cambios con historial, exportable a PDF, integrado con el módulo SICAAC para reportar al Ministerio.",
     features: [
@@ -169,7 +169,7 @@ const MODULOS: Modulo[] = [
     titulo: "Firma electrónica con plena validez legal",
     nombre: "Firma electrónica",
     planes: "Desde Profesional + add-on",
-    planColor: "#B8860B",
+    planColor: "#1B4F9B",
     desc:
       "Integración con Legal Manager para firmar actas, acuerdos y poderes con plena validez legal conforme a Ley 527 de 1999. OTP por email o SMS, foto de identidad, QR de verificación pública para que cualquier tercero valide la autenticidad.",
     features: [
@@ -247,7 +247,7 @@ function MockupCasos() {
         {["Conciliación", "Apoderados (1)", "Documentos (4)", "Audiencias (2)", "Actas (1)"].map((t) => (
           <div key={t} className="flex justify-between items-center text-[11px] py-1 border-b border-[#F1F5F9]">
             <span className="text-[#475569]">{t}</span>
-            <span className="text-[#B8860B] font-bold">›</span>
+            <span className="text-[#1B4F9B] font-bold">›</span>
           </div>
         ))}
       </div>
@@ -404,7 +404,7 @@ function MockupApoderados() {
         <div className="text-xs font-bold text-[#0D2340]">poder-miguel-rivera.pdf</div>
         <div className="text-[10px] text-[#94A3B8] mt-1">Signed URL · vence en 23h 47m</div>
       </div>
-      <button className="w-full mt-3 text-[11px] font-bold bg-[#B8860B] text-white py-2 rounded-lg">
+      <button className="w-full mt-3 text-[11px] font-bold bg-[#1B4F9B] text-white py-2 rounded-lg">
         Descargar poder
       </button>
     </div>
@@ -445,7 +445,7 @@ function MockupSicaac() {
     <div className="rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-lg">
       <div className="flex items-center justify-between mb-3">
         <div className="text-xs font-bold text-[#0D2340]">SICAAC · Expedientes mes</div>
-        <span className="text-[10px] font-bold bg-[#B8860B]/10 text-[#B8860B] px-2 py-0.5 rounded">
+        <span className="text-[10px] font-bold bg-[#1B4F9B]/10 text-[#1B4F9B] px-2 py-0.5 rounded">
           May 2026
         </span>
       </div>
@@ -477,14 +477,14 @@ function MockupPlantillas() {
       {[
         { n: "Acta de conciliación.docx", t: "Sistema", c: "text-[#94A3B8]" },
         { n: "Acta de insolvencia.docx", t: "Sistema", c: "text-[#94A3B8]" },
-        { n: "Acuerdo de pago - propio.docx", t: "Centro", c: "text-[#B8860B]" },
-        { n: "Citación virtual - propio.pdf", t: "Centro", c: "text-[#B8860B]" },
+        { n: "Acuerdo de pago - propio.docx", t: "Centro", c: "text-[#1B4F9B]" },
+        { n: "Citación virtual - propio.pdf", t: "Centro", c: "text-[#1B4F9B]" },
       ].map((p) => (
         <div
           key={p.n}
           className="flex items-center gap-2 py-1.5 border-b border-[#F1F5F9] text-[11px]"
         >
-          <span className="text-[#B8860B]">📄</span>
+          <span className="text-[#1B4F9B]">📄</span>
           <span className="flex-1 text-[#475569] truncate">{p.n}</span>
           <span className={`text-[9px] font-bold ${p.c}`}>{p.t}</span>
         </div>
@@ -511,7 +511,7 @@ function MockupReglamento() {
             className="flex justify-between items-center py-1 border-b border-[#F1F5F9]"
           >
             <span className="text-[#475569]">{c}</span>
-            <span className="text-[#B8860B] font-bold">›</span>
+            <span className="text-[#1B4F9B] font-bold">›</span>
           </div>
         ))}
       </div>
@@ -568,7 +568,7 @@ function MockupTickets() {
         </div>
         <div className="bg-[#0D2340]/5 rounded-lg p-2">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[9px] font-bold bg-[#B8860B]/10 text-[#B8860B] px-2 rounded">
+            <span className="text-[9px] font-bold bg-[#1B4F9B]/10 text-[#1B4F9B] px-2 rounded">
               Staff
             </span>
             <span className="text-[9px] text-[#94A3B8]">hace 1 h</span>
@@ -586,7 +586,7 @@ function MockupRadicado() {
   return (
     <div className="rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-lg">
       <div className="text-xs font-bold text-[#0D2340] mb-3">Formato de radicado</div>
-      <div className="bg-[#F8FAFC] rounded-lg p-3 border-2 border-dashed border-[#B8860B]/30 mb-3">
+      <div className="bg-[#F8FAFC] rounded-lg p-3 border-2 border-dashed border-[#1B4F9B]/30 mb-3">
         <div className="text-center text-2xl font-black text-[#0D2340] tracking-wider font-mono">
           CCN-2026-00084
         </div>
@@ -635,7 +635,7 @@ export default function ModulosPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-20">
         {/* Header */}
         <div className="text-center mb-14">
-          <p className="text-xs font-semibold text-[#B8860B] uppercase tracking-widest mb-3">
+          <p className="text-xs font-semibold text-[#1B4F9B] uppercase tracking-widest mb-3">
             Plataforma
           </p>
           <h1 className="text-4xl sm:text-5xl font-black text-[#0D2340] mb-4">
@@ -676,7 +676,7 @@ export default function ModulosPage() {
                   <ul className="space-y-2.5">
                     {m.features.map((f) => (
                       <li key={f} className="flex items-start gap-2.5">
-                        <CheckCircle2 className="w-5 h-5 text-[#B8860B] flex-shrink-0 mt-0.5" />
+                        <CheckCircle2 className="w-5 h-5 text-[#1B4F9B] flex-shrink-0 mt-0.5" />
                         <span className="text-sm text-[#475569]">{f}</span>
                       </li>
                     ))}
@@ -711,7 +711,7 @@ export default function ModulosPage() {
           <div className="flex flex-col sm:flex-row items-center gap-4 justify-center">
             <Link
               href="/registro"
-              className="inline-flex items-center justify-center gap-2 text-sm font-bold text-[#0D2340] bg-gradient-to-r from-[#B8860B] to-[#D4A017] px-7 py-3.5 rounded-full hover:from-[#9A7209] hover:to-[#B8860B] transition-all duration-300 shadow-lg shadow-[#B8860B]/25"
+              className="inline-flex items-center justify-center gap-2 text-sm font-bold text-[#0D2340] bg-gradient-to-r from-[#1B4F9B] to-[#3A6EBE] px-7 py-3.5 rounded-full hover:from-[#13407F] hover:to-[#1B4F9B] transition-all duration-300 shadow-lg shadow-[#1B4F9B]/25"
             >
               Empezar gratis
               <ArrowRight className="w-4 h-4" />

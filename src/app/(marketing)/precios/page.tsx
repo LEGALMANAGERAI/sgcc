@@ -68,7 +68,7 @@ export default function PreciosPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-20">
         {/* Header */}
         <div className="text-center mb-10">
-          <p className="text-xs font-semibold text-[#B8860B] uppercase tracking-widest mb-3">
+          <p className="text-xs font-semibold text-[#1B4F9B] uppercase tracking-widest mb-3">
             Pricing
           </p>
           <h1 className="text-4xl sm:text-5xl font-black text-[#0D2340] mb-4">
@@ -88,7 +88,7 @@ export default function PreciosPage() {
           <button
             onClick={() => setAnual(!anual)}
             className={`relative w-14 h-7 rounded-full transition-colors ${
-              anual ? "bg-[#B8860B]" : "bg-[#DDE4ED]"
+              anual ? "bg-[#1B4F9B]" : "bg-[#DDE4ED]"
             }`}
             role="switch"
             aria-checked={anual}
@@ -100,14 +100,14 @@ export default function PreciosPage() {
             />
           </button>
           <span className={`text-sm font-bold ${anual ? "text-[#0D2340]" : "text-[#7A8FA6]"}`}>
-            Anual <span className="text-[#B8860B] text-xs font-bold">-20%</span>
+            Anual <span className="text-[#1B4F9B] text-xs font-bold">-20%</span>
           </span>
         </div>
 
         {/* Trial banner */}
         <div className="bg-[#0D2340] rounded-2xl p-6 mb-4 text-center">
           <div className="flex items-center justify-center gap-3 mb-2">
-            <Sparkles className="w-5 h-5 text-[#B8860B]" />
+            <Sparkles className="w-5 h-5 text-[#1B4F9B]" />
             <h2 className="text-xl font-black text-white">Prueba gratuita — 15 días</h2>
           </div>
           <p className="text-sm text-white/60 mb-3 max-w-xl mx-auto">
@@ -116,7 +116,7 @@ export default function PreciosPage() {
           </p>
           <Link
             href="/registro"
-            className="inline-block text-sm font-bold text-[#0D2340] bg-[#B8860B] px-8 py-3 rounded-lg hover:bg-[#D4A017] transition-colors"
+            className="inline-block text-sm font-bold text-[#0D2340] bg-[#1B4F9B] px-8 py-3 rounded-lg hover:bg-[#3A6EBE] transition-colors"
           >
             Empezar prueba
           </Link>
@@ -161,14 +161,14 @@ export default function PreciosPage() {
               return (
                 <div
                   key={a.nombre}
-                  className="bg-[#F8FAFC] rounded-xl border border-[#E2E8F0] p-5 hover:border-[#B8860B]/40 hover:shadow-md transition-all"
+                  className="bg-[#F8FAFC] rounded-xl border border-[#E2E8F0] p-5 hover:border-[#1B4F9B]/40 hover:shadow-md transition-all"
                 >
                   <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#0D2340] to-[#1B4F9B] flex items-center justify-center mb-3">
-                    <Icon className="w-5 h-5 text-[#B8860B]" />
+                    <Icon className="w-5 h-5 text-[#1B4F9B]" />
                   </div>
                   <h3 className="text-sm font-black text-[#0D2340] mb-1">{a.nombre}</h3>
                   <p className="text-xs text-[#64748B] leading-relaxed mb-3">{a.desc}</p>
-                  <p className="text-sm font-black text-[#B8860B]">{a.precio}</p>
+                  <p className="text-sm font-black text-[#1B4F9B]">{a.precio}</p>
                 </div>
               );
             })}
@@ -182,7 +182,7 @@ export default function PreciosPage() {
             ¿No encuentras tu respuesta? Escríbenos a{" "}
             <a
               href="mailto:soporte@sigecc.co"
-              className="text-[#B8860B] font-semibold hover:underline"
+              className="text-[#1B4F9B] font-semibold hover:underline"
             >
               soporte@sigecc.co
             </a>
@@ -202,7 +202,7 @@ export default function PreciosPage() {
                   >
                     <span className="text-sm font-bold text-[#0D2340]">{faq.q}</span>
                     {isOpen ? (
-                      <ChevronUp className="w-4 h-4 text-[#B8860B] flex-shrink-0" />
+                      <ChevronUp className="w-4 h-4 text-[#1B4F9B] flex-shrink-0" />
                     ) : (
                       <ChevronDown className="w-4 h-4 text-[#64748B] flex-shrink-0" />
                     )}
@@ -224,7 +224,7 @@ export default function PreciosPage() {
           <p className="text-white/70 mb-6">15 días gratis. Sin tarjeta de crédito. Cancela cuando quieras.</p>
           <Link
             href="/registro"
-            className="inline-block text-sm font-bold text-[#0D2340] bg-[#B8860B] px-8 py-3 rounded-lg hover:bg-[#D4A017] transition-colors"
+            className="inline-block text-sm font-bold text-[#0D2340] bg-[#1B4F9B] px-8 py-3 rounded-lg hover:bg-[#3A6EBE] transition-colors"
           >
             Empezar prueba gratuita
           </Link>

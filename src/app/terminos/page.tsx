@@ -20,7 +20,7 @@ function Section({
 }) {
   return (
     <section id={id} className="mb-12">
-      <h2 className="text-xl font-black text-[#0D2340] mb-4 pb-2 border-b-2 border-[#B8860B]">
+      <h2 className="text-xl font-black text-[#0D2340] mb-4 pb-2 border-b-2 border-[#1B4F9B]">
         {title}
       </h2>
       {children}
@@ -35,7 +35,7 @@ function P({ children }: { children: React.ReactNode }) {
 function Li({ children }: { children: React.ReactNode }) {
   return (
     <li className="flex gap-2 text-sm text-[#3D5068] leading-relaxed mb-1.5">
-      <span className="text-[#B8860B] font-bold mt-0.5">›</span>
+      <span className="text-[#1B4F9B] font-bold mt-0.5">›</span>
       <span>{children}</span>
     </li>
   );
@@ -51,7 +51,7 @@ export default function TerminosPage() {
             Documento Legal
           </div>
           <div className="text-3xl font-black mb-1">
-            SIGECC<span className="text-[#B8860B]">.</span>
+            SIGECC<span className="text-[#1B4F9B]">.</span>
           </div>
           <h1 className="text-2xl font-black text-white mt-3 mb-2">
             Términos y Condiciones de Uso
@@ -98,7 +98,7 @@ export default function TerminosPage() {
               <a
                 key={href}
                 href={href}
-                className="text-xs text-[#1B5FA8] hover:underline font-medium"
+                className="text-xs text-[#1B4F9B] hover:underline font-medium"
               >
                 {label}
               </a>
@@ -117,7 +117,7 @@ export default function TerminosPage() {
               Correo:{" "}
               <a
                 href="mailto:legal@sigecc.co"
-                className="text-[#1B5FA8] hover:underline"
+                className="text-[#1B4F9B] hover:underline"
               >
                 legal@sigecc.co
               </a>
@@ -136,7 +136,7 @@ export default function TerminosPage() {
             Términos y el{" "}
             <Link
               href="/sla"
-              className="text-[#1B5FA8] hover:underline font-medium"
+              className="text-[#1B4F9B] hover:underline font-medium"
             >
               Acuerdo de Nivel de Servicio (SLA)
             </Link>
@@ -189,7 +189,7 @@ export default function TerminosPage() {
             Las tarifas vigentes se publican en la plataforma y pueden modificarse con 30 días de
             anticipación. Los excedentes (casos adicionales, personas adicionales) se cobran según
             tarifa publicada en{" "}
-            <Link href="/precios" className="text-[#1B5FA8] hover:underline font-medium">
+            <Link href="/precios" className="text-[#1B4F9B] hover:underline font-medium">
               /precios
             </Link>
             .
@@ -284,7 +284,7 @@ export default function TerminosPage() {
           <P>
             SIGECC procura que la plataforma esté disponible 24/7. Los compromisos específicos de
             disponibilidad, mantenimientos y compensaciones están detallados en el{" "}
-            <Link href="/sla" className="text-[#1B5FA8] hover:underline font-medium">
+            <Link href="/sla" className="text-[#1B4F9B] hover:underline font-medium">
               Acuerdo de Nivel de Servicio (SLA)
             </Link>
             , que forma parte integral de estos Términos.
@@ -362,7 +362,7 @@ export default function TerminosPage() {
           <div className="flex gap-3">
             <Link
               href="/sla"
-              className="text-xs font-bold text-[#1B5FA8] hover:underline border border-[#DDE4ED] px-3 py-1.5 rounded-lg"
+              className="text-xs font-bold text-[#1B4F9B] hover:underline border border-[#DDE4ED] px-3 py-1.5 rounded-lg"
             >
               Ver SLA →
             </Link>
