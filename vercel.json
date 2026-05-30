@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/vigilancia-judicial",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/wompi-renovacion",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/recordatorio-plan",
+      "schedule": "0 9 * * *"
     }
   ]
 }

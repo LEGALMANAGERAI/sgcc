@@ -6,12 +6,13 @@ export default auth((req) => {
   const session = req.auth;
 
   // Rutas públicas
-  const publicPaths = ["/login", "/registro", "/invitacion", "/widget", "/firmar", "/firma/retorno", "/verificar", "/votar", "/centro"];
+  const publicPaths = ["/login", "/registro", "/invitacion", "/widget", "/firmar", "/firma/retorno", "/verificar", "/votar", "/centro", "/pago", "/checkout", "/inicio"];
   if (publicPaths.some((p) => pathname.startsWith(p))) return NextResponse.next();
 
   // API routes de auth, health y activación siempre permitidas
   // /api/partes permite POST con selfRegister sin sesión (el handler valida el resto)
-  if (pathname.startsWith("/api/auth") || pathname.startsWith("/api/health") || pathname.startsWith("/api/legados/activar") || pathname.startsWith("/api/widget") || pathname.startsWith("/api/firmar") || pathname.startsWith("/api/votar") || pathname.startsWith("/api/centro") || pathname === "/api/partes") {
+  // /api/webhooks, /api/checkout y /api/cron: integraciones server-to-server (Wompi, Vercel Cron)
+  if (pathname.startsWith("/api/auth") || pathname.startsWith("/api/health") || pathname.startsWith("/api/legados/activar") || pathname.startsWith("/api/widget") || pathname.startsWith("/api/firmar") || pathname.startsWith("/api/votar") || pathname.startsWith("/api/centro") || pathname.startsWith("/api/webhooks") || pathname.startsWith("/api/checkout") || pathname.startsWith("/api/cron") || pathname === "/api/partes") {
     return NextResponse.next();
   }
 
