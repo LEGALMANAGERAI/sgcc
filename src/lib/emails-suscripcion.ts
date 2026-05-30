@@ -9,7 +9,13 @@ import { formatearCOP, getPlan } from "./planes-suscripcion";
  * pero el estado del cobro ya quedó actualizado en DB.
  */
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Inicialización LAZY: si instanciamos Resend a nivel de módulo con
+// process.env.RESEND_API_KEY indefinida (caso del build de Next), el SDK lanza
+// y rompe la colección de page data (p.ej. /api/webhooks/wompi). Se difiere
+// hasta que se necesite enviar un correo.
+function getResend(): Resend {
+  return new Resend(process.env.RESEND_API_KEY || "re_placeholder");
+}
 
 const FROM = "SIGECC <notificaciones@sgcc.app>";
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://sgcc-rouge.vercel.app";
@@ -48,7 +54,7 @@ async function enviarSeguro(params: {
   contexto: string;
 }): Promise<void> {
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: FROM,
       to: [params.to],
       subject: params.subject,
