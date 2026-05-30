@@ -64,7 +64,7 @@ export default function PreciosPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   return (
-    <main className="bg-[#F8FAFC]">
+    <main className="bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-20">
         {/* Header */}
         <div className="text-center mb-10">

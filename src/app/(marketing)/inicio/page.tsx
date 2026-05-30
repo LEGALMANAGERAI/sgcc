@@ -310,7 +310,7 @@ export default function LandingPage() {
       </section>
 
       {/* ===== MÓDULOS / PLATAFORMA ===== */}
-      <section id="plataforma" className="bg-[#F8FAFC] py-16 sm:py-24">
+      <section id="plataforma" className="bg-white py-16 sm:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12 scroll-animate animate-fade-in-up">
             <p className="text-xs font-semibold text-[#1B4F9B] uppercase tracking-widest mb-3">
@@ -358,7 +358,7 @@ export default function LandingPage() {
       {/* ===== PLACEHOLDER TOUR INTERACTIVO ===== */}
       <section className="bg-white py-12">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-2xl border-2 border-dashed border-[#E2E8F0] p-10 text-center bg-[#F8FAFC]">
+          <div className="rounded-2xl border-2 border-dashed border-[#E2E8F0] p-10 text-center bg-white">
             <p className="text-xs font-bold text-[#1B4F9B] uppercase tracking-widest mb-2">
               Próximamente
             </p>
@@ -377,7 +377,7 @@ export default function LandingPage() {
       <PricingSection />
 
       {/* ===== TESTIMONIOS ===== */}
-      <section id="testimonios" className="bg-[#F8FAFC] pt-16 pb-20">
+      <section id="testimonios" className="bg-white pt-16 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12 scroll-animate animate-fade-in-up">
             <p className="text-xs font-semibold text-[#1B4F9B] uppercase tracking-widest mb-3">
