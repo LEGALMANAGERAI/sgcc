@@ -26,6 +26,7 @@ import type { TipoTramite } from "@/types";
 import { sumarDiasHabiles, diasHabilesEntre } from "@/lib/dias-habiles-colombia";
 import { sincronizarApoderadosDePartes } from "@/lib/sincronizar-apoderados";
 import { puedeVerCaso } from "@/lib/server-utils";
+import { normalizeChecklist } from "@/lib/checklists";
 import { EliminarExpediente } from "@/components/modules/expediente/EliminarExpediente";
 
 /* ─── Constantes ────────────────────────────────────────────────────────── */
@@ -213,7 +214,10 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
     .eq("tipo_tramite", caso.tipo_tramite)
     .eq("activo", true);
 
-  const checklists = rawChecklists ?? [];
+  // Normalizamos `items` a arreglo: algunos registros heredados lo guardaron
+  // como string JSON dentro del jsonb, lo que rompía `items.map(...)` en los
+  // componentes cliente (Poderes/Admisión) con un client-side exception.
+  const checklists = (rawChecklists ?? []).map(normalizeChecklist);
   const checklistAdmision = checklists.find((c: any) => c.tipo_checklist === "admision") ?? null;
   const checklistPoderes = checklists.find((c: any) => c.tipo_checklist === "poderes") ?? null;
 

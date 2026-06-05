@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { normalizeChecklist } from "@/lib/checklists";
 
 /* ─── GET: Listar checklists del centro ─────────────────────────────────── */
 
@@ -27,7 +28,10 @@ export async function GET() {
     return NextResponse.json({ error: "Error al obtener checklists: " + error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ checklists: data });
+  // Normalizamos `items` a arreglo por si algún registro heredado lo guardó
+  // como string JSON (evita que el panel de configuración crashee al hacer
+  // `cl.items.map`).
+  return NextResponse.json({ checklists: (data ?? []).map(normalizeChecklist) });
 }
 
 /* ─── POST: Crear nueva checklist ───────────────────────────────────────── */
