@@ -86,7 +86,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
   const activeTab = (TOP_TABS.some((t) => t.key === tabRedirect.tab)
     ? tabRedirect.tab
     : "info") as TopTabKey;
-  const activeSub = (sp as any).sub ?? tabRedirect.sub ?? null;
+  const activeSub = sp.sub ?? tabRedirect.sub ?? null;
 
   const session = await auth();
   if (!session?.user) redirect("/login");
