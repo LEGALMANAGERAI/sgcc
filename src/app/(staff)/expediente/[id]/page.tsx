@@ -28,6 +28,7 @@ import { sincronizarApoderadosDePartes } from "@/lib/sincronizar-apoderados";
 import { puedeVerCaso } from "@/lib/server-utils";
 import { normalizeChecklist } from "@/lib/checklists";
 import { EliminarExpediente } from "@/components/modules/expediente/EliminarExpediente";
+import { SubTabs } from "@/components/ui/SubTabs";
 
 /* ─── Constantes ────────────────────────────────────────────────────────── */
 
@@ -39,29 +40,53 @@ const TIPO_BADGE: Record<TipoTramite, { label: string; color: string }> = {
   directiva_anticipada: { label: "DA", color: "bg-rose-100 text-rose-800" },
 };
 
-const BASE_TABS = [
+const TOP_TABS = [
   { key: "info", label: "Info General" },
   { key: "documentos", label: "Documentos" },
+  { key: "audiencia", label: "Audiencia" },
+  { key: "procesos", label: "Procesos" },
+] as const;
+
+const SUBTABS_DOCUMENTOS = [
+  { key: "soportes", label: "Soportes" },
   { key: "admision", label: "Admisión" },
   { key: "poderes", label: "Poderes" },
+];
+const SUBTABS_AUDIENCIA_BASE = [
   { key: "asistencia", label: "Asistencia" },
   { key: "acta", label: "Acta" },
-  { key: "procesos", label: "Procesos" },
 ];
 
-type TabKey = "info" | "documentos" | "admision" | "poderes" | "asistencia" | "acta" | "acreencias" | "procesos";
+// Claves `?tab=` viejas → { tab, sub } nuevo. Mantiene compatibilidad de enlaces externos.
+const REDIRECT_TAB: Record<string, { tab: string; sub?: string }> = {
+  documentos: { tab: "documentos", sub: "soportes" },
+  admision: { tab: "documentos", sub: "admision" },
+  poderes: { tab: "documentos", sub: "poderes" },
+  asistencia: { tab: "audiencia", sub: "asistencia" },
+  acta: { tab: "audiencia", sub: "acta" },
+  acreencias: { tab: "audiencia", sub: "acreencias" },
+  procesos: { tab: "procesos" },
+  info: { tab: "info" },
+};
+
+type TopTabKey = "info" | "documentos" | "audiencia" | "procesos";
 
 /* ─── Page ──────────────────────────────────────────────────────────────── */
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; sub?: string }>;
 }
 
 export default async function ExpedientePage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const activeTab = (BASE_TABS.find((t) => t.key === sp.tab)?.key ?? sp.tab ?? "info") as TabKey;
+  const rawTab = sp.tab ?? "info";
+  const tabRedirect = REDIRECT_TAB[rawTab] ?? { tab: rawTab };
+  const activeTab = (TOP_TABS.some((t) => t.key === tabRedirect.tab)
+    ? tabRedirect.tab
+    : "info") as TopTabKey;
+  const activeSub = (sp as any).sub ?? tabRedirect.sub ?? null;
 
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -285,11 +310,21 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
     acreencias = rawAcreencias ?? [];
   }
 
-  // Tabs dinámicos: agregar "Acreencias" solo para insolvencia
-  const TABS = [...BASE_TABS];
-  if (caso.tipo_tramite === "insolvencia") {
-    TABS.push({ key: "acreencias", label: "Acreencias" });
-  }
+  // Sub-pestañas de Audiencia: agregar "Acreencias" solo para insolvencia
+  const subtabsAudiencia = caso.tipo_tramite === "insolvencia"
+    ? [
+        { key: "asistencia", label: "Asistencia" },
+        { key: "acreencias", label: "Acreencias" },
+        { key: "acta", label: "Acta" },
+      ]
+    : SUBTABS_AUDIENCIA_BASE;
+
+  const subDocumentos = activeSub && SUBTABS_DOCUMENTOS.some((s) => s.key === activeSub)
+    ? activeSub
+    : "soportes";
+  const subAudiencia = activeSub && subtabsAudiencia.some((s) => s.key === activeSub)
+    ? activeSub
+    : "asistencia";
 
   // Staff y salas para el modal de edición de etapas
   const [{ data: staffAll }, { data: salasAll }] = await Promise.all([
@@ -443,12 +478,20 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
       {/* Tabs bar */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="flex gap-0 -mb-px">
-          {TABS.map((tab) => {
+          {TOP_TABS.map((tab) => {
             const isActive = activeTab === tab.key;
+            const href =
+              tab.key === "info"
+                ? `/expediente/${id}`
+                : tab.key === "documentos"
+                ? `/expediente/${id}?tab=documentos&sub=soportes`
+                : tab.key === "audiencia"
+                ? `/expediente/${id}?tab=audiencia&sub=asistencia`
+                : `/expediente/${id}?tab=${tab.key}`;
             return (
               <Link
                 key={tab.key}
-                href={`/expediente/${id}${tab.key === "info" ? "" : `?tab=${tab.key}`}`}
+                href={href}
                 className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
                   isActive
                     ? "border-[#1B4F9B] text-[#0D2340] font-bold"
@@ -474,13 +517,6 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
             conciliadoresDelCentro={conciliadoresDelCentro}
             staffDelCentro={staffDelCentro}
           />
-          <div className="mt-8">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-700">Observaciones de audiencias</h3>
-              <p className="text-[11px] text-gray-400">Edita cada observación en línea</p>
-            </div>
-            <HistorialObservacionesAudiencias caseId={id} audiencias={hearings} />
-          </div>
           {sgccRol === "admin" && (
             <EliminarExpediente caseId={id} numeroRadicado={caso.numero_radicado} />
           )}
@@ -488,89 +524,122 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
       )}
 
       {activeTab === "documentos" && (
-        <TabDocumentos
-          caseId={id}
-          documentos={documentos}
-          expedienteDigitalUrl={caso.expediente_digital_url ?? null}
-          puedeEditarLink={(session.user as any).userType === "staff"}
-          puedeEliminar={(session.user as any).userType === "staff"}
-        />
-      )}
-
-      {activeTab === "admision" && (
-        <TabChecklistAdmision
-          caseId={id}
-          checklist={checklistAdmision}
-          responses={admisionResponses}
-          documentos={documentos.map((d: any) => ({ id: d.id, nombre: d.nombre, tipo: d.tipo }))}
-        />
-      )}
-
-      {activeTab === "poderes" && (
-        <TabChecklistPoderes
-          caseId={id}
-          parties={parties}
-          attorneys={attorneys}
-          checklist={checklistPoderes}
-          responses={poderesResponses}
-        />
-      )}
-
-      {activeTab === "asistencia" && (
-        <TabAsistencia
-          caseId={id}
-          hearings={hearings}
-          parties={parties}
-          attorneys={attorneys}
-          attendance={attendance}
-        />
-      )}
-
-      {activeTab === "acta" && hearings.length > 0 && (
-        <div className="mt-6">
-          {caso.tipo_tramite === "insolvencia" && (
-            <CrearActaInsolvencia
+        <>
+          <SubTabs
+            basePath={`/expediente/${id}`}
+            tab="documentos"
+            subTabs={SUBTABS_DOCUMENTOS}
+            activeSub={subDocumentos}
+          />
+          {subDocumentos === "soportes" && (
+            <TabDocumentos
               caseId={id}
-              hearingId={hearings[hearings.length - 1].id}
+              documentos={documentos}
+              expedienteDigitalUrl={caso.expediente_digital_url ?? null}
+              puedeEditarLink={(session.user as any).userType === "staff"}
+              puedeEliminar={(session.user as any).userType === "staff"}
             />
           )}
-          {caso.tipo_tramite === "conciliacion" && (
-            <CrearActaConciliacion
+          {subDocumentos === "admision" && (
+            <TabChecklistAdmision
               caseId={id}
-              hearingId={hearings[hearings.length - 1].id}
+              checklist={checklistAdmision}
+              responses={admisionResponses}
+              documentos={documentos.map((d: any) => ({ id: d.id, nombre: d.nombre, tipo: d.tipo }))}
             />
           )}
-          {caso.tipo_tramite === "acuerdo_apoyo" && (
-            <CrearActaAcuerdoApoyo
+          {subDocumentos === "poderes" && (
+            <TabChecklistPoderes
               caseId={id}
-              hearingId={hearings[hearings.length - 1].id}
+              parties={parties}
+              attorneys={attorneys}
+              checklist={checklistPoderes}
+              responses={poderesResponses}
             />
           )}
-        </div>
+        </>
       )}
 
-      {activeTab === "acta" && hearings.length === 0 && (
-        <ProgramarAudienciaInlineCard
-          caseId={id}
-          conciliadores={conciliadoresList}
-          salas={salasList}
-          defaultConciliadorId={caso.conciliador_id ?? null}
-          tipoTramite={caso.tipo_tramite}
-        />
-      )}
+      {activeTab === "audiencia" && (
+        <>
+          <SubTabs
+            basePath={`/expediente/${id}`}
+            tab="audiencia"
+            subTabs={subtabsAudiencia}
+            activeSub={subAudiencia}
+          />
 
-      {activeTab === "acreencias" && caso.tipo_tramite === "insolvencia" && (
-        <HerramientaAcreencias
-          caseId={id}
-          acreedoresIniciales={acreencias}
-          partesConvocados={parties
-            .filter((p: any) => p.rol === "convocado" && p.party)
-            .map((p: any) => ({
-              id: p.party.id,
-              nombre: p.party.razon_social ?? [p.party.nombres, p.party.apellidos].filter(Boolean).join(" "),
-              documento: p.party.numero_doc ?? p.party.nit_empresa ?? "",
-            }))}
-        />
+          {subAudiencia === "asistencia" && (
+            <>
+              {hearings.length > 0 ? (
+                <TabAsistencia
+                  caseId={id}
+                  hearings={hearings}
+                  parties={parties}
+                  attorneys={attorneys}
+                  attendance={attendance}
+                />
+              ) : (
+                <ProgramarAudienciaInlineCard
+                  caseId={id}
+                  conciliadores={conciliadoresList}
+                  salas={salasList}
+                  defaultConciliadorId={caso.conciliador_id ?? null}
+                  tipoTramite={caso.tipo_tramite}
+                />
+              )}
+              <div className="mt-8">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-700">Observaciones de audiencias</h3>
+                  <p className="text-[11px] text-gray-400">Edita cada observación en línea</p>
+                </div>
+                <HistorialObservacionesAudiencias caseId={id} audiencias={hearings} />
+              </div>
+            </>
+          )}
+
+          {subAudiencia === "acreencias" && caso.tipo_tramite === "insolvencia" && (
+            <HerramientaAcreencias
+              caseId={id}
+              acreedoresIniciales={acreencias}
+              partesConvocados={parties
+                .filter((p: any) => p.rol === "convocado" && p.party)
+                .map((p: any) => ({
+                  id: p.party.id,
+                  nombre: p.party.razon_social ?? [p.party.nombres, p.party.apellidos].filter(Boolean).join(" "),
+                  documento: p.party.numero_doc ?? p.party.nit_empresa ?? "",
+                }))}
+            />
+          )}
+
+          {subAudiencia === "acta" && hearings.length > 0 && (
+            <div className="mt-6">
+              {caso.tipo_tramite === "insolvencia" && (
+                <CrearActaInsolvencia
+                  caseId={id}
+                  hearingId={hearings[hearings.length - 1].id}
+                  acreenciasConciliadas={acreencias}
+                />
+              )}
+              {caso.tipo_tramite === "conciliacion" && (
+                <CrearActaConciliacion caseId={id} hearingId={hearings[hearings.length - 1].id} />
+              )}
+              {caso.tipo_tramite === "acuerdo_apoyo" && (
+                <CrearActaAcuerdoApoyo caseId={id} hearingId={hearings[hearings.length - 1].id} />
+              )}
+            </div>
+          )}
+
+          {subAudiencia === "acta" && hearings.length === 0 && (
+            <ProgramarAudienciaInlineCard
+              caseId={id}
+              conciliadores={conciliadoresList}
+              salas={salasList}
+              defaultConciliadorId={caso.conciliador_id ?? null}
+              tipoTramite={caso.tipo_tramite}
+            />
+          )}
+        </>
       )}
 
       {activeTab === "procesos" && (
