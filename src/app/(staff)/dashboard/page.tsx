@@ -404,7 +404,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         id: `cambio-${caseId}`,
         icon: "yellow",
         text: `Cambio de apoderado reciente en caso ${caso.numero_radicado}`,
-        link: `/expediente/${caseId}?tab=poderes`,
+        link: `/expediente/${caseId}?tab=documentos&sub=poderes`,
       });
     }
   }
@@ -417,7 +417,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         id: `checklist-${caseId}`,
         icon: "yellow",
         text: `Checklist de admisión incompleta en caso ${caso.numero_radicado}`,
-        link: `/expediente/${caseId}?tab=admision`,
+        link: `/expediente/${caseId}?tab=documentos&sub=admision`,
       });
     }
   }
@@ -678,7 +678,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                                 </a>
                               ) : (
                                 <Link
-                                  href={`/expediente/${c.id}?tab=poderes`}
+                                  href={`/expediente/${c.id}?tab=documentos&sub=poderes`}
                                   title="Subir poder"
                                   className="text-amber-600 hover:opacity-70"
                                 >
@@ -695,12 +695,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                         <td className="px-3 py-3 text-center">
                           <div className="flex items-center justify-center gap-1">
                             {hasCambioApoderado && (
-                              <Link href={`/expediente/${c.id}?tab=poderes`} title="Cambio de apoderado reciente">
+                              <Link href={`/expediente/${c.id}?tab=documentos&sub=poderes`} title="Cambio de apoderado reciente">
                                 <Users className="w-3.5 h-3.5 text-orange-500" />
                               </Link>
                             )}
                             {hasChecklistIncompleta && (
-                              <Link href={`/expediente/${c.id}?tab=admision`} title="Checklist de admisión incompleta">
+                              <Link href={`/expediente/${c.id}?tab=documentos&sub=admision`} title="Checklist de admisión incompleta">
                                 <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                               </Link>
                             )}

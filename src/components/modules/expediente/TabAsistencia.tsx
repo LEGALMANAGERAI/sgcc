@@ -265,7 +265,7 @@ export function TabAsistencia({
                 <StatusChip value={hearing.estado} type="hearing" />
                 {hearing.estado === "finalizada" && (
                   <a
-                    href={`/expediente/${caseId}?tab=documentos`}
+                    href={`/expediente/${caseId}?tab=documentos&sub=soportes`}
                     className="inline-flex items-center gap-1 text-xs text-[#1B4F9B] hover:underline font-medium"
                   >
                     Ver acta/documentos
@@ -578,7 +578,7 @@ function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any 
       if (resultado === "suspendida") {
         window.location.reload();
       } else {
-        window.location.href = `/expediente/${caseId}?tab=acta`;
+        window.location.href = `/expediente/${caseId}?tab=audiencia&sub=acta`;
       }
     } catch (e: any) {
       setErrorFin(`Error de red: ${e?.message ?? "desconocido"}`);
