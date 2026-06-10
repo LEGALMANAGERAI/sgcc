@@ -106,6 +106,7 @@ function toDate(iso: string | null | undefined) {
 export function EditarEtapaModal({ etapa, caso, partes, audiencias, actas, conciliadores, secretarios, salas, onClose, onMoverEtapa }: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [moviendo, setMoviendo] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
@@ -501,13 +502,20 @@ export function EditarEtapaModal({ etapa, caso, partes, audiencias, actas, conci
           {onMoverEtapa && (
             <button
               type="button"
+              disabled={moviendo}
               onClick={async () => {
-                await onMoverEtapa();
-                onClose();
+                if (moviendo) return;
+                setMoviendo(true);
+                try {
+                  await onMoverEtapa();
+                  onClose();
+                } finally {
+                  setMoviendo(false);
+                }
               }}
-              className="text-sm font-medium text-[#1B4F9B] hover:underline mr-auto"
+              className="text-sm font-medium text-[#1B4F9B] hover:underline mr-auto disabled:opacity-50 disabled:no-underline"
             >
-              Marcar como etapa actual del caso
+              {moviendo ? "Moviendo..." : "Marcar como etapa actual del caso"}
             </button>
           )}
           <button onClick={onClose} className="text-sm text-gray-600 hover:underline">Cancelar</button>
