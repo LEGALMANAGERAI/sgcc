@@ -9,14 +9,16 @@ import {
   Loader2,
   CheckCircle2,
   FileDown,
+  RefreshCw,
 } from "lucide-react";
-import type { FirmaEstado } from "@/types/firma";
+import type { FirmaEstado, FirmaProveedor } from "@/types/firma";
 
 interface Props {
   documentId: string;
   estado: FirmaEstado;
   archivoUrl: string;
   archivoFirmadoUrl: string | null;
+  proveedor: FirmaProveedor;
 }
 
 export function FirmaDetailActions({
@@ -24,6 +26,7 @@ export function FirmaDetailActions({
   estado,
   archivoUrl,
   archivoFirmadoUrl,
+  proveedor,
 }: Props) {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [result, setResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -31,6 +34,8 @@ export function FirmaDetailActions({
 
   const canEnviar = estado === "pendiente";
   const canRecordatorio = estado === "enviado" || estado === "en_proceso";
+  // Firma vía Legal Manager: permitir re-consultar el estado real (respaldo si se perdió un webhook).
+  const canSincronizar = proveedor === "lm" && (estado === "enviado" || estado === "en_proceso");
   const canCancelar = estado !== "completado" && estado !== "rechazado" && estado !== "expirado" && estado !== "cancelado";
   const canDescargarFirmado = estado === "completado" && archivoFirmadoUrl;
 
@@ -118,6 +123,23 @@ export function FirmaDetailActions({
                 <Bell className="w-4 h-4" />
               )}
               Enviar recordatorio
+            </button>
+          )}
+
+          {/* Sincronizar estado con Legal Manager */}
+          {canSincronizar && (
+            <button
+              onClick={() => doAction("sincronizar")}
+              disabled={!!loadingAction}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-[#1B4F9B] text-[#1B4F9B] rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors disabled:opacity-50"
+              title="Vuelve a consultar el estado real en Legal Manager (útil si alguien firmó pero aparece pendiente)"
+            >
+              {loadingAction === "sincronizar" ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              Sincronizar estado con Legal Manager
             </button>
           )}
 

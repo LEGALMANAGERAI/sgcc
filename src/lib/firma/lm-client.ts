@@ -118,6 +118,16 @@ export async function lmGetSolicitud(solicitudId: string): Promise<any> {
 }
 
 /**
+ * GET /solicitudes/{id}/documento — descarga el PDF firmado.
+ * LM responde 302 hacia una signed URL temporal; al seguir el redirect (default)
+ * obtenemos el PDF. Devolvemos la Response cruda para hacer streaming al cliente.
+ * Útil para servir el documento firmado siempre fresco (las signed URL de LM son cortas).
+ */
+export async function lmDescargarDocumento(solicitudId: string): Promise<Response> {
+  return lmFetch(`/solicitudes/${solicitudId}/documento`, { method: "GET" });
+}
+
+/**
  * Verifica la firma HMAC de un webhook de LM + anti-replay.
  * Firma = HMAC_SHA256(WEBHOOK_SECRET, "<timestamp>.<raw_body>").
  * Rechaza si el timestamp tiene más de 5 minutos (anti-replay).
