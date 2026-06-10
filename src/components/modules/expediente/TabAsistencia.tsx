@@ -26,6 +26,7 @@ interface TabAsistenciaProps {
   parties: any[];
   attorneys: any[];
   attendance: any[];
+  tipoTramite?: string;
 }
 
 /* ─── Component ─────────────────────────────────────────────────────────── */
@@ -36,6 +37,7 @@ export function TabAsistencia({
   parties,
   attorneys,
   attendance,
+  tipoTramite,
 }: TabAsistenciaProps) {
   // Client-only render para evitar hydration mismatch por fechas formateadas.
   const [mounted, setMounted] = useState(false);
@@ -499,7 +501,7 @@ export function TabAsistencia({
               hearing.estado === "en_curso" ||
               hearing.estado === "suspendida") &&
               hasAttendanceRecords && (
-                <FinalizarAudiencia caseId={caseId} hearing={hearing} />
+                <FinalizarAudiencia caseId={caseId} hearing={hearing} tipoTramite={tipoTramite} />
               )}
           </section>
         );
@@ -510,13 +512,27 @@ export function TabAsistencia({
 
 /* ─── Componente auxiliar: Finalizar audiencia ─────────────────────────── */
 
-function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any }) {
+function FinalizarAudiencia({ caseId, hearing, tipoTramite }: { caseId: string; hearing: any; tipoTramite?: string }) {
   const [resultado, setResultado] = useState("");
   const [fechaCont, setFechaCont] = useState("");
   const [maxFecha, setMaxFecha] = useState("");
   const [sugerida, setSugerida] = useState("");
   const [savingFin, setSavingFin] = useState(false);
   const [errorFin, setErrorFin] = useState("");
+
+  // "suspendida" (continuar) y "suspendida_objeciones" (impugnación) dejan la audiencia suspendida.
+  const esSuspension = resultado === "suspendida" || resultado === "suspendida_objeciones";
+
+  // Plazos de objeciones/impugnación contados en días hábiles desde el día de la audiencia:
+  // 5 días para objeciones del objetante, otros 5 para descorrer el traslado; al final del
+  // día 10 se remite el expediente al juzgado.
+  let venceObjeciones = "";
+  let venceTraslado = "";
+  if (resultado === "suspendida_objeciones") {
+    const D = new Date(hearing.fecha_hora);
+    venceObjeciones = sumarDiasHabiles(D, 5).toISOString().split("T")[0];
+    venceTraslado = sumarDiasHabiles(D, 10).toISOString().split("T")[0];
+  }
 
   function handleResultadoChange(val: string) {
     setResultado(val);
@@ -563,7 +579,7 @@ function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           hearing_id: hearing.id,
-          estado: resultado === "suspendida" ? "suspendida" : "finalizada",
+          estado: esSuspension ? "suspendida" : "finalizada",
           resultado,
           fecha_continuacion: resultado === "suspendida" ? fechaCont : null,
         }),
@@ -575,7 +591,7 @@ function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any 
         return;
       }
 
-      if (resultado === "suspendida") {
+      if (esSuspension) {
         window.location.reload();
       } else {
         window.location.href = `/expediente/${caseId}?tab=audiencia&sub=acta`;
@@ -615,6 +631,9 @@ function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any 
             {!yaSuspendida && (
               <option value="suspendida">Suspendida - continuar</option>
             )}
+            {!yaSuspendida && tipoTramite === "insolvencia" && (
+              <option value="suspendida_objeciones">Suspendida - resolver objeciones</option>
+            )}
             {yaSuspendida && (
               <option value="suspendida">Reprogramar nueva fecha</option>
             )}
@@ -643,6 +662,27 @@ function FinalizarAudiencia({ caseId, hearing }: { caseId: string; hearing: any 
           </div>
         )}
       </div>
+
+      {resultado === "suspendida_objeciones" && (
+        <div className="mt-4 max-w-xl bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          <p className="text-xs font-semibold text-amber-800 mb-2">
+            Suspensión para resolver objeciones — plazos en días hábiles
+          </p>
+          <ul className="text-xs text-amber-900 space-y-1">
+            <li>
+              • Objeciones del objetante (5 días háb.): vence{" "}
+              <strong>{venceObjeciones && new Date(venceObjeciones + "T12:00:00").toLocaleDateString("es-CO")}</strong>
+            </li>
+            <li>
+              • Descorre del traslado (otros 5 días háb.) y remisión al juzgado:{" "}
+              <strong>{venceTraslado && new Date(venceTraslado + "T12:00:00").toLocaleDateString("es-CO")}</strong>
+            </li>
+          </ul>
+          <p className="text-[10px] text-amber-700 mt-2">
+            Se crearán recordatorios en la agenda del centro con estas fechas.
+          </p>
+        </div>
+      )}
 
       <button
         onClick={handleFinalizar}

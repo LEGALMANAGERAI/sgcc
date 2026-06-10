@@ -5,6 +5,7 @@ import { resolveCenterId } from "@/lib/server-utils";
 import { notify } from "@/lib/notifications";
 import { randomUUID } from "crypto";
 import { recomputeCaseEstadoTrasAudiencia } from "@/lib/casos/audiencia-estado";
+import { sumarDiasHabiles } from "@/lib/dias-habiles-colombia";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: caseId } = await params;
@@ -256,6 +257,75 @@ export async function PATCH(
       referencia_id: hearing_id,
       created_at: now,
     });
+  }
+
+  // Suspensión para resolver objeciones (impugnación, Art. 551/557): genera
+  // recordatorios en la agenda del centro con los plazos legales (5 días hábiles
+  // para objeciones del objetante + 5 días para descorrer el traslado; al final
+  // del día 10 se remite el expediente al juzgado).
+  if (resultado === "suspendida_objeciones") {
+    const centerId = resolveCenterId(session);
+    const { data: hearingRow } = await supabaseAdmin
+      .from("sgcc_hearings")
+      .select("fecha_hora")
+      .eq("id", hearing_id)
+      .eq("case_id", caseId)
+      .single();
+    const { data: casoRow } = await supabaseAdmin
+      .from("sgcc_cases")
+      .select("numero_radicado, conciliador_id, tipo_tramite")
+      .eq("id", caseId)
+      .single();
+
+    if (centerId && hearingRow?.fecha_hora && casoRow?.tipo_tramite === "insolvencia") {
+      const D = new Date(hearingRow.fecha_hora);
+      const venceObjeciones = sumarDiasHabiles(D, 5).toISOString().split("T")[0];
+      const venceTraslado = sumarDiasHabiles(D, 10).toISOString().split("T")[0];
+      const staffId = casoRow.conciliador_id ?? (session.user as any).id;
+      const radicado = casoRow.numero_radicado ?? "";
+
+      if (staffId) {
+        await supabaseAdmin.from("sgcc_agenda_items").insert([
+          {
+            id: randomUUID(),
+            center_id: centerId,
+            staff_id: staffId,
+            tipo: "pendiente",
+            titulo: `Vence plazo de objeciones (objetante) — ${radicado}`,
+            descripcion:
+              "Plazo de 5 días hábiles para que el objetante presente objeciones por escrito.",
+            fecha: venceObjeciones,
+            caso_id: caseId,
+            created_at: now,
+            updated_at: now,
+          },
+          {
+            id: randomUUID(),
+            center_id: centerId,
+            staff_id: staffId,
+            tipo: "pendiente",
+            titulo: `Descorre del traslado y remisión al juzgado — ${radicado}`,
+            descripcion:
+              "Vence el plazo de 5 días para descorrer el traslado; al final del día se remite el expediente al juzgado.",
+            fecha: venceTraslado,
+            caso_id: caseId,
+            created_at: now,
+            updated_at: now,
+          },
+        ]);
+      }
+
+      await supabaseAdmin.from("sgcc_case_timeline").insert({
+        id: randomUUID(),
+        case_id: caseId,
+        etapa: "audiencia",
+        descripcion: `Audiencia suspendida para resolver objeciones. Objeciones del objetante hasta ${venceObjeciones}; descorre del traslado y remisión al juzgado el ${venceTraslado}.`,
+        completado: false,
+        fecha: now,
+        referencia_id: hearing_id,
+        created_at: now,
+      });
+    }
   }
 
   return NextResponse.json({ success: true });
