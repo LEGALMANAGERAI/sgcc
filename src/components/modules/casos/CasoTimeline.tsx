@@ -36,6 +36,19 @@ const STEP_HREF: Record<string, string> = {
   archivo: "",
 };
 
+const TIPO_AUD_LABEL: Record<string, string> = {
+  inicial: "Inicial",
+  continuacion: "Continuación",
+  complementaria: "Complementaria",
+};
+const ESTADO_AUD_COLOR: Record<string, string> = {
+  programada: "bg-blue-50 text-blue-700 border-blue-200",
+  en_curso: "bg-amber-50 text-amber-700 border-amber-200",
+  finalizada: "bg-green-50 text-green-700 border-green-200",
+  suspendida: "bg-orange-50 text-orange-700 border-orange-200",
+  cancelada: "bg-gray-100 text-gray-400 border-gray-200 line-through",
+};
+
 interface Props {
   caseId: string;
   estado: CaseEstado;
@@ -174,6 +187,39 @@ export function CasoTimeline({ caseId, estado, events, caso, partes, audiencias,
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-5 pt-4 border-t border-gray-100">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[11px] font-semibold text-gray-500 mr-1">Audiencias:</span>
+          {audiencias.length === 0 && (
+            <span className="text-[11px] text-gray-400 italic mr-1">Ninguna programada</span>
+          )}
+          {audiencias.map((aud) => (
+            <Link
+              key={aud.id}
+              href={`/expediente/${caseId}?tab=audiencia&sub=asistencia`}
+              className={clsx(
+                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors hover:brightness-95",
+                ESTADO_AUD_COLOR[aud.estado] ?? "bg-gray-50 text-gray-600 border-gray-200"
+              )}
+              title={`${TIPO_AUD_LABEL[aud.tipo] ?? aud.tipo} · ${aud.estado}`}
+            >
+              <Mic className="w-3 h-3" />
+              {TIPO_AUD_LABEL[aud.tipo] ?? aud.tipo}
+              {aud.fecha_hora && (
+                <span className="opacity-70">· <ClientDate iso={aud.fecha_hora} mode="date" /></span>
+              )}
+            </Link>
+          ))}
+          <Link
+            href={`/casos/${caseId}/audiencia`}
+            className="inline-flex items-center justify-center w-6 h-6 rounded-full border-2 border-dashed border-[#1B4F9B]/40 text-[#1B4F9B] hover:bg-[#1B4F9B]/10 transition-colors"
+            title="Programar nueva audiencia"
+          >
+            +
+          </Link>
+        </div>
       </div>
 
       {editingEtapa && (
