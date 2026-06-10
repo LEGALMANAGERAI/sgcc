@@ -74,6 +74,7 @@ interface Props {
   secretarios: Staff[];
   salas: Sala[];
   onClose: () => void;
+  onMoverEtapa?: () => void | Promise<void>;
 }
 
 const MATERIAS = ["civil", "comercial", "laboral", "familiar", "consumidor", "arrendamiento", "otro"];
@@ -102,7 +103,7 @@ function toDate(iso: string | null | undefined) {
   return new Date(iso).toISOString().slice(0, 10);
 }
 
-export function EditarEtapaModal({ etapa, caso, partes, audiencias, actas, conciliadores, secretarios, salas, onClose }: Props) {
+export function EditarEtapaModal({ etapa, caso, partes, audiencias, actas, conciliadores, secretarios, salas, onClose, onMoverEtapa }: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -496,7 +497,19 @@ export function EditarEtapaModal({ etapa, caso, partes, audiencias, actas, conci
           )}
         </div>
 
-        <div className="flex justify-end gap-3 p-4 border-t border-gray-100 bg-gray-50">
+        <div className="flex items-center gap-3 p-4 border-t border-gray-100 bg-gray-50">
+          {onMoverEtapa && (
+            <button
+              type="button"
+              onClick={async () => {
+                await onMoverEtapa();
+                onClose();
+              }}
+              className="text-sm font-medium text-[#1B4F9B] hover:underline mr-auto"
+            >
+              Marcar como etapa actual del caso
+            </button>
+          )}
           <button onClick={onClose} className="text-sm text-gray-600 hover:underline">Cancelar</button>
           <button onClick={handleSubmit} disabled={saving || success} className="bg-[#0D2340] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#0d2340dd] disabled:opacity-50">
             {success ? "Guardado ✓" : saving ? "Guardando..." : "Guardar cambios"}

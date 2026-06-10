@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { clsx } from "clsx";
 import {
   Check,
@@ -12,7 +13,6 @@ import {
   ClipboardCheck,
   Archive,
   Pencil,
-  Loader2,
 } from "lucide-react";
 import type { CaseEstado, TimelineEtapa } from "@/types";
 import { EditarEtapaModal } from "./EditarEtapaModal";
@@ -26,6 +26,15 @@ const STEPS: { etapa: TimelineEtapa; label: string; icon: React.ElementType; act
   { etapa: "acta", label: "Acta", icon: ClipboardCheck, activatesAt: ["cerrado"] },
   { etapa: "archivo", label: "Archivo", icon: Archive, activatesAt: ["cerrado"] },
 ];
+
+const STEP_HREF: Record<string, string> = {
+  solicitud: "",
+  admision: "?tab=documentos&sub=admision",
+  citacion: "?tab=documentos&sub=soportes",
+  audiencia: "?tab=audiencia&sub=asistencia",
+  acta: "?tab=audiencia&sub=acta",
+  archivo: "",
+};
 
 interface Props {
   caseId: string;
@@ -92,7 +101,7 @@ export function CasoTimeline({ caseId, estado, events, caso, partes, audiencias,
       <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
         <h3 className="text-sm font-semibold text-gray-700">Flujo del caso</h3>
         <p className="text-[11px] text-gray-400">
-          Click en el círculo de una etapa para mover el caso · ✏️ para editar
+          Click en una etapa para ir a su pestaña · ✏️ para editar o mover el caso
         </p>
       </div>
       {errorMover && (
@@ -121,19 +130,12 @@ export function CasoTimeline({ caseId, estado, events, caso, partes, audiencias,
                   )}
                 />
               )}
-              <button
-                type="button"
-                onClick={() => moverAEtapa(step.etapa)}
-                disabled={moviendoEtapa !== null || isCurrent}
-                title={
-                  isCurrent
-                    ? `Etapa actual: ${step.label}`
-                    : `Mover el caso a la etapa "${step.label}"`
-                }
+              <Link
+                href={`/expediente/${caseId}${STEP_HREF[step.etapa] ?? ""}`}
+                title={`Ir a ${step.label}`}
                 className={clsx(
                   "w-8 h-8 rounded-full flex items-center justify-center z-10 transition-all",
                   "hover:scale-110 hover:ring-2 hover:ring-[#0D2340]/30 cursor-pointer",
-                  "disabled:cursor-default disabled:hover:scale-100 disabled:hover:ring-0",
                   isCompleted
                     ? "bg-[#0D2340] text-white"
                     : isCurrent
@@ -143,14 +145,8 @@ export function CasoTimeline({ caseId, estado, events, caso, partes, audiencias,
                     : "bg-gray-100 text-gray-400 border-2 border-gray-200 hover:bg-gray-200 hover:text-[#0D2340] hover:border-[#0D2340]"
                 )}
               >
-                {moviendoEtapa === step.etapa ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : isCompleted ? (
-                  <Check className="w-4 h-4" />
-                ) : (
-                  <step.icon className="w-3.5 h-3.5" />
-                )}
-              </button>
+                {isCompleted ? <Check className="w-4 h-4" /> : <step.icon className="w-3.5 h-3.5" />}
+              </Link>
               <p
                 className={clsx(
                   "text-xs mt-2 font-medium text-center",
@@ -191,6 +187,7 @@ export function CasoTimeline({ caseId, estado, events, caso, partes, audiencias,
           secretarios={secretarios}
           salas={salas}
           onClose={() => setEditingEtapa(null)}
+          onMoverEtapa={() => moverAEtapa(editingEtapa)}
         />
       )}
 
