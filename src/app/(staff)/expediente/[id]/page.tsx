@@ -578,6 +578,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
                   parties={parties}
                   attorneys={attorneys}
                   attendance={attendance}
+                  tipoTramite={caso.tipo_tramite}
                 />
               ) : (
                 <ProgramarAudienciaInlineCard
