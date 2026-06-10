@@ -112,7 +112,7 @@ export function ApoderadoHistorial({ attorneyId, nombre, onClose }: Props) {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <Link
-                            href={`/expediente/${r.case_id}?tab=poderes`}
+                            href={`/expediente/${r.case_id}?tab=documentos&sub=poderes`}
                             className="text-sm font-medium text-[#1B4F9B] hover:underline"
                           >
                             {r.caso?.numero_radicado ?? "Sin radicado"}

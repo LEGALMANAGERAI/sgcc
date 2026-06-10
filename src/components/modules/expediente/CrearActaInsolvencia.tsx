@@ -21,6 +21,7 @@ import type { ActaTipo } from "@/types";
 interface CrearActaInsolvenciaProps {
   caseId: string;
   hearingId: string;
+  acreenciasConciliadas?: any[];
 }
 
 type TipoActaInsolvencia =
@@ -53,7 +54,7 @@ interface Obligacion {
   monto: string;
 }
 
-export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvenciaProps) {
+export function CrearActaInsolvencia({ caseId, hearingId, acreenciasConciliadas = [] }: CrearActaInsolvenciaProps) {
   const { data: contexto, loading, error: contextoError, refresh } = useContextoAudiencia(
     caseId,
     hearingId
@@ -127,6 +128,40 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
     },
     []
   );
+
+  // Total conciliado de una acreencia = capital + intereses + seguros + otros (columnas con_*)
+  const totalConciliado = useCallback((a: any) => {
+    return (
+      Number(a.con_capital ?? 0) +
+      Number(a.con_intereses_corrientes ?? 0) +
+      Number(a.con_intereses_moratorios ?? 0) +
+      Number(a.con_seguros ?? 0) +
+      Number(a.con_otros ?? 0)
+    );
+  }, []);
+
+  const conciliadasDisponibles = useMemo(
+    () => acreenciasConciliadas.filter((a) => totalConciliado(a) > 0),
+    [acreenciasConciliadas, totalConciliado]
+  );
+
+  const importarObligacionesConciliadas = useCallback(() => {
+    const CLASE_LABEL: Record<string, string> = {
+      primera: "1ª clase", segunda: "2ª clase", tercera: "3ª clase",
+      cuarta: "4ª clase", quinta: "5ª clase",
+    };
+    const importadas: Obligacion[] = conciliadasDisponibles.map((a) => ({
+      acreedor: a.acreedor_nombre ?? "",
+      obligacion: `Crédito ${CLASE_LABEL[a.clase_credito] ?? a.clase_credito ?? ""} conciliado`.trim(),
+      plazo: "",
+      monto: String(totalConciliado(a)),
+    }));
+    const tieneContenido = obligaciones.some((ob) => ob.acreedor || ob.obligacion || ob.monto);
+    if (tieneContenido && !confirm("Esto reemplazará las obligaciones actuales con las conciliadas. ¿Continuar?")) {
+      return;
+    }
+    setObligaciones(importadas.length ? importadas : [{ acreedor: "", obligacion: "", plazo: "", monto: "" }]);
+  }, [conciliadasDisponibles, totalConciliado, obligaciones]);
 
   function resultadoActaTipo(t: TipoActaInsolvencia): ActaTipo {
     return TIPO_INSOLVENCIA_A_ACTA[t];
@@ -359,14 +394,26 @@ export function CrearActaInsolvencia({ caseId, hearingId }: CrearActaInsolvencia
               <label className="text-sm font-medium text-gray-700">
                 Obligaciones pactadas
               </label>
-              <button
-                type="button"
-                onClick={agregarObligacion}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#1B4F9B] bg-blue-50 hover:bg-blue-100 rounded-lg"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Agregar
-              </button>
+              <div className="flex items-center">
+                {conciliadasDisponibles.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={importarObligacionesConciliadas}
+                    className="text-xs font-medium text-[#1B4F9B] hover:underline mr-3"
+                    title="Carga las obligaciones desde la relación definitiva conciliada"
+                  >
+                    ↓ Importar obligación conciliada ({conciliadasDisponibles.length})
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={agregarObligacion}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#1B4F9B] bg-blue-50 hover:bg-blue-100 rounded-lg"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Agregar
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3">
