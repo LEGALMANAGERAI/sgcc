@@ -154,11 +154,11 @@ Hoy el nodo "Audiencia" del timeline es **único**, aunque `CasoTimeline` ya rec
 - **No romper:** verificar que mover la etapa del caso sigue funcionando (desde el modal) y que la colaboración en tiempo real (`CollaborationBar`) y el contador de término no se afectan.
 - **Regresión de enlaces:** buscar en el código todos los `?tab=` y confirmar que la redirección los cubre.
 
-## 8. Decisiones abiertas (a confirmar por el usuario antes de implementar)
+## 8. Decisiones (confirmadas por el usuario 2026-06-09)
 
-1. **Mover etapa del caso:** ¿OK quitar el "mover etapa" del clic en el círculo del timeline y dejarlo como botón explícito dentro del modal de editar etapa? (Evita movimientos accidentales, pero cambia un comportamiento existente.)
-2. **Citación:** hoy "Citación" es una etapa del timeline pero no tiene pestaña propia. ¿La dejamos navegando a `Documentos > Soportes`, o querés una sub-pestaña/sección de Citación en algún lado?
-3. **Procesos** (vigilancia rama judicial): ¿se queda como 4ª pestaña de nivel superior, o preferís moverla a una sub-pestaña dentro de otra (p. ej. Documentos) ya que es un concepto lateral?
+1. **Mover etapa del caso:** ✅ El clic en el timeline **navega** a la pestaña. "Mover etapa del caso" pasa a ser un **botón explícito** dentro de `EditarEtapaModal` (evita movimientos accidentales).
+2. **Citación:** ✅ La etapa "Citación" del timeline **navega a `Documentos > Soportes`** (no requiere pestaña propia).
+3. **Procesos** (vigilancia rama judicial): ✅ **Se queda como 4ª pestaña** de nivel superior.
 
 ## 9. Riesgos
 
