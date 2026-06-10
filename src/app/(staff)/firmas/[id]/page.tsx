@@ -288,6 +288,7 @@ export default async function FirmaDetailPage({ params }: PageProps) {
             estado={doc.estado}
             archivoUrl={doc.archivo_url}
             archivoFirmadoUrl={doc.archivo_firmado_url}
+            proveedor={doc.proveedor}
           />
 
           {/* Audit trail */}
