@@ -6,6 +6,10 @@ import { lmConfigured, lmGetSolicitud } from "@/lib/firma/lm-client";
 
 type Params = { params: Promise<{ id: string }> };
 
+// Normaliza para comparar emails/nombres sin importar mayúsculas/espacios/acentos.
+const norm = (s: string | null | undefined) =>
+  (s ?? "").trim().toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+
 // Estado de la solicitud en LM → estado del documento en SIGECC.
 const ESTADO_DOC: Record<string, string> = {
   Pendiente: "pendiente",
@@ -35,7 +39,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   const { data: documento } = await supabaseAdmin
     .from("sgcc_firma_documentos")
-    .select("id, estado, proveedor, lm_solicitud_id, total_firmantes, firmantes:sgcc_firmantes(id, estado, firmado_at, lm_firmante_id)")
+    .select("id, estado, proveedor, lm_solicitud_id, total_firmantes, firmantes:sgcc_firmantes(id, nombre, email, estado, firmado_at, lm_firmante_id)")
     .eq("id", id)
     .eq("center_id", centerId)
     .single();
@@ -66,30 +70,50 @@ export async function POST(_req: NextRequest, { params }: Params) {
   const firmantesLocales: any[] = documento.firmantes ?? [];
   const firmantesLm: any[] = Array.isArray(lm?.firmantes) ? lm.firmantes : [];
 
-  // Reconciliar cada firmante por lm_firmante_id. Solo "subimos" a estados
-  // terminales (firmado / rechazado / expirado); no degradamos estados intermedios.
+  // Reconciliar cada firmante. Match primario por lm_firmante_id; si falla (p. ej.
+  // el id quedó mal guardado al emparejar por nombre en el envío), cae a match por
+  // EMAIL y auto-corrige el lm_firmante_id. Solo "subimos" a estados terminales
+  // (firmado / rechazado / expirado); no degradamos estados intermedios.
   let firmantesActualizados = 0;
+  const diag: string[] = []; // qué reporta LM de cada firmante (para diagnóstico)
+
   for (const lf of firmantesLm) {
-    const match = firmantesLocales.find(
-      (f) => f.lm_firmante_id && f.lm_firmante_id === lf.firmante_id,
-    );
-    if (!match) continue;
-
-    const estadoLm = String(lf.estado ?? "").toLowerCase();
-    let update: { estado: string; firmado_at?: string } | null = null;
-
-    if (lf.firmado_at || estadoLm.includes("firmad") || estadoLm.includes("complet")) {
-      update = { estado: "firmado", firmado_at: lf.firmado_at ?? match.firmado_at ?? now };
-    } else if (estadoLm.includes("rechaz")) {
-      update = { estado: "rechazado" };
-    } else if (estadoLm.includes("expir")) {
-      update = { estado: "expirado" };
+    let match = firmantesLocales.find((f) => f.lm_firmante_id && f.lm_firmante_id === lf.firmante_id);
+    let matchPorEmail = false;
+    if (!match && lf.email) {
+      match = firmantesLocales.find((f) => f.email && norm(f.email) === norm(lf.email));
+      matchPorEmail = Boolean(match);
     }
 
-    if (update && update.estado !== match.estado) {
-      await supabaseAdmin.from("sgcc_firmantes").update(update).eq("id", match.id);
-      firmantesActualizados++;
+    const estadoLm = String(lf.estado ?? "").toLowerCase();
+    diag.push(`${lf.nombre || lf.email || lf.firmante_id} → ${lf.estado ?? "?"}`);
 
+    if (!match) continue;
+
+    const update: Record<string, any> = {};
+    // Auto-corregir el lm_firmante_id si emparejamos por email o estaba desincronizado.
+    if (matchPorEmail || match.lm_firmante_id !== lf.firmante_id) {
+      update.lm_firmante_id = lf.firmante_id;
+    }
+
+    let nuevoEstado: string | null = null;
+    if (lf.firmado_at || estadoLm.includes("firmad") || estadoLm.includes("complet")) {
+      nuevoEstado = "firmado";
+    } else if (estadoLm.includes("rechaz")) {
+      nuevoEstado = "rechazado";
+    } else if (estadoLm.includes("expir")) {
+      nuevoEstado = "expirado";
+    }
+    if (nuevoEstado && nuevoEstado !== match.estado) {
+      update.estado = nuevoEstado;
+      if (nuevoEstado === "firmado") update.firmado_at = lf.firmado_at ?? match.firmado_at ?? now;
+    }
+
+    if (Object.keys(update).length === 0) continue;
+
+    await supabaseAdmin.from("sgcc_firmantes").update(update).eq("id", match.id);
+    if (update.estado) {
+      firmantesActualizados++;
       // Auditoría con acciones válidas del enum (firmado / rechazado).
       if (update.estado === "firmado" || update.estado === "rechazado") {
         await supabaseAdmin.from("sgcc_firma_registros").insert({
@@ -97,7 +121,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
           firmante_id: match.id,
           accion: update.estado,
           canal_otp: "lm",
-          metadatos: { proveedor: "lm", via: "sincronizacion_manual" },
+          metadatos: { proveedor: "lm", via: "sincronizacion_manual", match: matchPorEmail ? "email" : "id" },
         });
       }
     }
@@ -127,15 +151,22 @@ export async function POST(_req: NextRequest, { params }: Params) {
   await supabaseAdmin.from("sgcc_firma_documentos").update(docUpdate).eq("id", id);
 
   const total = documento.total_firmantes ?? firmantesLocales.length;
-  const message =
-    nuevoEstadoDoc === "completado"
-      ? `Sincronizado con Legal Manager: documento completado (${completados}/${total} firmantes). El PDF firmado ya está disponible.`
-      : `Sincronizado con Legal Manager: ${completados}/${total} firmantes firmados${
-          firmantesActualizados ? ` (${firmantesActualizados} actualizado(s))` : ""
-        }.`;
+  let message: string;
+  if (nuevoEstadoDoc === "completado") {
+    message = `Sincronizado con Legal Manager: documento completado (${completados}/${total} firmantes). El PDF firmado ya está disponible.`;
+  } else if (firmantesActualizados > 0) {
+    message = `Sincronizado con Legal Manager: ${completados}/${total} firmantes firmados (${firmantesActualizados} actualizado(s)).`;
+  } else {
+    // Nada cambió: mostramos lo que LM reporta de cada firmante para diagnosticar.
+    const detalle = diag.length ? ` Según Legal Manager: ${diag.join("; ")}.` : "";
+    message = `Sin cambios: Legal Manager reporta ${completados}/${total} firmantes firmados.${detalle} Si alguien firmó pero LM lo muestra como "Enviado/Pendiente", la firma no se completó en Legal Manager.`;
+  }
+
+  const changed = firmantesActualizados > 0 || nuevoEstadoDoc !== documento.estado;
 
   return NextResponse.json({
     ok: true,
+    changed,
     estado: nuevoEstadoDoc,
     firmantes_completados: completados,
     total,

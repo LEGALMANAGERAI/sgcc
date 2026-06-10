@@ -55,8 +55,12 @@ export function FirmaDetailActions({
         setResult({ type: "error", message: data.error ?? "Error al ejecutar la acci\u00f3n" });
       } else {
         setResult({ type: "success", message: data.message ?? "Acci\u00f3n completada" });
-        // Recargar la p\u00e1gina para reflejar cambios
-        setTimeout(() => window.location.reload(), 1500);
+        // Recargar para reflejar cambios. Si la acci\u00f3n no cambi\u00f3 nada
+        // (data.changed === false, p. ej. sincronizar sin novedades), dejamos el
+        // mensaje visible para poder leer el diagn\u00f3stico.
+        if (data.changed !== false) {
+          setTimeout(() => window.location.reload(), 1500);
+        }
       }
     } catch {
       setResult({ type: "error", message: "Error de conexi\u00f3n" });
