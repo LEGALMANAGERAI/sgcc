@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
 import { generarTokenFirma } from "@/lib/firma/tokens";
 import { calcularHashSHA256 } from "@/lib/firma/pdf";
+import { firmaActivaDelCaso, mensajeDuplicado } from "@/lib/firma/duplicados";
 import { randomUUID } from "crypto";
 
 type Params = { params: Promise<{ id: string }> };
@@ -31,9 +32,21 @@ export async function POST(req: NextRequest, { params }: Params) {
   const userId = (session.user as any)?.id;
 
   try {
-    const { acta_id } = await req.json();
+    const { acta_id, confirmar_duplicado } = await req.json();
     if (!acta_id) {
       return NextResponse.json({ error: "acta_id es requerido" }, { status: 400 });
+    }
+
+    // Evitar duplicados: si el caso ya tiene un documento de firma activo, avisar
+    // (salvo confirmación explícita). Previene mandar el acta a firma dos veces.
+    if (!confirmar_duplicado) {
+      const existente = await firmaActivaDelCaso(caseId, centerId);
+      if (existente) {
+        return NextResponse.json(
+          { error: mensajeDuplicado(existente), requiere_confirmacion: true, existente },
+          { status: 409 },
+        );
+      }
     }
 
     // 1. Obtener el acta
