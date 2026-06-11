@@ -19,6 +19,7 @@ import { ProgramarAudienciaInlineCard } from "@/components/modules/expediente/Pr
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { HerramientaAcreencias } from "@/components/modules/insolvencia/HerramientaAcreencias";
+import { GenerarAutoSuspension } from "@/components/modules/autos/GenerarAutoSuspension";
 import { CasoTimeline } from "@/components/modules/casos/CasoTimeline";
 import { CollaborationBar } from "@/components/ui/CollaborationBar";
 import { HistorialObservacionesAudiencias } from "@/components/modules/expediente/HistorialObservacionesAudiencias";
@@ -315,6 +316,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
     ? [
         { key: "asistencia", label: "Asistencia" },
         { key: "acreencias", label: "Acreencias" },
+        { key: "autos", label: "Autos" },
         { key: "acta", label: "Acta" },
       ]
     : SUBTABS_AUDIENCIA_BASE;
@@ -610,6 +612,13 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
                   nombre: p.party.razon_social ?? [p.party.nombres, p.party.apellidos].filter(Boolean).join(" "),
                   documento: p.party.numero_doc ?? p.party.nit_empresa ?? "",
                 }))}
+            />
+          )}
+
+          {subAudiencia === "autos" && caso.tipo_tramite === "insolvencia" && (
+            <GenerarAutoSuspension
+              caseId={id}
+              hearingId={hearings[hearings.length - 1]?.id ?? null}
             />
           )}
 

@@ -1,0 +1,136 @@
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { supabaseAdmin } from "@/lib/supabase";
+import { resolveCenterId } from "@/lib/server-utils";
+import { randomUUID } from "crypto";
+import { resolverVariablesAuto } from "@/lib/autos/resolver-variables";
+import { generarAutoSuspension } from "@/lib/autos/generar-auto-suspension";
+import type { AutoSuspensionOpciones } from "@/lib/autos/types";
+
+type Params = { params: Promise<{ id: string }> };
+
+// ---------------------------------------------------------------------------
+// GET /api/casos/[id]/autos?hearing_id=...
+// Pre-llena el formulario del auto devolviendo ResolvedAutoVars.
+// ---------------------------------------------------------------------------
+export async function GET(req: NextRequest, { params }: Params) {
+  const { id: caseId } = await params;
+
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const centerId = resolveCenterId(session);
+  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
+
+  // Verificar que el caso pertenece al centro del usuario.
+  const { data: caso } = await supabaseAdmin
+    .from("sgcc_cases")
+    .select("id")
+    .eq("id", caseId)
+    .eq("center_id", centerId)
+    .single();
+
+  if (!caso) return NextResponse.json({ error: "Caso no encontrado" }, { status: 404 });
+
+  const hearingId = req.nextUrl.searchParams.get("hearing_id") ?? null;
+
+  try {
+    const vars = await resolverVariablesAuto(caseId, hearingId);
+    return NextResponse.json(vars);
+  } catch (err: any) {
+    console.error("[GET /autos] resolverVariablesAuto error:", err);
+    return NextResponse.json(
+      { error: err.message || "Error al resolver variables del auto" },
+      { status: 500 },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/casos/[id]/autos
+// Genera el Word del auto y lo sube a storage "sgcc-documents".
+//
+// Body: { tipo: "suspension", hearing_id: string | null, opciones: AutoSuspensionOpciones }
+// Response: { ok: true, url: string, nombre: string }
+// ---------------------------------------------------------------------------
+export async function POST(req: NextRequest, { params }: Params) {
+  const { id: caseId } = await params;
+
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const centerId = resolveCenterId(session);
+  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
+
+  // Verificar scope del centro.
+  const { data: caso } = await supabaseAdmin
+    .from("sgcc_cases")
+    .select("id")
+    .eq("id", caseId)
+    .eq("center_id", centerId)
+    .single();
+
+  if (!caso) return NextResponse.json({ error: "Caso no encontrado" }, { status: 404 });
+
+  try {
+    const body = await req.json();
+    const {
+      tipo,
+      hearing_id,
+      opciones,
+    }: { tipo: string; hearing_id: string | null; opciones: AutoSuspensionOpciones } = body;
+
+    if (!tipo) {
+      return NextResponse.json({ error: "El campo 'tipo' es requerido" }, { status: 400 });
+    }
+
+    if (tipo !== "suspension") {
+      return NextResponse.json({ error: "Tipo de auto no soportado" }, { status: 400 });
+    }
+
+    if (!opciones) {
+      return NextResponse.json({ error: "El campo 'opciones' es requerido" }, { status: 400 });
+    }
+
+    // 1. Resolver variables del caso / audiencia.
+    const vars = await resolverVariablesAuto(caseId, hearing_id ?? null);
+
+    // 2. Generar el documento Word como Buffer.
+    const buffer = await generarAutoSuspension(vars, opciones);
+
+    // 3. Subir a storage "sgcc-documents".
+    const fileId = randomUUID();
+    const storagePath = `autos/${centerId}/${caseId}/auto-suspension-${fileId}.docx`;
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from("sgcc-documents")
+      .upload(storagePath, buffer, {
+        contentType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        upsert: false,
+      });
+
+    if (uploadError) {
+      return NextResponse.json(
+        { error: `Error subiendo archivo: ${uploadError.message}` },
+        { status: 500 },
+      );
+    }
+
+    // 4. Obtener URL pública (bucket "sgcc-documents" es público según patrones existentes).
+    const { data: urlData } = supabaseAdmin.storage
+      .from("sgcc-documents")
+      .getPublicUrl(storagePath);
+
+    const url = urlData.publicUrl;
+    const nombre = "Auto de suspensión y reprogramación.docx";
+
+    return NextResponse.json({ ok: true, url, nombre }, { status: 201 });
+  } catch (err: any) {
+    console.error("[POST /autos] error:", err);
+    return NextResponse.json(
+      { error: err.message || "Error interno del servidor" },
+      { status: 500 },
+    );
+  }
+}
