@@ -82,6 +82,11 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
     departamento: center.departamento ?? "",
     telefono: center.telefono ?? "",
     email_contacto: center.email_contacto ?? "",
+    resolucion_insolvencia: center.resolucion_insolvencia ?? "",
+    codigo_ministerio: center.codigo_ministerio ?? "",
+    email_radicacion: center.email_radicacion ?? "",
+    email_secretaria: center.email_secretaria ?? "",
+    pie_vigilado: center.pie_vigilado ?? "",
     dias_habiles_citacion: center.dias_habiles_citacion,
     hora_inicio_audiencias: center.hora_inicio_audiencias,
     hora_fin_audiencias: center.hora_fin_audiencias,
@@ -484,6 +489,56 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
             </button>
           </div>
         </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-6 mt-6">
+            <h2 className="text-lg font-semibold text-[#0D2340] mb-4">Datos legales para autos</h2>
+            <p className="text-xs text-gray-500 mb-4">Estos datos se usan para generar automáticamente los autos del centro.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <InputField
+                label="Resolución de insolvencia"
+                name="resolucion_insolvencia"
+                value={form.resolucion_insolvencia}
+                onChange={handleChange}
+                placeholder="Ej: Resolución 0748 del 21 de junio de 2021"
+              />
+              <InputField
+                label="Código Ministerio de Justicia"
+                name="codigo_ministerio"
+                value={form.codigo_ministerio}
+                onChange={handleChange}
+                placeholder="Ej: 1414"
+              />
+              <InputField
+                label="Email de radicación"
+                name="email_radicacion"
+                value={form.email_radicacion}
+                onChange={handleChange}
+                type="email"
+              />
+              <InputField
+                label="Email de secretaría"
+                name="email_secretaria"
+                value={form.email_secretaria}
+                onChange={handleChange}
+                type="email"
+              />
+              <InputField
+                label="Pie de página (VIGILADO)"
+                name="pie_vigilado"
+                value={form.pie_vigilado}
+                onChange={handleChange}
+              />
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={saveCenter}
+                disabled={saving}
+                className="px-6 py-2.5 bg-[#0D2340] text-white rounded-lg text-sm font-medium hover:bg-[#0D2340]/90 disabled:opacity-50 transition-colors"
+              >
+                {saving ? "Guardando..." : "Guardar cambios"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1157,6 +1212,7 @@ function InputField({
   onChange,
   type = "text",
   disabled = false,
+  placeholder,
 }: {
   label: string;
   name?: string;
@@ -1164,6 +1220,7 @@ function InputField({
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   type?: string;
   disabled?: boolean;
+  placeholder?: string;
 }) {
   return (
     <div>
@@ -1174,6 +1231,7 @@ function InputField({
         value={value}
         onChange={onChange}
         disabled={disabled}
+        placeholder={placeholder}
         className={`w-full px-3 py-2 border rounded-lg text-sm outline-none transition-colors ${
           disabled
             ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed"

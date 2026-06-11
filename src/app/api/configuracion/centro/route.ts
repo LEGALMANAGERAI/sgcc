@@ -49,6 +49,11 @@ const CAMPOS_PERMITIDOS = [
   "radicado_digitos",
   "radicado_reinicio",
   "radicado_codigo",
+  "resolucion_insolvencia",
+  "codigo_ministerio",
+  "email_radicacion",
+  "email_secretaria",
+  "pie_vigilado",
 ] as const;
 
 const CAMPOS_PROHIBIDOS = ["nit", "resolucion_habilitacion", "tipo", "id", "created_at", "activo"];
