@@ -19,7 +19,7 @@ import { ProgramarAudienciaInlineCard } from "@/components/modules/expediente/Pr
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { HerramientaAcreencias } from "@/components/modules/insolvencia/HerramientaAcreencias";
-import { GenerarAutoSuspension } from "@/components/modules/autos/GenerarAutoSuspension";
+import { AutosSelector } from "@/components/modules/autos/AutosSelector";
 import { CasoTimeline } from "@/components/modules/casos/CasoTimeline";
 import { CollaborationBar } from "@/components/ui/CollaborationBar";
 import { HistorialObservacionesAudiencias } from "@/components/modules/expediente/HistorialObservacionesAudiencias";
@@ -616,7 +616,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
           )}
 
           {subAudiencia === "autos" && caso.tipo_tramite === "insolvencia" && (
-            <GenerarAutoSuspension
+            <AutosSelector
               caseId={id}
               hearingId={hearings[hearings.length - 1]?.id ?? null}
             />

@@ -5,7 +5,11 @@ import { resolveCenterId } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
 import { resolverVariablesAuto } from "@/lib/autos/resolver-variables";
 import { generarAutoSuspension } from "@/lib/autos/generar-auto-suspension";
-import type { AutoSuspensionOpciones } from "@/lib/autos/types";
+import { generarAutoPrimeraAudiencia } from "@/lib/autos/generar-auto-primera-audiencia";
+import type {
+  AutoSuspensionOpciones,
+  AutoPrimeraAudienciaOpciones,
+} from "@/lib/autos/types";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -78,13 +82,17 @@ export async function POST(req: NextRequest, { params }: Params) {
       tipo,
       hearing_id,
       opciones,
-    }: { tipo: string; hearing_id: string | null; opciones: AutoSuspensionOpciones } = body;
+    }: {
+      tipo: string;
+      hearing_id: string | null;
+      opciones: AutoSuspensionOpciones | AutoPrimeraAudienciaOpciones;
+    } = body;
 
     if (!tipo) {
       return NextResponse.json({ error: "El campo 'tipo' es requerido" }, { status: 400 });
     }
 
-    if (tipo !== "suspension") {
+    if (tipo !== "suspension" && tipo !== "primera_audiencia") {
       return NextResponse.json({ error: "Tipo de auto no soportado" }, { status: 400 });
     }
 
@@ -96,11 +104,20 @@ export async function POST(req: NextRequest, { params }: Params) {
     const vars = await resolverVariablesAuto(caseId, hearing_id ?? null);
 
     // 2. Generar el documento Word como Buffer.
-    const buffer = await generarAutoSuspension(vars, opciones);
+    let buffer: Buffer;
+    if (tipo === "suspension") {
+      buffer = await generarAutoSuspension(vars, opciones as AutoSuspensionOpciones);
+    } else {
+      buffer = await generarAutoPrimeraAudiencia(
+        vars,
+        opciones as AutoPrimeraAudienciaOpciones,
+      );
+    }
 
     // 3. Subir a storage "sgcc-documents".
+    const slug = tipo === "suspension" ? "auto-suspension" : "auto-primera-audiencia";
     const fileId = randomUUID();
-    const storagePath = `autos/${centerId}/${caseId}/auto-suspension-${fileId}.docx`;
+    const storagePath = `autos/${centerId}/${caseId}/${slug}-${fileId}.docx`;
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from("sgcc-documents")
@@ -123,7 +140,10 @@ export async function POST(req: NextRequest, { params }: Params) {
       .getPublicUrl(storagePath);
 
     const url = urlData.publicUrl;
-    const nombre = "Auto de suspensión y reprogramación.docx";
+    const nombre =
+      tipo === "suspension"
+        ? "Auto de suspensión y reprogramación.docx"
+        : "Auto de primera audiencia.docx";
 
     return NextResponse.json({ ok: true, url, nombre }, { status: 201 });
   } catch (err: any) {
