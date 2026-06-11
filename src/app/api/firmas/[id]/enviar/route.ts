@@ -185,6 +185,25 @@ async function enviarViaLM(
         webhook_url: `${APP_URL}/api/firmar/webhook-lm`,
       });
     } catch (err: any) {
+      // 409: ya existe una solicitud activa en LM para este PDF con firmantes
+      // distintos. No es un error genérico: informamos sin reventar y devolvemos
+      // el id de la solicitud existente por si se quiere abrir/reutilizar.
+      if (err?.status === 409) {
+        const existenteId = err?.data?.solicitud_existente_id ?? null;
+        const estadoExistente = err?.data?.estado ?? null;
+        return NextResponse.json(
+          {
+            error:
+              "Ya existe una solicitud de firma activa para este documento en Legal Manager" +
+              (estadoExistente ? ` (estado: ${estadoExistente})` : "") +
+              ". No se creó un duplicado.",
+            solicitud_existente_id: existenteId,
+            estado_existente: estadoExistente,
+            duplicado: true,
+          },
+          { status: 409 },
+        );
+      }
       return NextResponse.json({ error: err?.message || "Error al crear la solicitud en Legal Manager." }, { status: 502 });
     }
 
