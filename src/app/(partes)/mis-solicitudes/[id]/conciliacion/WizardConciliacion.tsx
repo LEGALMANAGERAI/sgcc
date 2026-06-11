@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { WizardProps } from "../WizardShell";
 import { StepSidebar, type StepDef } from "@/components/partes/StepSidebar";
 import { AutoSaveIndicator } from "@/components/partes/AutoSaveIndicator";
@@ -11,6 +11,24 @@ import type {
   FormDataConciliacion,
   PersonaFormData,
 } from "@/types/solicitudes";
+
+type EstadoFirma =
+  | "no_iniciada"
+  | "pendiente"
+  | "enviado"
+  | "visto"
+  | "firmado"
+  | "rechazado"
+  | "expirado";
+
+interface FirmaEstadoResp {
+  estado: EstadoFirma;
+  pdf_url: string | null;
+  firmado_url: string | null;
+  firmada_at: string | null;
+  firmante_token: string | null;
+  signing_url: string | null;
+}
 
 const emptyPersona = (): PersonaFormData => ({
   tipo_persona: "natural",
@@ -42,6 +60,64 @@ export function WizardConciliacion({
   const fd = formData as Partial<FormDataConciliacion>;
   const [radicando, setRadicando] = useState(false);
   const [errores, setErrores] = useState<string[]>([]);
+  const [firma, setFirma] = useState<FirmaEstadoResp | null>(null);
+  const [preparando, setPreparando] = useState(false);
+
+  const cargarEstadoFirma = useCallback(async () => {
+    const res = await fetch(`/api/partes/solicitudes/${draftId}/firma-estado`);
+    if (res.ok) {
+      const data = (await res.json()) as FirmaEstadoResp;
+      setFirma(data);
+    }
+  }, [draftId]);
+
+  useEffect(() => {
+    cargarEstadoFirma();
+  }, [cargarEstadoFirma]);
+
+  // Polling mientras esperamos la firma (cada 4s, y cuando la ventana vuelve a estar visible).
+  useEffect(() => {
+    if (!firma) return;
+    if (firma.estado === "firmado") return;
+    if (!firma.signing_url && !firma.firmante_token) return;
+    const t = window.setInterval(cargarEstadoFirma, 4000);
+    const onFocus = () => cargarEstadoFirma();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(t);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [firma, cargarEstadoFirma]);
+
+  async function prepararFirma() {
+    setPreparando(true);
+    setErrores([]);
+    const valErrors = validarConciliacion(fd);
+    if (valErrors.length) {
+      setErrores(valErrors.map((e) => e.message));
+      setPreparando(false);
+      return;
+    }
+    if (!fd.acepta_terminos) {
+      setErrores(["Debes aceptar los términos antes de generar el documento."]);
+      setPreparando(false);
+      return;
+    }
+    const res = await fetch(`/api/partes/solicitudes/${draftId}/preparar-firma`, {
+      method: "POST",
+    });
+    const data = await res.json();
+    setPreparando(false);
+    if (!res.ok) {
+      setErrores(
+        data.errors?.map((e: { message: string }) => e.message) ?? [
+          data.error ?? "Error generando el documento",
+        ]
+      );
+      return;
+    }
+    await cargarEstadoFirma();
+  }
 
   const steps: StepDef[] = [
     { num: 1, label: "Convocado(s)", done: (fd.convocados ?? []).length > 0 },
@@ -58,6 +134,9 @@ export function WizardConciliacion({
     },
     { num: 5, label: "Confirmar", done: !!fd.acepta_terminos },
   ];
+
+  const yaFirmado = firma?.estado === "firmado" && !!firma.firmado_url;
+  const documentoGenerado = !!firma?.pdf_url;
 
   async function radicar() {
     setRadicando(true);
@@ -264,9 +343,11 @@ export function WizardConciliacion({
         )}
 
         {step === 5 && (
-          <section className="space-y-4">
-            <h2 className="font-semibold">Confirmar solicitud</h2>
-            <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 space-y-1">
+          <section className="space-y-5">
+            <h2 className="font-semibold text-lg">Confirmar, firmar y radicar</h2>
+
+            {/* Resumen */}
+            <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 text-sm text-gray-700 space-y-1">
               <p>
                 <strong>Materia:</strong> {fd.materia ?? "—"}
               </p>
@@ -288,6 +369,8 @@ export function WizardConciliacion({
                 <strong>Apoderado:</strong> {fd.apoderado ? "Sí" : "No"}
               </p>
             </div>
+
+            {/* Aceptar términos */}
             <label className="inline-flex items-start gap-2 text-sm cursor-pointer">
               <input
                 type="checkbox"
@@ -302,6 +385,150 @@ export function WizardConciliacion({
                 mis datos personales conforme a la Ley 1581 de 2012.
               </span>
             </label>
+
+            {/* Sub-bloque 1: Generar documento */}
+            <div className="rounded-lg border border-gray-200 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs ${
+                    documentoGenerado ? "bg-emerald-600" : "bg-gray-400"
+                  }`}
+                >
+                  1
+                </div>
+                <h3 className="font-medium text-[#0D2340]">Generar documento</h3>
+              </div>
+              <p className="text-sm text-gray-600">
+                Generamos un PDF con toda la información de tu solicitud de
+                conciliación (Ley 527 de 1999). Al regenerarlo se reemplaza
+                cualquier firma previa.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={prepararFirma}
+                  disabled={preparando || yaFirmado}
+                  className="bg-[#0D2340] text-white px-4 py-2 rounded-lg text-sm disabled:opacity-40"
+                >
+                  {preparando
+                    ? "Generando…"
+                    : documentoGenerado
+                    ? "Regenerar documento"
+                    : "Generar documento"}
+                </button>
+                {firma?.pdf_url && (
+                  <a
+                    href={firma.pdf_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm text-[#1B4F9B] underline"
+                  >
+                    Ver PDF original
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Sub-bloque 2: Firmar electrónicamente */}
+            <div className="rounded-lg border border-gray-200 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs ${
+                    yaFirmado
+                      ? "bg-emerald-600"
+                      : documentoGenerado
+                      ? "bg-[#0D2340]"
+                      : "bg-gray-400"
+                  }`}
+                >
+                  2
+                </div>
+                <h3 className="font-medium text-[#0D2340]">Firmar electrónicamente</h3>
+              </div>
+              <p className="text-sm text-gray-600">
+                La firma se realiza en el portal seguro de Legal Manager
+                (verificación OTP + foto, Ley 527 de 1999). Se abre en una
+                ventana separada; cuando termines, esta pantalla se actualizará
+                automáticamente.
+              </p>
+
+              {yaFirmado ? (
+                <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-900 flex flex-wrap items-center gap-3">
+                  <span>
+                    ✓ Documento firmado
+                    {firma?.firmada_at
+                      ? ` el ${new Date(firma.firmada_at).toLocaleString("es-CO")}`
+                      : ""}
+                    .
+                  </span>
+                  {firma?.firmado_url && (
+                    <a
+                      href={firma.firmado_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline"
+                    >
+                      Ver PDF firmado
+                    </a>
+                  )}
+                </div>
+              ) : firma?.signing_url || firma?.firmante_token ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  <a
+                    href={firma.signing_url ?? "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="bg-[#1B4F9B] text-white px-4 py-2 rounded-lg text-sm"
+                  >
+                    Abrir firma →
+                  </a>
+                  <button
+                    type="button"
+                    onClick={cargarEstadoFirma}
+                    className="text-sm text-gray-600 underline"
+                  >
+                    Actualizar estado
+                  </button>
+                  {firma.estado && firma.estado !== "enviado" && (
+                    <span className="text-xs text-gray-500">
+                      Estado actual: {firma.estado}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  Primero genera el documento para habilitar la firma.
+                </p>
+              )}
+            </div>
+
+            {/* Sub-bloque 3: Radicar */}
+            <div className="rounded-lg border border-gray-200 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs ${
+                    yaFirmado ? "bg-[#0D2340]" : "bg-gray-400"
+                  }`}
+                >
+                  3
+                </div>
+                <h3 className="font-medium text-[#0D2340]">Radicar la solicitud</h3>
+              </div>
+              <p className="text-sm text-gray-600">
+                Solo disponible después de firmar. Al radicar se asignará un
+                número consecutivo y tu solicitud quedará a disposición del
+                centro de conciliación.
+              </p>
+              <button
+                type="button"
+                onClick={radicar}
+                disabled={radicando || !fd.acepta_terminos || !yaFirmado}
+                className="bg-[#0D2340] text-white px-6 py-2.5 rounded-lg disabled:opacity-40 text-sm font-medium"
+              >
+                {radicando ? "Radicando…" : "Radicar solicitud"}
+              </button>
+            </div>
+
             {errores.length > 0 && (
               <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
                 <ul className="list-disc pl-5">
@@ -311,14 +538,6 @@ export function WizardConciliacion({
                 </ul>
               </div>
             )}
-            <button
-              type="button"
-              onClick={radicar}
-              disabled={radicando || !fd.acepta_terminos}
-              className="bg-[#0D2340] text-white px-6 py-2.5 rounded-lg disabled:opacity-40 text-sm font-medium"
-            >
-              {radicando ? "Radicando…" : "Radicar solicitud"}
-            </button>
           </section>
         )}
 

@@ -33,6 +33,7 @@ export async function GET(
       pdf_url: null,
       firmado_url: null,
       firmada_at: null,
+      signing_url: null,
     });
   }
 
@@ -44,7 +45,7 @@ export async function GET(
 
   const { data: firmante } = await supabaseAdmin
     .from("sgcc_firmantes")
-    .select("id, estado, token, firmado_at")
+    .select("id, estado, token, firmado_at, lm_signing_url")
     .eq("firma_documento_id", draft.solicitud_firma_documento_id)
     .eq("orden", 1)
     .maybeSingle();
@@ -73,5 +74,6 @@ export async function GET(
     firmado_url: draft.solicitud_pdf_firmado_url ?? documento?.archivo_firmado_url ?? null,
     firmada_at: draft.solicitud_firmada_at ?? firmante?.firmado_at ?? null,
     firmante_token: firmante?.token ?? null,
+    signing_url: firmante?.lm_signing_url ?? null,
   });
 }
