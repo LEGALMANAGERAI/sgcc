@@ -37,6 +37,12 @@ export interface SgccCenter {
   radicado_digitos: number;
   radicado_reinicio: "anual" | "nunca" | "mensual";
   radicado_codigo: string | null;
+  // Datos legales para motor de autos
+  resolucion_insolvencia?: string | null;
+  codigo_ministerio?: string | null;
+  email_radicacion?: string | null;
+  email_secretaria?: string | null;
+  pie_vigilado?: string | null;
   activo: boolean;
   created_at: string;
   updated_at: string;

@@ -15,6 +15,9 @@ interface StaffMember {
   supervisor_id: string | null;
   casos_activos: number;
   supervisor_nombre: string;
+  cedula?: string | null;
+  ciudad_cedula?: string | null;
+  codigo_inscripcion?: string | null;
 }
 
 interface Props {
@@ -37,10 +40,13 @@ export function ConciliadoresClient({ staff, conciliadores }: Props) {
     tarjeta_profesional: "",
     codigo_interno: "",
     supervisor_id: "",
+    cedula: "",
+    ciudad_cedula: "",
+    codigo_inscripcion: "",
   });
 
   function resetForm() {
-    setForm({ nombre: "", email: "", telefono: "", rol: "conciliador", tarjeta_profesional: "", codigo_interno: "", supervisor_id: "" });
+    setForm({ nombre: "", email: "", telefono: "", rol: "conciliador", tarjeta_profesional: "", codigo_interno: "", supervisor_id: "", cedula: "", ciudad_cedula: "", codigo_inscripcion: "" });
     setEditingId(null);
     setError("");
   }
@@ -54,6 +60,9 @@ export function ConciliadoresClient({ staff, conciliadores }: Props) {
       tarjeta_profesional: s.tarjeta_profesional ?? "",
       codigo_interno: s.codigo_interno ?? "",
       supervisor_id: s.supervisor_id ?? "",
+      cedula: s.cedula ?? "",
+      ciudad_cedula: s.ciudad_cedula ?? "",
+      codigo_inscripcion: s.codigo_inscripcion ?? "",
     });
     setEditingId(s.id);
     setShowForm(true);
@@ -279,6 +288,36 @@ export function ConciliadoresClient({ staff, conciliadores }: Props) {
                 onChange={(e) => setForm({ ...form, codigo_interno: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
                 placeholder="Ej: 1789"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Cédula</label>
+              <input
+                value={form.cedula}
+                onChange={(e) => setForm({ ...form, cedula: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+                placeholder="Número de cédula"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad de expedición (cédula)</label>
+              <input
+                value={form.ciudad_cedula}
+                onChange={(e) => setForm({ ...form, ciudad_cedula: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+                placeholder="Ej: Bogotá"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Código de inscripción (conciliador)</label>
+              <input
+                value={form.codigo_inscripcion}
+                onChange={(e) => setForm({ ...form, codigo_inscripcion: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
+                placeholder="Ej: CON-00123"
               />
             </div>
 
