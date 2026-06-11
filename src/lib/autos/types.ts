@@ -144,6 +144,30 @@ export interface AutoSuspensionOpciones {
   quorum: QuorumFila[];
 }
 
+/**
+ * Opciones del Auto de Primera Audiencia (firmeza del admisorio).
+ * Reusa el esqueleto del de suspensión pero NO suspende: sin continuación,
+ * con el toggle condicional de reparos al auto admisorio.
+ */
+export interface AutoPrimeraAudienciaOpciones {
+  numero_auto: string;
+  fecha_audiencia_texto: string;
+  hora_audiencia_texto: string;
+  hora_audiencia_corta: string;
+  zoom_apertura_url: string;
+  zoom_apertura_id: string;
+  zoom_apertura_codigo: string;
+  considerandos: string[];
+  bloques_estandar: string[];
+  incluir_tabla_acreencias: boolean;
+  // Condicional de reparos al auto admisorio
+  hubo_reparos: boolean;
+  reparos_descripcion: string; // qué reparos se plantearon (si hubo_reparos)
+  decision_operador: string; // la decisión del operador sobre los reparos (si hubo_reparos)
+  // Quórum editado (incluye fila del deudor con es_deudor=true)
+  quorum: QuorumFila[];
+}
+
 /** Bloques estándar opcionales para los considerandos (numerales 2-6 del doc 08). */
 export const BLOQUES_ESTANDAR: Array<{ id: string; label: string; texto: string }> = [
   {
