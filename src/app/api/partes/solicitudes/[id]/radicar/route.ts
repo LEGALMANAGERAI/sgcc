@@ -38,10 +38,13 @@ export async function POST(
     return NextResponse.json({ error: "Draft no encontrado" }, { status: 404 });
   }
 
-  // Guard de firma electrónica para insolvencia. Si la firma fue completada
-  // pero el draft aún no tiene la URL firmada, intentamos sincronizar antes
-  // de devolver error al usuario.
-  if (draft.tipo_tramite === "insolvencia") {
+  // Guard de firma electrónica para insolvencia y conciliación. Si la firma fue
+  // completada pero el draft aún no tiene la URL firmada, intentamos sincronizar
+  // antes de devolver error al usuario.
+  if (
+    draft.tipo_tramite === "insolvencia" ||
+    draft.tipo_tramite === "conciliacion"
+  ) {
     if (!draft.solicitud_firma_documento_id) {
       return NextResponse.json(
         { error: "Debes generar y firmar el documento antes de radicar." },

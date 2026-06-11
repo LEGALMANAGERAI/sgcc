@@ -14,6 +14,7 @@ interface FirmaEstadoResp {
   firmado_url: string | null;
   firmada_at: string | null;
   firmante_token: string | null;
+  signing_url: string | null;
 }
 
 export function Paso13Confirmar({
@@ -45,7 +46,7 @@ export function Paso13Confirmar({
   useEffect(() => {
     if (!firma) return;
     if (firma.estado === "firmado") return;
-    if (!firma.firmante_token) return;
+    if (!firma.signing_url && !firma.firmante_token) return;
     const t = window.setInterval(cargarEstadoFirma, 4000);
     const onFocus = () => cargarEstadoFirma();
     window.addEventListener("focus", onFocus);
@@ -219,10 +220,9 @@ export function Paso13Confirmar({
           <h3 className="font-medium text-[#0D2340]">Firmar electrónicamente</h3>
         </div>
         <p className="text-sm text-gray-600">
-          La firma electrónica se realiza con verificación OTP por correo, en
-          cumplimiento de la Ley 527 de 1999 y el Decreto 2364 de 2012. Se abre
-          en una ventana separada; cuando termines, esta pantalla se actualizará
-          automáticamente.
+          La firma se realiza en el portal seguro de Legal Manager (verificación
+          OTP + foto, Ley 527 de 1999). Se abre en una ventana separada; cuando
+          termines, esta pantalla se actualizará automáticamente.
         </p>
 
         {yaFirmado ? (
@@ -245,10 +245,10 @@ export function Paso13Confirmar({
               </a>
             )}
           </div>
-        ) : firma?.firmante_token ? (
+        ) : (firma?.signing_url || firma?.firmante_token) ? (
           <div className="flex flex-wrap items-center gap-3">
             <a
-              href={`/firmar/${firma.firmante_token}`}
+              href={firma.signing_url ?? "#"}
               target="_blank"
               rel="noreferrer"
               className="bg-[#1B4F9B] text-white px-4 py-2 rounded-lg text-sm"
