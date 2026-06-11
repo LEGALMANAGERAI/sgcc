@@ -212,7 +212,7 @@ export function CrearActaInsolvencia({ caseId, hearingId, acreenciasConciliadas 
     }
   }
 
-  async function enviarAFirma() {
+  async function enviarAFirma(confirmado = false) {
     if (!actaCreada) return;
     setEnviando(true);
     setApiError(null);
@@ -221,13 +221,20 @@ export function CrearActaInsolvencia({ caseId, hearingId, acreenciasConciliadas 
       const res = await fetch(`/api/expediente/${caseId}/acta-firma`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ acta_id: actaCreada.id }),
+        body: JSON.stringify({ acta_id: actaCreada.id, confirmar_duplicado: confirmado === true }),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Error al enviar a firma");
+      const data = await res.json().catch(() => ({}));
+      // Ya existe una firma activa para este caso → confirmar antes de duplicar.
+      if (res.status === 409 && data.requiere_confirmacion) {
+        setEnviando(false);
+        if (confirm(data.error || "Ya existe un documento de firma activo para este caso. ¿Crear otro de todas formas?")) {
+          await enviarAFirma(true);
+        }
+        return;
       }
-      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Error al enviar a firma");
+      }
       setExito(`Documento enviado a firma. ID: ${data.firma_documento_id}.`);
       setActaCreada({ ...actaCreada, estado_firma: "firmado_parcial" });
     } catch (err: any) {

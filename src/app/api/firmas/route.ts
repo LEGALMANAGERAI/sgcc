@@ -4,6 +4,7 @@ import { supabaseAdmin, uploadFile } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
 import { generarTokenFirma } from "@/lib/firma/tokens";
 import { calcularHashSHA256 } from "@/lib/firma/pdf";
+import { firmaActivaDelCaso, mensajeDuplicado } from "@/lib/firma/duplicados";
 import { randomUUID } from "crypto";
 
 /**
@@ -64,6 +65,8 @@ export async function POST(req: NextRequest) {
     const firmantesJson = formData.get("firmantes") as string | null;
     // Proveedor de firma: "propio" (OTP nativo, default) o "lm" (Legal Manager redirect).
     const proveedor = (formData.get("proveedor") as string) === "lm" ? "lm" : "propio";
+    // El usuario confirmó crear un duplicado pese al aviso.
+    const confirmarDuplicado = formData.get("confirmar_duplicado") === "true";
 
     // Validaciones
     if (!file || !nombre) {
@@ -89,6 +92,18 @@ export async function POST(req: NextRequest) {
 
     if (!firmantes.length) {
       return NextResponse.json({ error: "Debe incluir al menos un firmante" }, { status: 400 });
+    }
+
+    // Evitar solicitudes de firma duplicadas: si el caso ya tiene un documento
+    // de firma activo, avisar (salvo que el usuario lo confirme explícitamente).
+    if (caseId && !confirmarDuplicado) {
+      const existente = await firmaActivaDelCaso(caseId, centerId);
+      if (existente) {
+        return NextResponse.json(
+          { error: mensajeDuplicado(existente), requiere_confirmacion: true, existente },
+          { status: 409 },
+        );
+      }
     }
 
     // Calcular hash SHA-256 del PDF

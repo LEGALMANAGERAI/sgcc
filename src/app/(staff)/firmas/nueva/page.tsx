@@ -151,8 +151,14 @@ export default function NuevaFirmaPage() {
       return;
     }
 
-    setLoading(true);
+    await enviar(false);
+  };
 
+  // Env\u00eda el documento. Si el caso ya tiene una firma activa, el backend responde
+  // 409 con requiere_confirmacion \u2192 preguntamos y reintentamos con confirmaci\u00f3n.
+  const enviar = async (confirmado: boolean) => {
+    if (!archivo) return;
+    setLoading(true);
     try {
       const formData = new FormData();
       formData.append("archivo", archivo);
@@ -162,6 +168,7 @@ export default function NuevaFirmaPage() {
       formData.append("orden_secuencial", String(ordenSecuencial));
       formData.append("dias_expiracion", String(diasExpiracion));
       formData.append("proveedor", proveedor);
+      if (confirmado) formData.append("confirmar_duplicado", "true");
       formData.append("firmantes", JSON.stringify(
         firmantes.map((f) => ({
           nombre: f.nombre.trim(),
@@ -174,6 +181,14 @@ export default function NuevaFirmaPage() {
 
       const res = await fetch("/api/firmas", { method: "POST", body: formData });
       const data = await res.json();
+
+      if (res.status === 409 && data.requiere_confirmacion) {
+        setLoading(false);
+        if (confirm(data.error || "Ya existe un documento de firma activo para este caso. \u00bfCrear otro de todas formas?")) {
+          await enviar(true);
+        }
+        return;
+      }
 
       if (!res.ok) {
         setError(data.error ?? "Error al crear el documento");
