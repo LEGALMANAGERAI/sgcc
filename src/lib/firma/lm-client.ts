@@ -48,8 +48,8 @@ export interface LmSolicitudResp {
   firmantes: Array<{ firmante_id: string; nombre: string; signing_url: string }>;
 }
 
-class LmApiError extends Error {
-  constructor(public status: number, message: string) {
+export class LmApiError extends Error {
+  constructor(public status: number, message: string, public data?: any) {
     super(message);
     this.name = "LmApiError";
   }
@@ -103,6 +103,19 @@ export async function lmCrearSolicitud(p: LmCrearSolicitudPayload): Promise<LmSo
   };
 
   const res = await lmFetch("/solicitudes", { method: "POST", body: JSON.stringify(body) });
+
+  // 409: LM deduplica por hash del PDF. Mismo documento + firmantes DISTINTOS →
+  // ya existe una solicitud activa para ese PDF. Se devuelve el detalle en `data`
+  // (solicitud_existente_id, nombre, estado) para manejarlo con gracia arriba.
+  // (Mismo PDF + mismos firmantes → LM responde 200 reutilizando, no llega aquí.)
+  if (res.status === 409) {
+    const err = await res.json().catch(() => ({}));
+    throw new LmApiError(
+      409,
+      err.error || "Ya existe una solicitud de firma activa para este documento en Legal Manager.",
+      err,
+    );
+  }
   if (res.status !== 200 && res.status !== 201) {
     const err = await res.json().catch(() => ({ error: "Error desconocido" }));
     throw new LmApiError(res.status, err.error || `Legal Manager respondió ${res.status}`);

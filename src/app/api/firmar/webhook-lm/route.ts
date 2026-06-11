@@ -46,65 +46,108 @@ export async function POST(req: NextRequest) {
 
   const now = new Date().toISOString();
 
+  // Estados de documento que NO deben ser revertidos por eventos tardíos o
+  // duplicados (LM ahora reintenta entregas → el mismo evento puede llegar 2 veces).
+  const DOC_TERMINAL = ["completado", "cancelado", "rechazado", "expirado"];
+
   try {
     switch (evento.event) {
       case "firmante.firmado": {
         const lmFirmanteId = evento.firmante?.firmante_id;
         if (lmFirmanteId) {
-          await supabaseAdmin
+          // Idempotente: solo actualizar + auditar si el firmante no estaba ya
+          // firmado (un evento duplicado no debe insertar otra fila de auditoría).
+          const { data: frm } = await supabaseAdmin
             .from("sgcc_firmantes")
-            .update({ estado: "firmado", firmado_at: now })
+            .select("id, estado")
             .eq("firma_documento_id", docId)
-            .eq("lm_firmante_id", lmFirmanteId);
+            .eq("lm_firmante_id", lmFirmanteId)
+            .maybeSingle();
+          if (frm && frm.estado !== "firmado") {
+            await supabaseAdmin
+              .from("sgcc_firmantes")
+              .update({ estado: "firmado", firmado_at: now })
+              .eq("id", frm.id);
+            await registrar(docId, lmFirmanteId, "firmado", evento);
+          }
         }
-        // Recontar firmados y actualizar el contador del documento.
+        // Recontar firmados y actualizar el contador SIN degradar un estado
+        // terminal del documento (p. ej. un firmado tardío tras completada).
         const { count } = await supabaseAdmin
           .from("sgcc_firmantes")
           .select("id", { count: "exact", head: true })
           .eq("firma_documento_id", docId)
           .eq("estado", "firmado");
-        await supabaseAdmin
-          .from("sgcc_firma_documentos")
-          .update({ firmantes_completados: count ?? 0, estado: "en_proceso" })
-          .eq("id", docId);
-        await registrar(docId, lmFirmanteId, "firmado", evento);
+        const docUpdate: Record<string, any> = { firmantes_completados: count ?? 0 };
+        if (!DOC_TERMINAL.includes(documento.estado)) docUpdate.estado = "en_proceso";
+        await supabaseAdmin.from("sgcc_firma_documentos").update(docUpdate).eq("id", docId);
         break;
       }
 
       case "firmante.rechazado": {
         const lmFirmanteId = evento.firmante?.firmante_id;
         if (lmFirmanteId) {
-          await supabaseAdmin
+          const { data: frm } = await supabaseAdmin
             .from("sgcc_firmantes")
-            .update({ estado: "rechazado", motivo_rechazo: evento.firmante?.motivo ?? null })
+            .select("id, estado")
             .eq("firma_documento_id", docId)
-            .eq("lm_firmante_id", lmFirmanteId);
+            .eq("lm_firmante_id", lmFirmanteId)
+            .maybeSingle();
+          if (frm && frm.estado !== "rechazado") {
+            await supabaseAdmin
+              .from("sgcc_firmantes")
+              .update({ estado: "rechazado", motivo_rechazo: evento.firmante?.motivo ?? null })
+              .eq("id", frm.id);
+            await registrar(docId, lmFirmanteId, "rechazado", evento);
+          }
         }
-        await supabaseAdmin
-          .from("sgcc_firma_documentos")
-          .update({ estado: "rechazado" })
-          .eq("id", docId);
-        await registrar(docId, lmFirmanteId, "rechazado", evento);
+        // No sobrescribir un documento ya completado o cancelado.
+        if (!["completado", "cancelado"].includes(documento.estado)) {
+          await supabaseAdmin.from("sgcc_firma_documentos").update({ estado: "rechazado" }).eq("id", docId);
+        }
         break;
       }
 
       case "solicitud.completada": {
+        // Idempotente: solo procesar la primera vez (evita auditoría duplicada
+        // y no revierte si ya estaba completado).
+        if (documento.estado !== "completado") {
+          await supabaseAdmin
+            .from("sgcc_firma_documentos")
+            .update({
+              estado: "completado",
+              firmantes_completados: documento.total_firmantes,
+              archivo_firmado_url: evento.pdf_firmado_url ?? null,
+              lm_pdf_firmado_url: evento.pdf_firmado_url ?? null,
+              lm_verificacion_url: evento.verificacion_url ?? null,
+            })
+            .eq("id", docId);
+          await registrar(docId, null, "firmado", evento);
+        }
+        break;
+      }
+
+      case "solicitud.expirada": {
+        // LM expiró la solicitud (cron de expiración partner). Marcar el documento
+        // expirado (sin degradar un estado terminal) y sus firmantes aún abiertos.
+        if (!DOC_TERMINAL.includes(documento.estado)) {
+          await supabaseAdmin.from("sgcc_firma_documentos").update({ estado: "expirado" }).eq("id", docId);
+          // Auditoría: "cancelado" es la acción válida más cercana; el evento real
+          // (solicitud.expirada) queda en metadatos vía registrar().
+          await registrar(docId, null, "cancelado", evento);
+        }
         await supabaseAdmin
-          .from("sgcc_firma_documentos")
-          .update({
-            estado: "completado",
-            firmantes_completados: documento.total_firmantes,
-            archivo_firmado_url: evento.pdf_firmado_url ?? null,
-            lm_pdf_firmado_url: evento.pdf_firmado_url ?? null,
-            lm_verificacion_url: evento.verificacion_url ?? null,
-          })
-          .eq("id", docId);
-        await registrar(docId, null, "firmado", evento);
+          .from("sgcc_firmantes")
+          .update({ estado: "expirado" })
+          .eq("firma_documento_id", docId)
+          .in("estado", ["pendiente", "enviado", "visto"]);
         break;
       }
 
       default:
-        // Evento no manejado: lo aceptamos sin hacer nada.
+        // Evento desconocido (p. ej. uno nuevo del contrato de LM): aceptar con 200
+        // y loguear, nunca devolver 500.
+        console.warn("Webhook LM: evento no manejado:", evento.event, "doc:", docId);
         break;
     }
   } catch (err: any) {
