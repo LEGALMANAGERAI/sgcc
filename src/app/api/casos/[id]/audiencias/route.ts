@@ -182,11 +182,10 @@ export async function PATCH(
   if (estado !== undefined) updates.estado = estado;
   if (notas_previas !== undefined) updates.notas_previas = notas_previas;
 
-  // Si está suspendida y hay fecha de continuación, actualizar fecha_hora
-  // a la nueva fecha (reprogramación in-place). Se asume hora 09:00 local.
-  if (estado === "suspendida" && fecha_continuacion) {
-    updates.fecha_hora = `${fecha_continuacion}T09:00:00-05:00`;
-  }
+  // NOTA: cuando se suspende con fecha de continuación NO se reprograma la
+  // audiencia original (antes se pisaba su fecha_hora in-place, lo que borraba
+  // de facto la sesión previa). La original queda marcada como 'suspendida' con
+  // su fecha intacta y la continuación se crea como una FILA NUEVA más abajo.
 
   const { error: hearingError } = await supabaseAdmin
     .from("sgcc_hearings")
@@ -196,6 +195,41 @@ export async function PATCH(
 
   if (hearingError) {
     return NextResponse.json({ error: hearingError.message }, { status: 500 });
+  }
+
+  // Crear la audiencia de CONTINUACIÓN como un registro independiente, heredando
+  // conciliador / sala / duración / modalidad de la audiencia suspendida. Así se
+  // conserva la sesión anterior y queda una nueva audiencia programada.
+  if (estado === "suspendida" && fecha_continuacion) {
+    const { data: original } = await supabaseAdmin
+      .from("sgcc_hearings")
+      .select("conciliador_id, sala_id, duracion_min, modalidad, plataforma_virtual")
+      .eq("id", hearing_id)
+      .eq("case_id", caseId)
+      .single();
+
+    const { error: contError } = await supabaseAdmin.from("sgcc_hearings").insert({
+      id: randomUUID(),
+      case_id: caseId,
+      conciliador_id: original?.conciliador_id ?? null,
+      sala_id: original?.sala_id ?? null,
+      fecha_hora: `${fecha_continuacion}T09:00:00-05:00`,
+      duracion_min: original?.duracion_min ?? 60,
+      estado: "programada",
+      tipo: "continuacion",
+      modalidad: original?.modalidad ?? "presencial",
+      plataforma_virtual: original?.plataforma_virtual ?? null,
+      notas_previas: `Continuación de audiencia suspendida el ${now.split("T")[0]}.`,
+      created_at: now,
+      updated_at: now,
+    });
+
+    if (contError) {
+      return NextResponse.json(
+        { error: `No se pudo crear la continuación: ${contError.message}` },
+        { status: 500 }
+      );
+    }
   }
 
   // Si cambió el estado de la audiencia, recalcular el estado del caso para
