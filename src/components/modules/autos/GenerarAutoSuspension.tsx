@@ -32,6 +32,30 @@ const BLOQUES_DEFAULT = [
   "reconocimiento_personeria",
 ];
 
+const MESES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+
+/**
+ * Convierte el valor de un <input type="datetime-local"> ("2026-05-26T10:00")
+ * en los strings en español que consume el generador del auto. Se parsea el
+ * string directamente (sin `new Date()`) porque ya es la hora de pared que el
+ * operador tecleó en zona Colombia — así no se arrastra ningún desfase UTC.
+ */
+function formatearContinuacion(dt: string): { fecha: string; hora: string } {
+  if (!dt || !dt.includes("T")) return { fecha: "", hora: "" };
+  const [d, t] = dt.split("T");
+  const [y, m, day] = d.split("-").map(Number);
+  const [hh, mm] = t.split(":").map(Number);
+  if (!y || !m || !day) return { fecha: "", hora: "" };
+  const fecha = `${day} de ${MESES[m - 1]} del ${y}`;
+  let h = hh % 12;
+  if (h === 0) h = 12;
+  const hora = `${h}:${String(mm).padStart(2, "0")} ${hh >= 12 ? "PM" : "AM"}`;
+  return { fecha, hora };
+}
+
 /** Construye el quórum editable desde el ResolvedAutoVars. */
 function buildQuorum(vars: ResolvedAutoVars): QuorumFila[] {
   const filas: QuorumFila[] = vars.acreedores.map((a) => ({
@@ -86,12 +110,14 @@ export function GenerarAutoSuspension({
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
+  const [generating, setGenerating] = useState<null | "word" | "pdf">(null);
 
   // Considerandos libres como texto (uno por línea) para el textarea.
   const [considerandosTexto, setConsiderandosTexto] = useState("");
 
   const [opts, setOpts] = useState<AutoSuspensionOpciones | null>(null);
+  // Acreencias del caso (para el selector de cuáles incluir en la tabla).
+  const [acreencias, setAcreencias] = useState<ResolvedAutoVars["acreedores"]>([]);
 
   // ── Cargar variables y pre-llenar ──────────────────────────────────────
   useEffect(() => {
@@ -109,6 +135,8 @@ export function GenerarAutoSuspension({
         const vars: ResolvedAutoVars = await res.json();
         if (cancelled) return;
 
+        setAcreencias(vars.acreedores);
+
         const initial: AutoSuspensionOpciones = {
           numero_auto: "",
           fecha_audiencia_texto: "",
@@ -121,6 +149,8 @@ export function GenerarAutoSuspension({
           bloques_estandar: [...BLOQUES_DEFAULT],
           motivo_suspension: "",
           incluir_tabla_acreencias: false,
+          acreenciasSeleccionadasIds: vars.acreedores.map((a) => a.id),
+          continuacion_dt: "",
           continuacion_fecha: "",
           continuacion_hora: "",
           continuacion_zoom_url: "",
@@ -172,10 +202,22 @@ export function GenerarAutoSuspension({
     });
   }
 
+  function toggleAcreencia(id: string) {
+    setOpts((prev) => {
+      if (!prev) return prev;
+      const actual = prev.acreenciasSeleccionadasIds ?? [];
+      const has = actual.includes(id);
+      const acreenciasSeleccionadasIds = has
+        ? actual.filter((x) => x !== id)
+        : [...actual, id];
+      return { ...prev, acreenciasSeleccionadasIds };
+    });
+  }
+
   // ── Generar ─────────────────────────────────────────────────────────────
-  async function handleGenerar() {
+  async function handleGenerar(formato: "word" | "pdf" = "word") {
     if (!opts) return;
-    setGenerating(true);
+    setGenerating(formato);
     setError(null);
 
     // Volcar los considerandos libres del textarea al array.
@@ -184,7 +226,14 @@ export function GenerarAutoSuspension({
       .map((l) => l.trim())
       .filter(Boolean);
 
-    const opciones: AutoSuspensionOpciones = { ...opts, considerandos };
+    // Derivar fecha/hora de continuación en español desde el calendario.
+    const { fecha, hora } = formatearContinuacion(opts.continuacion_dt);
+    const opciones: AutoSuspensionOpciones = {
+      ...opts,
+      considerandos,
+      continuacion_fecha: fecha,
+      continuacion_hora: hora,
+    };
 
     try {
       const res = await fetch(`/api/casos/${caseId}/autos`, {
@@ -193,6 +242,7 @@ export function GenerarAutoSuspension({
         body: JSON.stringify({
           tipo: "suspension",
           hearing_id: hearingId,
+          formato,
           opciones,
         }),
       });
@@ -209,7 +259,7 @@ export function GenerarAutoSuspension({
     } catch (e: any) {
       setError(e?.message ?? "Error al generar el auto");
     } finally {
-      setGenerating(false);
+      setGenerating(null);
     }
   }
 
@@ -568,6 +618,34 @@ export function GenerarAutoSuspension({
           <span>Incluir tabla de relación de acreencias</span>
         </label>
 
+        {/* Selección de cuáles acreencias incluir en la tabla (las relacionadas
+            en ESTA audiencia). Por defecto van todas. */}
+        {opts.incluir_tabla_acreencias && acreencias.length > 0 && (
+          <div className="mt-3 ml-7 space-y-2 border-l-2 border-gray-100 pl-4">
+            <p className="text-[11px] text-gray-400">
+              Selecciona cuáles acreencias se relacionan en esta audiencia.
+            </p>
+            {acreencias.map((a) => (
+              <label
+                key={a.id}
+                className="flex items-center gap-2.5 text-xs text-gray-700 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={(opts.acreenciasSeleccionadasIds ?? []).includes(a.id)}
+                  onChange={() => toggleAcreencia(a.id)}
+                  className="h-4 w-4 rounded border-gray-300 text-[#1B4F9B] focus:ring-[#1B4F9B]"
+                />
+                <span>
+                  {a.nombre || "(sin nombre)"}
+                  {a.documento ? ` — ${a.documento}` : ""}
+                  {a.clase_credito ? ` · ${a.clase_credito}` : ""}
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
+
         <div className="mt-4">
           <label className={labelCls}>
             Numerales adicionales (uno por línea)
@@ -603,24 +681,21 @@ export function GenerarAutoSuspension({
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className={labelCls}>Fecha de continuación</label>
+            <label className={labelCls}>Fecha y hora de continuación</label>
             <input
-              type="text"
-              value={opts.continuacion_fecha}
-              onChange={(e) => patch({ continuacion_fecha: e.target.value })}
-              placeholder="26 de mayo del 2026"
+              type="datetime-local"
+              value={opts.continuacion_dt}
+              onChange={(e) => patch({ continuacion_dt: e.target.value })}
               className={inputCls}
             />
-          </div>
-          <div>
-            <label className={labelCls}>Hora de continuación</label>
-            <input
-              type="text"
-              value={opts.continuacion_hora}
-              onChange={(e) => patch({ continuacion_hora: e.target.value })}
-              placeholder="10:00 AM"
-              className={inputCls}
-            />
+            {opts.continuacion_dt && (
+              <p className="text-[11px] text-gray-400 mt-1">
+                {(() => {
+                  const { fecha, hora } = formatearContinuacion(opts.continuacion_dt);
+                  return `Quedará como: ${fecha} a las ${hora}`;
+                })()}
+              </p>
+            )}
           </div>
           <div>
             <label className={labelCls}>Zoom continuación — URL</label>
@@ -654,11 +729,11 @@ export function GenerarAutoSuspension({
       <div className="flex justify-end">
         <button
           type="button"
-          onClick={handleGenerar}
-          disabled={generating}
+          onClick={() => handleGenerar("word")}
+          disabled={!!generating}
           className="inline-flex items-center gap-2 bg-[#0D2340] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#0d2340dd] transition-colors disabled:opacity-50"
         >
-          {generating ? (
+          {generating === "word" ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
             <FileText className="w-4 h-4" />

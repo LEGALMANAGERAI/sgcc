@@ -28,6 +28,7 @@ export interface AutoOperador {
   ciudad_cedula: string | null;
   tarjeta_profesional: string | null;
   codigo_inscripcion: string | null;
+  email: string | null; // para firma electrónica del auto
 }
 
 /** Apoderado (del deudor o de un acreedor). */
@@ -49,10 +50,12 @@ export interface AutoDeudor {
   telefono: string | null;
   direccion: string | null;
   apoderado: AutoApoderado | null;
+  presente: boolean | null; // asistencia del insolvente a la audiencia (para firma)
 }
 
 /** Acreedor (fila del quórum + tabla de acreencias). */
 export interface AutoAcreedor {
+  id: string; // sgcc_acreencias.id (para selección parcial de la tabla)
   nombre: string;
   documento: string | null; // NIT/CC
   clase_credito: string | null; // primera..quinta / mixta
@@ -135,9 +138,13 @@ export interface AutoSuspensionOpciones {
   motivo_suspension: string;
   // Tabla de relación de acreencias (opcional)
   incluir_tabla_acreencias: boolean;
+  // IDs de acreencias (sgcc_acreencias.id) a incluir en la tabla; si viene
+  // vacío/undefined se incluyen TODAS las relacionadas.
+  acreenciasSeleccionadasIds?: string[];
   // RESUELVE — continuación
-  continuacion_fecha: string; // "26 de mayo del 2026"
-  continuacion_hora: string; // "10:00 AM"
+  continuacion_dt: string; // datetime-local "2026-05-26T10:00" (fuente del calendario)
+  continuacion_fecha: string; // derivado: "26 de mayo del 2026"
+  continuacion_hora: string; // derivado: "10:00 AM"
   continuacion_zoom_url: string;
   continuacion_zoom_codigo: string;
   // Quórum editado (incluye la fila del deudor con es_deudor=true)

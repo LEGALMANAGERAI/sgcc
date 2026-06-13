@@ -103,6 +103,15 @@ export async function POST(req: NextRequest, { params }: Params) {
     // 1. Resolver variables del caso / audiencia.
     const vars = await resolverVariablesAuto(caseId, hearing_id ?? null);
 
+    // 1b. Selección parcial de acreencias: si el operador eligió un subconjunto
+    // (las relacionadas en ESTA audiencia), filtrar la tabla a esas acreencias.
+    // Solo afecta la tabla de acreencias; el quórum viaja aparte en opciones.quorum.
+    const seleccionadas = (opciones as AutoSuspensionOpciones).acreenciasSeleccionadasIds;
+    if (Array.isArray(seleccionadas) && seleccionadas.length > 0) {
+      const set = new Set(seleccionadas);
+      vars.acreedores = vars.acreedores.filter((a) => set.has(a.id));
+    }
+
     // 2. Generar el documento Word como Buffer.
     let buffer: Buffer;
     if (tipo === "suspension") {

@@ -159,6 +159,7 @@ export async function resolverVariablesAuto(
     ciudad_cedula: op?.ciudad_cedula ?? null,
     tarjeta_profesional: op?.tarjeta_profesional ?? null,
     codigo_inscripcion: op?.codigo_inscripcion ?? null,
+    email: op?.email ?? null,
   };
 
   // ── Caso ──
@@ -207,6 +208,7 @@ export async function resolverVariablesAuto(
     telefono: partyDeudor?.telefono ?? null,
     direccion: partyDeudor?.direccion ?? null,
     apoderado: deudorPartyId ? apoderadoPorParte.get(deudorPartyId) ?? null : null,
+    presente: null, // se completa abajo, tras resolver la asistencia
   };
 
   // 3) Audiencia: la indicada por hearingId, o la última del caso.
@@ -251,6 +253,13 @@ export async function resolverVariablesAuto(
     }
   }
 
+  // Asistencia del insolvente (deudor) a la audiencia efectiva, para decidir
+  // quién firma el auto (el deudor si asistió, o su apoderado si no).
+  deudor.presente =
+    deudorPartyId && hearingEfectivo && asistenciaPorParte.has(deudorPartyId)
+      ? asistenciaPorParte.get(deudorPartyId) ?? null
+      : null;
+
   // 5) Acreedores (acreencias activas).
   const { data: acreenciasData } = await supabaseAdmin
     .from("sgcc_acreencias")
@@ -282,6 +291,7 @@ export async function resolverVariablesAuto(
         : null;
 
     return {
+      id: a.id,
       nombre: a.acreedor_nombre ?? "",
       documento: a.acreedor_documento ?? null,
       clase_credito: a.clase_credito ?? null,
