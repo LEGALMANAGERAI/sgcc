@@ -8,6 +8,7 @@ import {
   UserX,
   AlertTriangle,
   Trash2,
+  PenLine,
 } from "lucide-react";
 import {
   type ResolvedAutoVars,
@@ -31,6 +32,30 @@ const BLOQUES_DEFAULT = [
   "expediente_digital",
   "reconocimiento_personeria",
 ];
+
+const MESES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+
+/**
+ * Convierte el valor de un <input type="datetime-local"> ("2026-05-26T10:00")
+ * en los strings en español que consume el generador del auto. Se parsea el
+ * string directamente (sin `new Date()`) porque ya es la hora de pared que el
+ * operador tecleó en zona Colombia — así no se arrastra ningún desfase UTC.
+ */
+function formatearContinuacion(dt: string): { fecha: string; hora: string } {
+  if (!dt || !dt.includes("T")) return { fecha: "", hora: "" };
+  const [d, t] = dt.split("T");
+  const [y, m, day] = d.split("-").map(Number);
+  const [hh, mm] = t.split(":").map(Number);
+  if (!y || !m || !day) return { fecha: "", hora: "" };
+  const fecha = `${day} de ${MESES[m - 1]} del ${y}`;
+  let h = hh % 12;
+  if (h === 0) h = 12;
+  const hora = `${h}:${String(mm).padStart(2, "0")} ${hh >= 12 ? "PM" : "AM"}`;
+  return { fecha, hora };
+}
 
 /** Construye el quórum editable desde el ResolvedAutoVars. */
 function buildQuorum(vars: ResolvedAutoVars): QuorumFila[] {
@@ -86,12 +111,16 @@ export function GenerarAutoSuspension({
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
+  const [generating, setGenerating] = useState<null | "word" | "pdf">(null);
 
   // Considerandos libres como texto (uno por línea) para el textarea.
   const [considerandosTexto, setConsiderandosTexto] = useState("");
 
   const [opts, setOpts] = useState<AutoSuspensionOpciones | null>(null);
+  // Acreencias del caso (para el selector de cuáles incluir en la tabla).
+  const [acreencias, setAcreencias] = useState<ResolvedAutoVars["acreedores"]>([]);
+  const [enviandoFirma, setEnviandoFirma] = useState(false);
+  const [firmaMsg, setFirmaMsg] = useState<string | null>(null);
 
   // ── Cargar variables y pre-llenar ──────────────────────────────────────
   useEffect(() => {
@@ -109,6 +138,8 @@ export function GenerarAutoSuspension({
         const vars: ResolvedAutoVars = await res.json();
         if (cancelled) return;
 
+        setAcreencias(vars.acreedores);
+
         const initial: AutoSuspensionOpciones = {
           numero_auto: "",
           fecha_audiencia_texto: "",
@@ -121,6 +152,8 @@ export function GenerarAutoSuspension({
           bloques_estandar: [...BLOQUES_DEFAULT],
           motivo_suspension: "",
           incluir_tabla_acreencias: false,
+          acreenciasSeleccionadasIds: vars.acreedores.map((a) => a.id),
+          continuacion_dt: "",
           continuacion_fecha: "",
           continuacion_hora: "",
           continuacion_zoom_url: "",
@@ -172,10 +205,22 @@ export function GenerarAutoSuspension({
     });
   }
 
+  function toggleAcreencia(id: string) {
+    setOpts((prev) => {
+      if (!prev) return prev;
+      const actual = prev.acreenciasSeleccionadasIds ?? [];
+      const has = actual.includes(id);
+      const acreenciasSeleccionadasIds = has
+        ? actual.filter((x) => x !== id)
+        : [...actual, id];
+      return { ...prev, acreenciasSeleccionadasIds };
+    });
+  }
+
   // ── Generar ─────────────────────────────────────────────────────────────
-  async function handleGenerar() {
+  async function handleGenerar(formato: "word" | "pdf" = "word") {
     if (!opts) return;
-    setGenerating(true);
+    setGenerating(formato);
     setError(null);
 
     // Volcar los considerandos libres del textarea al array.
@@ -184,7 +229,14 @@ export function GenerarAutoSuspension({
       .map((l) => l.trim())
       .filter(Boolean);
 
-    const opciones: AutoSuspensionOpciones = { ...opts, considerandos };
+    // Derivar fecha/hora de continuación en español desde el calendario.
+    const { fecha, hora } = formatearContinuacion(opts.continuacion_dt);
+    const opciones: AutoSuspensionOpciones = {
+      ...opts,
+      considerandos,
+      continuacion_fecha: fecha,
+      continuacion_hora: hora,
+    };
 
     try {
       const res = await fetch(`/api/casos/${caseId}/autos`, {
@@ -193,6 +245,7 @@ export function GenerarAutoSuspension({
         body: JSON.stringify({
           tipo: "suspension",
           hearing_id: hearingId,
+          formato,
           opciones,
         }),
       });
@@ -209,7 +262,58 @@ export function GenerarAutoSuspension({
     } catch (e: any) {
       setError(e?.message ?? "Error al generar el auto");
     } finally {
-      setGenerating(false);
+      setGenerating(null);
+    }
+  }
+
+  // ── Enviar a firma electrónica ───────────────────────────────────────────
+  async function handleEnviarFirma(confirmarDuplicado = false) {
+    if (!opts) return;
+    setEnviandoFirma(true);
+    setError(null);
+    setFirmaMsg(null);
+
+    const considerandos = considerandosTexto
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const { fecha, hora } = formatearContinuacion(opts.continuacion_dt);
+    const opciones: AutoSuspensionOpciones = {
+      ...opts,
+      considerandos,
+      continuacion_fecha: fecha,
+      continuacion_hora: hora,
+    };
+
+    try {
+      const res = await fetch(`/api/casos/${caseId}/autos/firma`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipo: "suspension",
+          hearing_id: hearingId,
+          opciones,
+          confirmar_duplicado: confirmarDuplicado,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 409 && data?.requiere_confirmacion) {
+        if (window.confirm(`${data.error}\n\n¿Crear de todos modos una nueva solicitud de firma?`)) {
+          await handleEnviarFirma(true);
+        }
+        return;
+      }
+      if (!res.ok) {
+        throw new Error(data.error ?? `Error HTTP ${res.status}`);
+      }
+      setFirmaMsg(
+        data?.mensaje ??
+          "Auto enviado a firma. Envía las notificaciones desde el módulo de Firmas.",
+      );
+    } catch (e: any) {
+      setError(e?.message ?? "Error al enviar el auto a firma");
+    } finally {
+      setEnviandoFirma(false);
     }
   }
 
@@ -568,6 +672,34 @@ export function GenerarAutoSuspension({
           <span>Incluir tabla de relación de acreencias</span>
         </label>
 
+        {/* Selección de cuáles acreencias incluir en la tabla (las relacionadas
+            en ESTA audiencia). Por defecto van todas. */}
+        {opts.incluir_tabla_acreencias && acreencias.length > 0 && (
+          <div className="mt-3 ml-7 space-y-2 border-l-2 border-gray-100 pl-4">
+            <p className="text-[11px] text-gray-400">
+              Selecciona cuáles acreencias se relacionan en esta audiencia.
+            </p>
+            {acreencias.map((a) => (
+              <label
+                key={a.id}
+                className="flex items-center gap-2.5 text-xs text-gray-700 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={(opts.acreenciasSeleccionadasIds ?? []).includes(a.id)}
+                  onChange={() => toggleAcreencia(a.id)}
+                  className="h-4 w-4 rounded border-gray-300 text-[#1B4F9B] focus:ring-[#1B4F9B]"
+                />
+                <span>
+                  {a.nombre || "(sin nombre)"}
+                  {a.documento ? ` — ${a.documento}` : ""}
+                  {a.clase_credito ? ` · ${a.clase_credito}` : ""}
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
+
         <div className="mt-4">
           <label className={labelCls}>
             Numerales adicionales (uno por línea)
@@ -603,24 +735,21 @@ export function GenerarAutoSuspension({
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className={labelCls}>Fecha de continuación</label>
+            <label className={labelCls}>Fecha y hora de continuación</label>
             <input
-              type="text"
-              value={opts.continuacion_fecha}
-              onChange={(e) => patch({ continuacion_fecha: e.target.value })}
-              placeholder="26 de mayo del 2026"
+              type="datetime-local"
+              value={opts.continuacion_dt}
+              onChange={(e) => patch({ continuacion_dt: e.target.value })}
               className={inputCls}
             />
-          </div>
-          <div>
-            <label className={labelCls}>Hora de continuación</label>
-            <input
-              type="text"
-              value={opts.continuacion_hora}
-              onChange={(e) => patch({ continuacion_hora: e.target.value })}
-              placeholder="10:00 AM"
-              className={inputCls}
-            />
+            {opts.continuacion_dt && (
+              <p className="text-[11px] text-gray-400 mt-1">
+                {(() => {
+                  const { fecha, hora } = formatearContinuacion(opts.continuacion_dt);
+                  return `Quedará como: ${fecha} a las ${hora}`;
+                })()}
+              </p>
+            )}
           </div>
           <div>
             <label className={labelCls}>Zoom continuación — URL</label>
@@ -650,15 +779,49 @@ export function GenerarAutoSuspension({
           {error}
         </div>
       )}
+      {firmaMsg && (
+        <div className="bg-green-50 text-green-700 text-sm px-4 py-3 rounded-lg border border-green-200">
+          {firmaMsg}{" "}
+          <a href="/firmas" className="underline font-medium">
+            Ir a Firmas
+          </a>
+        </div>
+      )}
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-3">
         <button
           type="button"
-          onClick={handleGenerar}
-          disabled={generating}
+          onClick={() => handleEnviarFirma(false)}
+          disabled={enviandoFirma || !!generating}
+          className="inline-flex items-center gap-2 bg-[#1B4F9B] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#1B4F9B]/90 transition-colors disabled:opacity-50"
+        >
+          {enviandoFirma ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <PenLine className="w-4 h-4" />
+          )}
+          Enviar a firma
+        </button>
+        <button
+          type="button"
+          onClick={() => handleGenerar("pdf")}
+          disabled={!!generating}
+          className="inline-flex items-center gap-2 bg-white text-[#0D2340] border border-[#0D2340] px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+        >
+          {generating === "pdf" ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <FileText className="w-4 h-4" />
+          )}
+          Descargar PDF
+        </button>
+        <button
+          type="button"
+          onClick={() => handleGenerar("word")}
+          disabled={!!generating}
           className="inline-flex items-center gap-2 bg-[#0D2340] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#0d2340dd] transition-colors disabled:opacity-50"
         >
-          {generating ? (
+          {generating === "word" ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
             <FileText className="w-4 h-4" />

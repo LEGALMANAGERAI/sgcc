@@ -289,7 +289,7 @@ export async function generarAutoSuspension(
 
   // 6. I. VERIFICACION DEL QUORUM
   children.push(
-    bodyPara("I.    VERIFICACION DEL QUORUM", { bold: true, align: AlignmentType.LEFT, spacingAfter: 120 }),
+    bodyPara("I.    VERIFICACION DEL QUORUM", { bold: true, align: AlignmentType.CENTER, spacingAfter: 120 }),
     bodyPara("Registrada la asistencia se encuentran las siguientes personas:", { spacingAfter: 160 }),
     construirTablaQuorum(opciones.quorum, deudor),
     new Paragraph({ text: "", spacing: { after: 160 } }),
@@ -297,7 +297,7 @@ export async function generarAutoSuspension(
 
   // 7. II. CONSIDERACIONES
   children.push(
-    bodyPara("II.    CONSIDERACIONES", { bold: true, align: AlignmentType.LEFT, spacingAfter: 120 }),
+    bodyPara("II.    CONSIDERACIONES", { bold: true, align: AlignmentType.CENTER, spacingAfter: 120 }),
     bodyPara("Una vez instalada la audiencia se presenta lo siguiente:", { spacingAfter: 160 }),
   );
 
@@ -344,7 +344,7 @@ export async function generarAutoSuspension(
   );
 
   // 10. III. RESUELVE (VERBATIM con huecos)
-  children.push(bodyPara("III.    RESUELVE:", { bold: true, align: AlignmentType.LEFT, spacingAfter: 160 }));
+  children.push(bodyPara("III.    RESUELVE:", { bold: true, align: AlignmentType.CENTER, spacingAfter: 160 }));
 
   const primero =
     `PRIMERO. SUSPENDER la audiencia y fijar como fecha de continuación el día ${opciones.continuacion_fecha || "________"} ` +
