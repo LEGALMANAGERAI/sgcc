@@ -19,6 +19,7 @@ import type {
   AutoAcreedor,
   AutoApoderado,
   AutoAudiencia,
+  AutoSugerencias,
 } from "./types";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -76,6 +77,31 @@ function nombreParte(p: {
 function num(v: unknown): number {
   const n = typeof v === "string" ? parseFloat(v) : (v as number);
   return typeof n === "number" && !isNaN(n) ? n : 0;
+}
+
+/** ISO + duración en minutos → "11:23 AM" (hora de terminación, zona Colombia). */
+function horaTerminacion(
+  iso: string | null | undefined,
+  duracionMin: number | null | undefined,
+): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const fin = new Date(d.getTime() + (duracionMin ?? 60) * 60 * 1000);
+  return formatearHora(fin.toISOString());
+}
+
+/**
+ * Sugiere el siguiente consecutivo a partir de los números de autos previos
+ * del caso. Conserva el padding (p.ej. "008" → "009"). Vacío si no hay previos
+ * numéricos (el operador lo asigna).
+ */
+function siguienteNumeroAuto(previos: Array<string | null | undefined>): string {
+  const nums = previos.map((s) => (s ?? "").trim()).filter((s) => /^\d+$/.test(s));
+  if (nums.length === 0) return "";
+  const max = Math.max(...nums.map((s) => parseInt(s, 10)));
+  const width = Math.max(...nums.map((s) => s.length));
+  return String(max + 1).padStart(width, "0");
 }
 
 /** Construye un AutoApoderado a partir de una fila enriquecida de sgcc_case_attorneys. */
@@ -216,14 +242,14 @@ export async function resolverVariablesAuto(
   if (hearingId) {
     const { data } = await supabaseAdmin
       .from("sgcc_hearings")
-      .select("id, fecha_hora")
+      .select("id, fecha_hora, duracion_min, plataforma_virtual, sala_id, sala:sgcc_rooms(link_virtual)")
       .eq("id", hearingId)
       .maybeSingle();
     audienciaRow = data ?? null;
   } else {
     const { data } = await supabaseAdmin
       .from("sgcc_hearings")
-      .select("id, fecha_hora")
+      .select("id, fecha_hora, duracion_min, plataforma_virtual, sala_id, sala:sgcc_rooms(link_virtual)")
       .eq("case_id", caseId)
       .order("fecha_hora", { ascending: false })
       .limit(1)
@@ -312,6 +338,32 @@ export async function resolverVariablesAuto(
     };
   });
 
+  // 6) Sugerencias de prefill: consecutivo + Zoom heredado de autos anteriores
+  //    (o de la sala) + horas de inicio/terminación calculadas de la audiencia.
+  const { data: autosPrevios } = await supabaseAdmin
+    .from("sgcc_autos")
+    .select("numero_auto, zoom_url, zoom_id, zoom_codigo, zoom_clave")
+    .eq("case_id", caseId)
+    .order("created_at", { ascending: false });
+
+  const previos = (autosPrevios as any[]) ?? [];
+  const zoomPrevio = previos.find((a) => a.zoom_url || a.zoom_id || a.zoom_clave) ?? null;
+
+  // link_virtual de la sala de la audiencia (fallback del Zoom URL).
+  const salaRaw = (audienciaRow as any)?.sala;
+  const salaLink: string =
+    (Array.isArray(salaRaw) ? salaRaw[0]?.link_virtual : salaRaw?.link_virtual) ?? "";
+
+  const sugerencias: AutoSugerencias = {
+    numero_auto: siguienteNumeroAuto(previos.map((a) => a.numero_auto)),
+    hora_inicio_corta: formatearHora(audienciaRow?.fecha_hora) ?? "",
+    hora_terminacion: horaTerminacion(audienciaRow?.fecha_hora, audienciaRow?.duracion_min) ?? "",
+    zoom_url: zoomPrevio?.zoom_url ?? salaLink ?? "",
+    zoom_id: zoomPrevio?.zoom_id ?? "",
+    zoom_codigo: zoomPrevio?.zoom_codigo ?? "",
+    zoom_clave: zoomPrevio?.zoom_clave ?? "",
+  };
+
   return {
     centro,
     operador,
@@ -319,5 +371,6 @@ export async function resolverVariablesAuto(
     deudor,
     acreedores,
     audiencia,
+    sugerencias,
   };
 }

@@ -210,6 +210,19 @@ export async function POST(req: NextRequest, { params }: Params) {
       },
     });
 
+    // Registrar el auto (consecutivo + Zoom heredable). Best-effort.
+    const o = opciones as any;
+    await supabaseAdmin.from("sgcc_autos").insert({
+      center_id: centerId,
+      case_id: caseId,
+      tipo: "suspension",
+      numero_auto: o.numero_auto ?? null,
+      zoom_url: o.zoom_apertura_url ?? null,
+      zoom_id: o.zoom_apertura_id ?? null,
+      zoom_codigo: o.zoom_apertura_codigo ?? null,
+      zoom_clave: o.zoom_apertura_clave ?? null,
+    });
+
     return NextResponse.json(
       {
         success: true,

@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   Trash2,
   PenLine,
+  Plus,
 } from "lucide-react";
 import {
   type ResolvedAutoVars,
@@ -113,8 +114,8 @@ export function GenerarAutoSuspension({
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState<null | "word" | "pdf">(null);
 
-  // Considerandos libres como texto (uno por línea) para el textarea.
-  const [considerandosTexto, setConsiderandosTexto] = useState("");
+  // Considerandos libres (numerales adicionales), uno por entrada en la lista.
+  const [considerandos, setConsiderandos] = useState<string[]>([]);
 
   const [opts, setOpts] = useState<AutoSuspensionOpciones | null>(null);
   // Acreencias del caso (para el selector de cuáles incluir en la tabla).
@@ -140,14 +141,21 @@ export function GenerarAutoSuspension({
 
         setAcreencias(vars.acreedores);
 
+        const s = vars.sugerencias;
         const initial: AutoSuspensionOpciones = {
-          numero_auto: "",
+          // Heredado: consecutivo del último auto del caso (editable).
+          numero_auto: s?.numero_auto ?? "",
           fecha_audiencia_texto: "",
           hora_audiencia_texto: "",
-          hora_audiencia_corta: "",
-          zoom_apertura_url: "",
-          zoom_apertura_id: "",
-          zoom_apertura_codigo: "",
+          // Heredado: hora de inicio calculada de la audiencia (editable).
+          hora_audiencia_corta: s?.hora_inicio_corta ?? "",
+          // Heredado: hora de terminación = inicio + duración (editable).
+          hora_terminacion: s?.hora_terminacion ?? "",
+          // Heredado: Zoom de autos anteriores o de la sala (editable).
+          zoom_apertura_url: s?.zoom_url ?? "",
+          zoom_apertura_id: s?.zoom_id ?? "",
+          zoom_apertura_codigo: s?.zoom_codigo ?? "",
+          zoom_apertura_clave: s?.zoom_clave ?? "",
           considerandos: [],
           bloques_estandar: [...BLOQUES_DEFAULT],
           motivo_suspension: "",
@@ -161,7 +169,7 @@ export function GenerarAutoSuspension({
           quorum: buildQuorum(vars),
         };
         setOpts(initial);
-        setConsiderandosTexto("");
+        setConsiderandos([]);
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? "Error al cargar las variables del auto");
       } finally {
@@ -217,23 +225,27 @@ export function GenerarAutoSuspension({
     });
   }
 
+  // Considerandos adicionales (numerales) — lista dinámica.
+  const addConsiderando = () => setConsiderandos((prev) => [...prev, ""]);
+  const updateConsiderando = (idx: number, val: string) =>
+    setConsiderandos((prev) => prev.map((c, i) => (i === idx ? val : c)));
+  const removeConsiderando = (idx: number) =>
+    setConsiderandos((prev) => prev.filter((_, i) => i !== idx));
+
   // ── Generar ─────────────────────────────────────────────────────────────
   async function handleGenerar(formato: "word" | "pdf" = "word") {
     if (!opts) return;
     setGenerating(formato);
     setError(null);
 
-    // Volcar los considerandos libres del textarea al array.
-    const considerandos = considerandosTexto
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
+    // Considerandos adicionales (numerales), limpiando vacíos.
+    const considerandosLimpios = considerandos.map((l) => l.trim()).filter(Boolean);
 
     // Derivar fecha/hora de continuación en español desde el calendario.
     const { fecha, hora } = formatearContinuacion(opts.continuacion_dt);
     const opciones: AutoSuspensionOpciones = {
       ...opts,
-      considerandos,
+      considerandos: considerandosLimpios,
       continuacion_fecha: fecha,
       continuacion_hora: hora,
     };
@@ -273,14 +285,11 @@ export function GenerarAutoSuspension({
     setError(null);
     setFirmaMsg(null);
 
-    const considerandos = considerandosTexto
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
+    const considerandosLimpios = considerandos.map((l) => l.trim()).filter(Boolean);
     const { fecha, hora } = formatearContinuacion(opts.continuacion_dt);
     const opciones: AutoSuspensionOpciones = {
       ...opts,
-      considerandos,
+      considerandos: considerandosLimpios,
       continuacion_fecha: fecha,
       continuacion_hora: hora,
     };
@@ -415,7 +424,7 @@ export function GenerarAutoSuspension({
             />
           </div>
           <div>
-            <label className={labelCls}>Hora de la audiencia (corta)</label>
+            <label className={labelCls}>Hora de inicio (corta)</label>
             <input
               type="text"
               value={opts.hora_audiencia_corta}
@@ -423,6 +432,18 @@ export function GenerarAutoSuspension({
               placeholder="10:23 AM"
               className={inputCls}
             />
+            <p className="text-[11px] text-gray-400 mt-1">Calculada de la audiencia; editable.</p>
+          </div>
+          <div>
+            <label className={labelCls}>Hora de terminación</label>
+            <input
+              type="text"
+              value={opts.hora_terminacion}
+              onChange={(e) => patch({ hora_terminacion: e.target.value })}
+              placeholder="11:23 AM"
+              className={inputCls}
+            />
+            <p className="text-[11px] text-gray-400 mt-1">Inicio + duración; editable.</p>
           </div>
           <div>
             <label className={labelCls}>Zoom — URL</label>
@@ -453,7 +474,21 @@ export function GenerarAutoSuspension({
               className={inputCls}
             />
           </div>
+          <div>
+            <label className={labelCls}>Clave de acceso de la sala</label>
+            <input
+              type="text"
+              value={opts.zoom_apertura_clave}
+              onChange={(e) => patch({ zoom_apertura_clave: e.target.value })}
+              placeholder="Passcode de la sala"
+              className={inputCls}
+            />
+          </div>
         </div>
+        <p className="text-[11px] text-gray-400 mt-3">
+          El número de auto, las horas y el Zoom se heredan de la audiencia, de la sala
+          o del auto anterior. Puedes editarlos.
+        </p>
       </section>
 
       {/* Quórum */}
@@ -701,16 +736,42 @@ export function GenerarAutoSuspension({
         )}
 
         <div className="mt-4">
-          <label className={labelCls}>
-            Numerales adicionales (uno por línea)
-          </label>
-          <textarea
-            value={considerandosTexto}
-            onChange={(e) => setConsiderandosTexto(e.target.value)}
-            rows={4}
-            placeholder={"Un considerando por línea..."}
-            className={inputCls}
-          />
+          <label className={labelCls}>Numerales adicionales</label>
+          <p className="text-[11px] text-gray-400 mb-2">
+            El numeral 1 es fijo. Estos se numeran a partir del 2 y se mantienen consecutivos.
+          </p>
+          <div className="space-y-2">
+            {considerandos.map((c, idx) => (
+              <div key={idx} className="flex items-start gap-2">
+                <span className="mt-2 text-xs font-medium text-gray-500 w-6 shrink-0">
+                  {idx + 2}.
+                </span>
+                <textarea
+                  value={c}
+                  onChange={(e) => updateConsiderando(idx, e.target.value)}
+                  rows={2}
+                  placeholder={`Considerando ${idx + 2}...`}
+                  className={inputCls}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeConsiderando(idx)}
+                  title="Quitar numeral"
+                  className="mt-1.5 text-gray-300 hover:text-red-500 transition-colors shrink-0"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={addConsiderando}
+            className="mt-2 inline-flex items-center gap-1.5 text-sm text-[#1B4F9B] hover:text-[#0D2340] font-medium"
+          >
+            <Plus className="w-4 h-4" />
+            Agregar numeral
+          </button>
         </div>
       </section>
 
