@@ -25,3 +25,7 @@ CREATE TABLE IF NOT EXISTS sgcc_autos (
 CREATE INDEX IF NOT EXISTS idx_autos_case ON sgcc_autos(case_id, created_at DESC);
 
 COMMENT ON TABLE sgcc_autos IS 'Autos de insolvencia generados; sirve para sugerir el consecutivo y heredar datos de Zoom entre audiencias.';
+
+-- RLS: la app accede solo con service role (que bypassa RLS). Sin políticas
+-- permisivas, anon/authenticated quedan denegados (multi-tenant). No rompe la app.
+ALTER TABLE sgcc_autos ENABLE ROW LEVEL SECURITY;
