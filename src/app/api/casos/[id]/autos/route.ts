@@ -5,6 +5,7 @@ import { resolveCenterId } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
 import { resolverVariablesAuto } from "@/lib/autos/resolver-variables";
 import { generarAutoSuspension } from "@/lib/autos/generar-auto-suspension";
+import { generarAutoSuspensionPdf } from "@/lib/autos/pdf-auto-suspension";
 import { generarAutoPrimeraAudiencia } from "@/lib/autos/generar-auto-primera-audiencia";
 import type {
   AutoSuspensionOpciones,
@@ -81,10 +82,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     const {
       tipo,
       hearing_id,
+      formato = "word",
       opciones,
     }: {
       tipo: string;
       hearing_id: string | null;
+      formato?: "word" | "pdf";
       opciones: AutoSuspensionOpciones | AutoPrimeraAudienciaOpciones;
     } = body;
 
@@ -112,10 +115,14 @@ export async function POST(req: NextRequest, { params }: Params) {
       vars.acreedores = vars.acreedores.filter((a) => set.has(a.id));
     }
 
-    // 2. Generar el documento Word como Buffer.
+    // 2. Generar el documento (Word o PDF) como Buffer.
+    //    PDF solo está disponible para el auto de suspensión por ahora.
+    const enPdf = formato === "pdf" && tipo === "suspension";
     let buffer: Buffer;
     if (tipo === "suspension") {
-      buffer = await generarAutoSuspension(vars, opciones as AutoSuspensionOpciones);
+      buffer = enPdf
+        ? await generarAutoSuspensionPdf(vars, opciones as AutoSuspensionOpciones)
+        : await generarAutoSuspension(vars, opciones as AutoSuspensionOpciones);
     } else {
       buffer = await generarAutoPrimeraAudiencia(
         vars,
@@ -125,16 +132,16 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     // 3. Subir a storage "sgcc-documents".
     const slug = tipo === "suspension" ? "auto-suspension" : "auto-primera-audiencia";
+    const ext = enPdf ? "pdf" : "docx";
+    const contentType = enPdf
+      ? "application/pdf"
+      : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     const fileId = randomUUID();
-    const storagePath = `autos/${centerId}/${caseId}/${slug}-${fileId}.docx`;
+    const storagePath = `autos/${centerId}/${caseId}/${slug}-${fileId}.${ext}`;
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from("sgcc-documents")
-      .upload(storagePath, buffer, {
-        contentType:
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        upsert: false,
-      });
+      .upload(storagePath, buffer, { contentType, upsert: false });
 
     if (uploadError) {
       return NextResponse.json(
@@ -149,10 +156,11 @@ export async function POST(req: NextRequest, { params }: Params) {
       .getPublicUrl(storagePath);
 
     const url = urlData.publicUrl;
-    const nombre =
+    const nombreBase =
       tipo === "suspension"
-        ? "Auto de suspensión y reprogramación.docx"
-        : "Auto de primera audiencia.docx";
+        ? "Auto de suspensión y reprogramación"
+        : "Auto de primera audiencia";
+    const nombre = `${nombreBase}.${ext}`;
 
     return NextResponse.json({ ok: true, url, nombre }, { status: 201 });
   } catch (err: any) {

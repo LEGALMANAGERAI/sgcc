@@ -8,6 +8,7 @@ import {
   UserX,
   AlertTriangle,
   Trash2,
+  PenLine,
 } from "lucide-react";
 import {
   type ResolvedAutoVars,
@@ -118,6 +119,8 @@ export function GenerarAutoSuspension({
   const [opts, setOpts] = useState<AutoSuspensionOpciones | null>(null);
   // Acreencias del caso (para el selector de cuáles incluir en la tabla).
   const [acreencias, setAcreencias] = useState<ResolvedAutoVars["acreedores"]>([]);
+  const [enviandoFirma, setEnviandoFirma] = useState(false);
+  const [firmaMsg, setFirmaMsg] = useState<string | null>(null);
 
   // ── Cargar variables y pre-llenar ──────────────────────────────────────
   useEffect(() => {
@@ -260,6 +263,57 @@ export function GenerarAutoSuspension({
       setError(e?.message ?? "Error al generar el auto");
     } finally {
       setGenerating(null);
+    }
+  }
+
+  // ── Enviar a firma electrónica ───────────────────────────────────────────
+  async function handleEnviarFirma(confirmarDuplicado = false) {
+    if (!opts) return;
+    setEnviandoFirma(true);
+    setError(null);
+    setFirmaMsg(null);
+
+    const considerandos = considerandosTexto
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const { fecha, hora } = formatearContinuacion(opts.continuacion_dt);
+    const opciones: AutoSuspensionOpciones = {
+      ...opts,
+      considerandos,
+      continuacion_fecha: fecha,
+      continuacion_hora: hora,
+    };
+
+    try {
+      const res = await fetch(`/api/casos/${caseId}/autos/firma`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipo: "suspension",
+          hearing_id: hearingId,
+          opciones,
+          confirmar_duplicado: confirmarDuplicado,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 409 && data?.requiere_confirmacion) {
+        if (window.confirm(`${data.error}\n\n¿Crear de todos modos una nueva solicitud de firma?`)) {
+          await handleEnviarFirma(true);
+        }
+        return;
+      }
+      if (!res.ok) {
+        throw new Error(data.error ?? `Error HTTP ${res.status}`);
+      }
+      setFirmaMsg(
+        data?.mensaje ??
+          "Auto enviado a firma. Envía las notificaciones desde el módulo de Firmas.",
+      );
+    } catch (e: any) {
+      setError(e?.message ?? "Error al enviar el auto a firma");
+    } finally {
+      setEnviandoFirma(false);
     }
   }
 
@@ -725,8 +779,42 @@ export function GenerarAutoSuspension({
           {error}
         </div>
       )}
+      {firmaMsg && (
+        <div className="bg-green-50 text-green-700 text-sm px-4 py-3 rounded-lg border border-green-200">
+          {firmaMsg}{" "}
+          <a href="/firmas" className="underline font-medium">
+            Ir a Firmas
+          </a>
+        </div>
+      )}
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-3">
+        <button
+          type="button"
+          onClick={() => handleEnviarFirma(false)}
+          disabled={enviandoFirma || !!generating}
+          className="inline-flex items-center gap-2 bg-[#1B4F9B] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#1B4F9B]/90 transition-colors disabled:opacity-50"
+        >
+          {enviandoFirma ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <PenLine className="w-4 h-4" />
+          )}
+          Enviar a firma
+        </button>
+        <button
+          type="button"
+          onClick={() => handleGenerar("pdf")}
+          disabled={!!generating}
+          className="inline-flex items-center gap-2 bg-white text-[#0D2340] border border-[#0D2340] px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+        >
+          {generating === "pdf" ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <FileText className="w-4 h-4" />
+          )}
+          Descargar PDF
+        </button>
         <button
           type="button"
           onClick={() => handleGenerar("word")}
