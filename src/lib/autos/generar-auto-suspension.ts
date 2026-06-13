@@ -283,7 +283,7 @@ export async function generarAutoSuspension(
     `de referencia, admitido mediante Auto No. ${oBlank(caso.numero_auto_admisorio)} del ${oBlank(caso.fecha_auto_admisorio)}, ` +
     `se procede con las siguientes actividades las cuales se desarrollan de manera virtual mediante (LINK AUDIENCIA DE ` +
     `CONCILIACIÓN Join Zoom Meeting ${opciones.zoom_apertura_url || "________"} ID de reunión: ${opciones.zoom_apertura_id || "________"} ` +
-    `Código de acceso: ${opciones.zoom_apertura_codigo || "________"}), en atención a implementar las tecnologías de la ` +
+    `Código de acceso: ${opciones.zoom_apertura_codigo || "________"}${opciones.zoom_apertura_clave ? ` Clave: ${opciones.zoom_apertura_clave}` : ""}), en atención a implementar las tecnologías de la ` +
     `información y las comunicaciones en las actuaciones judiciales según la LEY 2213 DE 2022.`;
   children.push(bodyPara(aperturaTexto, { spacingAfter: 240 }));
 
@@ -352,7 +352,19 @@ export async function generarAutoSuspension(
     `deudas contemplada en el artículo 550 del C.G.P., de manera virtual a través Del link ` +
     `${opciones.continuacion_zoom_url || "________"} Código de Acceso: ${opciones.continuacion_zoom_codigo || "________"}.`;
   children.push(bodyPara(primero, { spacingAfter: 160 }));
-  children.push(bodyPara("SEGUNDO: Los presentes quedan notificados en audiencia.", { spacingAfter: 480 }));
+  const horaFin = (opciones.hora_terminacion ?? "").trim();
+  children.push(
+    bodyPara("SEGUNDO: Los presentes quedan notificados en audiencia.", {
+      spacingAfter: horaFin ? 200 : 480,
+    }),
+  );
+  if (horaFin) {
+    children.push(
+      bodyPara(`Siendo las ${horaFin}, se da por terminada la presente diligencia.`, {
+        spacingAfter: 480,
+      }),
+    );
+  }
 
   // 11. Firmas
   // Operador.

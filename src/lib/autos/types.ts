@@ -87,6 +87,20 @@ export interface AutoAudiencia {
 }
 
 /**
+ * Valores SUGERIDOS para pre-llenar el formulario (heredados de la audiencia,
+ * de la sala o de autos anteriores). El operador puede editarlos todos.
+ */
+export interface AutoSugerencias {
+  numero_auto: string; // siguiente consecutivo (último auto del caso + 1)
+  hora_inicio_corta: string; // "10:23 AM" calculada desde la fecha/hora de la audiencia
+  hora_terminacion: string; // "11:23 AM" = inicio + duración de la audiencia
+  zoom_url: string;
+  zoom_id: string;
+  zoom_codigo: string;
+  zoom_clave: string;
+}
+
+/**
  * Todo lo que el resolver junta del sistema (pre-llenado). El operador lo
  * ajusta en el formulario (las opciones de abajo) antes de generar.
  */
@@ -97,6 +111,7 @@ export interface ResolvedAutoVars {
   deudor: AutoDeudor;
   acreedores: AutoAcreedor[];
   audiencia: AutoAudiencia;
+  sugerencias: AutoSugerencias;
 }
 
 /** Fila editable del quórum en el formulario. */
@@ -128,9 +143,11 @@ export interface AutoSuspensionOpciones {
   fecha_audiencia_texto: string; // "11 de mayo de 2026"
   hora_audiencia_texto: string; // "diez y veintitrés de la mañana"
   hora_audiencia_corta: string; // "10:23 AM"
+  hora_terminacion: string; // "11:23 AM" — hora de terminación de la audiencia
   zoom_apertura_url: string;
   zoom_apertura_id: string;
   zoom_apertura_codigo: string;
+  zoom_apertura_clave: string; // clave/passcode de acceso a la sala
   // Considerandos: el numeral 1 es fijo; estos son del 2 en adelante (texto libre)
   considerandos: string[];
   // ids de bloques estándar opcionales a incluir (ver BLOQUES_ESTANDAR)
