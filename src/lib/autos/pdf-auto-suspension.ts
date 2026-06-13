@@ -118,8 +118,10 @@ export async function generarAutoSuspensionPdf(
     }
   }
 
-  // Texto del pie VIGILADO (con "VIGILADO" en bold).
-  const pieVigilado = centro.pie_vigilado ?? "";
+  // Texto del pie VIGILADO (con "VIGILADO" en bold). OBLIGATORIO: si el centro
+  // no lo tiene configurado, se usa el texto legal por defecto.
+  const pieVigilado =
+    (centro.pie_vigilado ?? "").trim() || "VIGILADO Ministerio de Justicia y del Derecho";
 
   // ── Estado del cursor ─────────────────────────────────────
   let page = doc.addPage([PAGE_W, PAGE_H]);
