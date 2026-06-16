@@ -202,7 +202,9 @@ export async function generarAutoSuspension(
   const header = new Header({ children: headerChildren as Paragraph[] });
 
   // ── Footer (pie VIGILADO) — en todas las páginas ──────────
-  const pie = centro.pie_vigilado ?? "";
+  // OBLIGATORIO: el pie debe indicar la vigilancia del Ministerio de Justicia.
+  // Si el centro no tiene pie configurado, usamos el texto legal por defecto.
+  const pie = (centro.pie_vigilado ?? "").trim() || "VIGILADO Ministerio de Justicia y del Derecho";
   const idxVig = pie.indexOf("VIGILADO");
   let footerRuns: TextRun[];
   if (idxVig >= 0) {
