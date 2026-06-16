@@ -285,7 +285,29 @@ export async function generarAutoSuspensionPdf(
   // ── Helpers de cuerpo ─────────────────────────────────────
   const BODY_SIZE = 11; // 11 pt (igual al Word)
 
-  /** Párrafo justificado a una sola tirada de texto (multilinea). */
+  /** Dibuja una línea JUSTIFICADA: reparte el espacio sobrante entre palabras. */
+  function drawJustified(
+    line: string,
+    lineY: number,
+    size: number,
+    font: PdfFont,
+    color: ReturnType<typeof rgb>,
+  ) {
+    const words = line.split(/\s+/).filter(Boolean);
+    if (words.length <= 1) {
+      page.drawText(line, { x: MARGIN, y: lineY, size, font, color });
+      return;
+    }
+    const wordsWidth = words.reduce((s, w) => s + font.widthOfTextAtSize(w, size), 0);
+    const gap = (USABLE_W - wordsWidth) / (words.length - 1);
+    let x = MARGIN;
+    for (const w of words) {
+      page.drawText(w, { x, y: lineY, size, font, color });
+      x += font.widthOfTextAtSize(w, size) + gap;
+    }
+  }
+
+  /** Párrafo justificado (la última línea queda alineada a la izquierda). */
   function parrafo(
     text: string,
     opts: { bold?: boolean; size?: number; color?: ReturnType<typeof rgb>; spacingAfter?: number; center?: boolean } = {},
@@ -295,13 +317,19 @@ export async function generarAutoSuspensionPdf(
     const color = opts.color ?? ink;
     const lineHeight = size + 3;
     const lines = wrapToLines(text, USABLE_W, size, font);
-    for (const line of lines) {
+    lines.forEach((line, i) => {
       ensure(lineHeight);
-      const tw = font.widthOfTextAtSize(line, size);
-      const x = opts.center ? MARGIN + (USABLE_W - tw) / 2 : MARGIN;
-      page.drawText(line, { x, y, size, font, color });
+      const isLast = i === lines.length - 1;
+      if (opts.center) {
+        const tw = font.widthOfTextAtSize(line, size);
+        page.drawText(line, { x: MARGIN + (USABLE_W - tw) / 2, y, size, font, color });
+      } else if (!isLast) {
+        drawJustified(line, y, size, font, color);
+      } else {
+        page.drawText(line, { x: MARGIN, y, size, font, color });
+      }
       y -= lineHeight;
-    }
+    });
     y -= opts.spacingAfter ?? 6;
   }
 
