@@ -128,11 +128,20 @@ export async function POST(
     const apoderadoPorParte = new Map<string, any>();
     for (const a of apoderados ?? []) apoderadoPorParte.set(a.party_id, a);
 
-    const rows = partes.map((cp) => {
-      const ap = apoderadoPorParte.get(cp.party_id);
+    // Deduplicar por party_id: una misma parte puede aparecer más de una vez
+    // en sgcc_case_parties (p.ej. misma persona como convocante y convocado, o
+    // un duplicado de datos). El upsert con onConflict "hearing_id,party_id"
+    // falla con "ON CONFLICT DO UPDATE command cannot affect row a second time"
+    // si llegan dos filas con la misma clave en un solo comando.
+    const partyIdsUnicos = Array.from(
+      new Set(partes.map((cp) => cp.party_id).filter(Boolean))
+    );
+
+    const rows = partyIdsUnicos.map((partyId) => {
+      const ap = apoderadoPorParte.get(partyId);
       return {
         hearing_id,
-        party_id: cp.party_id,
+        party_id: partyId,
         attorney_id: ap?.attorney_id ?? null,
         asistio: null,
         representado_por_nombre: ap?.attorney?.nombre ?? null,

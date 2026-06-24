@@ -53,7 +53,16 @@ export async function POST(
 
   const staffId = (session.user as any).id;
 
-  const rows = items.map((it) => ({
+  // Deduplicar por party_id conservando la última ocurrencia: si llegan dos
+  // items con el mismo party_id, el upsert con onConflict "hearing_id,party_id"
+  // fallaría con "ON CONFLICT DO UPDATE command cannot affect row a second time".
+  const itemsPorParte = new Map<string, AsistenciaItem>();
+  for (const it of items) {
+    if (it.party_id) itemsPorParte.set(it.party_id, it);
+  }
+  const itemsUnicos = Array.from(itemsPorParte.values());
+
+  const rows = itemsUnicos.map((it) => ({
     hearing_id: hearingId,
     party_id: it.party_id,
     attorney_id: it.attorney_id ?? null,
@@ -72,7 +81,7 @@ export async function POST(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Reflejar en sgcc_case_parties.asistio (compatibilidad con flujo actual)
-  for (const it of items) {
+  for (const it of itemsUnicos) {
     await supabaseAdmin
       .from("sgcc_case_parties")
       .update({ asistio: it.asistio ?? null })
