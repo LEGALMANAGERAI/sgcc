@@ -26,6 +26,8 @@ interface CaseContext {
   conciliador: SgccStaff | null;
   acta?: SgccActa;
   audiencia?: SgccHearing | null;
+  // Texto de comparecencia parte/apoderado, ya redactado (ver acta/route.ts).
+  comparecencia?: string;
 }
 
 /**
@@ -82,6 +84,7 @@ export function renderTemplate(template: string, ctx: CaseContext): string {
     "conciliador.codigo_interno": ctx.conciliador?.codigo_interno ?? "",
     "audiencia.modalidad": ctx.audiencia?.modalidad ?? "",
     "audiencia.plataforma": ctx.audiencia?.plataforma_virtual ?? "",
+    "audiencia.comparecencia": ctx.comparecencia ?? "",
     "audiencia.fecha_hora_letras": ctx.audiencia?.fecha_hora
       ? fechaEnLetras(ctx.audiencia.fecha_hora)
       : "",

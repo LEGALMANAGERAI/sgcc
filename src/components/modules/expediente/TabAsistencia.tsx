@@ -306,6 +306,9 @@ export function TabAsistencia({
                         Representado por
                       </th>
                       <th className="px-3 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider text-center w-28">
+                        Apoderado asistió
+                      </th>
+                      <th className="px-3 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider text-center w-28">
                         Poder verificado
                       </th>
                       <th className="px-3 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">
@@ -441,6 +444,60 @@ export function TabAsistencia({
                                 </option>
                               ))}
                             </select>
+                          </td>
+
+                          {/* Apoderado asistió — solo aplica si hay apoderado seleccionado */}
+                          <td className="px-3 py-3">
+                            {record.attorney_id ? (
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() =>
+                                    handleUpdate(
+                                      hearing.id,
+                                      cp.party_id,
+                                      "apoderado_asistio",
+                                      record.apoderado_asistio === true ? null : true
+                                    )
+                                  }
+                                  disabled={isSaving}
+                                  title="El apoderado sí asistió"
+                                  aria-pressed={record.apoderado_asistio === true}
+                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-colors disabled:opacity-50 ${
+                                    record.apoderado_asistio === true
+                                      ? "bg-green-100 text-green-700 border-green-300"
+                                      : "bg-white text-gray-400 border-gray-200 hover:bg-gray-50"
+                                  }`}
+                                >
+                                  <UserCheck className="w-3.5 h-3.5" />
+                                  Sí
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleUpdate(
+                                      hearing.id,
+                                      cp.party_id,
+                                      "apoderado_asistio",
+                                      record.apoderado_asistio === false ? null : false
+                                    )
+                                  }
+                                  disabled={isSaving}
+                                  title="El apoderado no asistió"
+                                  aria-pressed={record.apoderado_asistio === false}
+                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-colors disabled:opacity-50 ${
+                                    record.apoderado_asistio === false
+                                      ? "bg-red-100 text-red-700 border-red-300"
+                                      : "bg-white text-gray-400 border-gray-200 hover:bg-gray-50"
+                                  }`}
+                                >
+                                  <UserX className="w-3.5 h-3.5" />
+                                  No
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="text-center text-[11px] text-gray-300 italic">
+                                Sin apoderado
+                              </p>
+                            )}
                           </td>
 
                           {/* Poder verificado */}

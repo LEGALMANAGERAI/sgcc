@@ -74,6 +74,7 @@ export async function POST(
     party_id,
     attorney_id,
     asistio,
+    apoderado_asistio,
     representado_por_nombre,
     poder_verificado,
     notas,
@@ -144,6 +145,7 @@ export async function POST(
         party_id: partyId,
         attorney_id: ap?.attorney_id ?? null,
         asistio: null,
+        apoderado_asistio: null,
         representado_por_nombre: ap?.attorney?.nombre ?? null,
         poder_verificado: ap?.attorney?.verificado ?? false,
         notas: null,
@@ -178,6 +180,7 @@ export async function POST(
     party_id,
     attorney_id: attorney_id ?? null,
     asistio: asistio ?? null,
+    apoderado_asistio: apoderado_asistio ?? null,
     representado_por_nombre: representado_por_nombre ?? null,
     poder_verificado: poder_verificado ?? false,
     notas: notas ?? null,
@@ -244,6 +247,7 @@ export async function PATCH(
     party_id,
     attorney_id,
     asistio,
+    apoderado_asistio,
     representado_por_nombre,
     poder_verificado,
     notas,
@@ -294,6 +298,7 @@ export async function PATCH(
 
   if (attorney_id !== undefined) updateData.attorney_id = attorney_id;
   if (asistio !== undefined) updateData.asistio = asistio;
+  if (apoderado_asistio !== undefined) updateData.apoderado_asistio = apoderado_asistio;
   if (representado_por_nombre !== undefined)
     updateData.representado_por_nombre = representado_por_nombre;
   if (poder_verificado !== undefined) updateData.poder_verificado = poder_verificado;

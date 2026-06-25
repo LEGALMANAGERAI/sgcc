@@ -159,6 +159,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Si hay hearing_id, cargar la audiencia para exponer modalidad/plataforma al renderer.
   let audiencia: any = null;
+  let comparecencia = "";
   if (hearing_id) {
     const { data: h } = await supabaseAdmin
       .from("sgcc_hearings")
@@ -166,6 +167,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .eq("id", hearing_id)
       .single();
     audiencia = h;
+
+    // Construir la comparecencia parte/apoderado a partir de la asistencia registrada.
+    const { data: asistencia } = await supabaseAdmin
+      .from("sgcc_hearing_attendance")
+      .select("party_id, asistio, apoderado_asistio, representado_por_nombre")
+      .eq("hearing_id", hearing_id);
+
+    const asistenciaPorParte = new Map<string, any>();
+    for (const a of asistencia ?? []) asistenciaPorParte.set(a.party_id, a);
+
+    comparecencia = buildComparecencia(caso.partes, asistenciaPorParte);
   }
 
   const ctx = {
@@ -176,6 +188,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     conciliador: caso.conciliador,
     acta: { ...actaData, hechos, acuerdo_texto, obligaciones },
     audiencia,
+    comparecencia,
   };
 
   // Generar contenido del acta
@@ -357,6 +370,44 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json(acta);
 }
 
+// Redacta la comparecencia de cada parte y su apoderado a partir de la asistencia
+// registrada (asistio = la parte, apoderado_asistio = el apoderado).
+function buildComparecencia(
+  partes: any[],
+  asistenciaPorParte: Map<string, any>
+): string {
+  if (!partes?.length) return "";
+
+  const lineas = partes.map((cp: any) => {
+    const p = cp.party ?? {};
+    const nombre = [p.nombres, p.apellidos, p.razon_social].filter(Boolean).join(" ").trim() || "Parte";
+    const rol = cp.rol === "convocante" ? "Convocante" : "Convocado";
+    const a = asistenciaPorParte.get(cp.party_id);
+    const asistio: boolean | null = a?.asistio ?? null;
+    const apoAsistio: boolean | null = a?.apoderado_asistio ?? null;
+    const apo: string | null = a?.representado_por_nombre ?? null;
+    const apoFrase = apo ? `su apoderado ${apo}` : "su apoderado";
+
+    let frase: string;
+    if (asistio === true) {
+      if (apoAsistio === true) frase = `compareció, acompañado de ${apoFrase}`;
+      else if (apoAsistio === false) frase = `compareció (${apoFrase} no compareció)`;
+      else frase = "compareció";
+    } else if (asistio === false) {
+      if (apoAsistio === true) frase = `no compareció personalmente; compareció ${apoFrase}`;
+      else frase = "no compareció";
+    } else {
+      // Parte sin registro de asistencia
+      if (apoAsistio === true) frase = `compareció ${apoFrase} (asistencia de la parte sin registrar)`;
+      else frase = "sin registro de asistencia";
+    }
+
+    return `- ${rol} ${nombre}: ${frase}.`;
+  });
+
+  return lineas.join("\n");
+}
+
 // Genera contenido de acta cuando no hay plantilla configurada
 function buildDefaultActaContent(
   tipo: string,
@@ -370,11 +421,14 @@ function buildDefaultActaContent(
     .join(", ");
 
   const seccionHechos = hechos?.trim() ? `\nHECHOS:\n${hechos}\n` : "";
+  const seccionComparecencia = ctx.comparecencia?.trim()
+    ? `\nCOMPARECENCIA:\n${ctx.comparecencia}\n`
+    : "";
 
   return `En {{centro.ciudad}}, siendo las ${new Date().toLocaleTimeString("es-CO", { timeStyle: "short" })} del día {{fecha.hoy}}, se celebró audiencia entre las partes:
 
 PARTES: ${partes}
-
+${seccionComparecencia}
 CONCILIADOR: {{conciliador.nombre}} — T.P. {{conciliador.tarjeta}}
 
 ASUNTO: Solicitud No. {{caso.radicado}} — Materia: {{caso.materia}}

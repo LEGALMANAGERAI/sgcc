@@ -98,6 +98,7 @@ export async function GET(
       party_id,
       attorney_id,
       asistio,
+      apoderado_asistio,
       representado_por_nombre,
       poder_verificado,
       notas

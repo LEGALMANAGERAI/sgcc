@@ -41,6 +41,7 @@ interface AsistenciaLocal {
   party_id: string;
   attorney_id: string | null;
   asistio: boolean | null;
+  apoderado_asistio: boolean | null;
   representado_por_nombre: string | null;
   poder_verificado: boolean;
   notas: string | null;
@@ -97,6 +98,7 @@ export function PanelAsistenciaAudiencia({
             party_id: cp.party_id,
             attorney_id: existente.attorney_id ?? apoderado?.attorney_id ?? null,
             asistio: existente.asistio ?? null,
+            apoderado_asistio: existente.apoderado_asistio ?? null,
             representado_por_nombre:
               existente.representado_por_nombre ?? apoderado?.attorney?.nombre ?? null,
             poder_verificado: existente.poder_verificado,
@@ -106,6 +108,7 @@ export function PanelAsistenciaAudiencia({
             party_id: cp.party_id,
             attorney_id: apoderado?.attorney_id ?? null,
             asistio: null,
+            apoderado_asistio: null,
             representado_por_nombre: apoderado?.attorney?.nombre ?? null,
             poder_verificado: apoderado?.attorney?.verificado ?? false,
             notas: null,
@@ -135,6 +138,18 @@ export function PanelAsistenciaAudiencia({
     setGuardadoOk(false);
   }
 
+  function setApoderadoAsistio(partyId: string, value: boolean) {
+    setRows((prev) => ({
+      ...prev,
+      [partyId]: {
+        ...prev[partyId],
+        // Re-clic en el botón activo vuelve a "pendiente"
+        apoderado_asistio: prev[partyId].apoderado_asistio === value ? null : value,
+      },
+    }));
+    setGuardadoOk(false);
+  }
+
   function togglePoderVerificado(partyId: string) {
     setRows((prev) => ({
       ...prev,
@@ -156,6 +171,7 @@ export function PanelAsistenciaAudiencia({
           party_id: r.party_id,
           attorney_id: r.attorney_id,
           asistio: r.asistio,
+          apoderado_asistio: r.apoderado_asistio,
           representado_por_nombre: r.representado_por_nombre,
           poder_verificado: r.poder_verificado,
           notas: r.notas,
@@ -291,6 +307,39 @@ export function PanelAsistenciaAudiencia({
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {apoderado && (
+                    <div className="inline-flex items-center gap-1 mr-1">
+                      <span className="text-[11px] text-gray-500 mr-0.5">
+                        Apoderado:
+                      </span>
+                      <button
+                        onClick={() => setApoderadoAsistio(cp.party_id, true)}
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium border transition-colors ${
+                          row.apoderado_asistio === true
+                            ? "bg-green-100 text-green-700 border-green-300"
+                            : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+                        }`}
+                        aria-pressed={row.apoderado_asistio === true}
+                        title="El apoderado sí asistió"
+                      >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        Sí
+                      </button>
+                      <button
+                        onClick={() => setApoderadoAsistio(cp.party_id, false)}
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium border transition-colors ${
+                          row.apoderado_asistio === false
+                            ? "bg-red-100 text-red-700 border-red-300"
+                            : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+                        }`}
+                        aria-pressed={row.apoderado_asistio === false}
+                        title="El apoderado no asistió"
+                      >
+                        <UserX className="w-3.5 h-3.5" />
+                        No
+                      </button>
+                    </div>
+                  )}
                   {apoderado && (
                     <button
                       onClick={() => togglePoderVerificado(cp.party_id)}

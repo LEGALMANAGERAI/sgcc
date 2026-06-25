@@ -8,6 +8,8 @@ interface AsistenciaItem {
   attorney_id?: string | null;
   // null = pendiente (no se ha marcado), true = asistió, false = no asistió
   asistio: boolean | null;
+  // Asistencia del apoderado, independiente de la de la parte.
+  apoderado_asistio?: boolean | null;
   representado_por_nombre?: string | null;
   poder_verificado?: boolean;
   notas?: string | null;
@@ -67,6 +69,7 @@ export async function POST(
     party_id: it.party_id,
     attorney_id: it.attorney_id ?? null,
     asistio: it.asistio ?? null,
+    apoderado_asistio: it.apoderado_asistio ?? null,
     representado_por_nombre: it.representado_por_nombre ?? null,
     poder_verificado: it.poder_verificado ?? false,
     notas: it.notas ?? null,
