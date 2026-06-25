@@ -130,7 +130,8 @@ export async function POST(
     for (const a of apoderados ?? []) apoderadoPorParte.set(a.party_id, a);
 
     // Deduplicar por party_id: una misma parte puede aparecer más de una vez
-    // en sgcc_case_parties. El upsert con onConflict "hearing_id,party_id"
+    // en sgcc_case_parties (p.ej. misma persona como convocante y convocado, o
+    // un duplicado de datos). El upsert con onConflict "hearing_id,party_id"
     // falla con "ON CONFLICT DO UPDATE command cannot affect row a second time"
     // si llegan dos filas con la misma clave en un solo comando.
     const partyIdsUnicos = Array.from(
