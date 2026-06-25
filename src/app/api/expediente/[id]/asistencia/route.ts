@@ -74,6 +74,7 @@ export async function POST(
     party_id,
     attorney_id,
     asistio,
+    apoderado_asistio,
     representado_por_nombre,
     poder_verificado,
     notas,
@@ -128,13 +129,22 @@ export async function POST(
     const apoderadoPorParte = new Map<string, any>();
     for (const a of apoderados ?? []) apoderadoPorParte.set(a.party_id, a);
 
-    const rows = partes.map((cp) => {
-      const ap = apoderadoPorParte.get(cp.party_id);
+    // Deduplicar por party_id: una misma parte puede aparecer más de una vez
+    // en sgcc_case_parties. El upsert con onConflict "hearing_id,party_id"
+    // falla con "ON CONFLICT DO UPDATE command cannot affect row a second time"
+    // si llegan dos filas con la misma clave en un solo comando.
+    const partyIdsUnicos = Array.from(
+      new Set(partes.map((cp) => cp.party_id).filter(Boolean))
+    );
+
+    const rows = partyIdsUnicos.map((partyId) => {
+      const ap = apoderadoPorParte.get(partyId);
       return {
         hearing_id,
-        party_id: cp.party_id,
+        party_id: partyId,
         attorney_id: ap?.attorney_id ?? null,
         asistio: null,
+        apoderado_asistio: null,
         representado_por_nombre: ap?.attorney?.nombre ?? null,
         poder_verificado: ap?.attorney?.verificado ?? false,
         notas: null,
@@ -169,6 +179,7 @@ export async function POST(
     party_id,
     attorney_id: attorney_id ?? null,
     asistio: asistio ?? null,
+    apoderado_asistio: apoderado_asistio ?? null,
     representado_por_nombre: representado_por_nombre ?? null,
     poder_verificado: poder_verificado ?? false,
     notas: notas ?? null,
@@ -235,6 +246,7 @@ export async function PATCH(
     party_id,
     attorney_id,
     asistio,
+    apoderado_asistio,
     representado_por_nombre,
     poder_verificado,
     notas,
@@ -285,6 +297,7 @@ export async function PATCH(
 
   if (attorney_id !== undefined) updateData.attorney_id = attorney_id;
   if (asistio !== undefined) updateData.asistio = asistio;
+  if (apoderado_asistio !== undefined) updateData.apoderado_asistio = apoderado_asistio;
   if (representado_por_nombre !== undefined)
     updateData.representado_por_nombre = representado_por_nombre;
   if (poder_verificado !== undefined) updateData.poder_verificado = poder_verificado;
