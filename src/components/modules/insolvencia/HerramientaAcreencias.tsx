@@ -990,6 +990,45 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     flash("ok", "Seguros capitalizados al capital — mira la Relación definitiva");
   }
 
+  // Deja el renglón SIN conciliar: pone los 5 conceptos conciliados en 0 y limpia
+  // la fecha de conciliación. El renglón sigue en la relación con lo solicitado/
+  // reconocido, pero deja de contar para el % de voto y pequeño acreedor (que se
+  // calculan sobre el capital conciliado). Caso de uso: el deudor se retracta de
+  // un valor ya conciliado.
+  async function desconciliarAcreencia(acreenciaId: string) {
+    const a = acreencias.find((x) => x.id === acreenciaId);
+    if (!a) return;
+    const totalConciliado =
+      Number(a.con_capital) +
+      Number(a.con_intereses_corrientes) +
+      Number(a.con_intereses_moratorios) +
+      Number(a.con_seguros) +
+      Number(a.con_otros);
+    if (totalConciliado <= 0 && !a.fecha_conciliacion) {
+      flash("error", "Este renglón no tiene valores conciliados");
+      return;
+    }
+    if (
+      !confirm(
+        `¿Dejar SIN conciliar a "${a.acreedor_nombre}"? Se pondrán en 0 los valores conciliados ($${totalConciliado.toLocaleString("es-CO")}) y se quitará la fecha de conciliación. Lo solicitado y reconocido se conserva. Se recalcularán los porcentajes de voto.`
+      )
+    )
+      return;
+    const nuevaNota = [a.notas, "Conciliación retirada (valores dejados sin conciliar)"]
+      .filter(Boolean)
+      .join(" · ");
+    await updateAcreencia(acreenciaId, {
+      con_capital: 0,
+      con_intereses_corrientes: 0,
+      con_intereses_moratorios: 0,
+      con_seguros: 0,
+      con_otros: 0,
+      fecha_conciliacion: null,
+      notas: nuevaNota,
+    });
+    flash("ok", "Renglón dejado sin conciliar — porcentajes recalculados");
+  }
+
   // Re-cargar la lista de acreencias activas desde el server (orden y % al día).
   const refetchAcreencias = useCallback(async () => {
     const res = await fetch(`/api/expediente/${caseId}/acreencias`);
@@ -1809,6 +1848,17 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                             title="Capitalizar seguros al capital"
                           >
                             Capitalizar<br />seguros
+                          </button>
+                        )}
+                        {(Number(a.con_capital) + Number(a.con_intereses_corrientes) + Number(a.con_intereses_moratorios) + Number(a.con_seguros) + Number(a.con_otros) > 0 || a.fecha_conciliacion) && (
+                          <button
+                            type="button"
+                            onClick={() => desconciliarAcreencia(a.id)}
+                            disabled={saving === a.id}
+                            className="text-[9px] font-medium bg-red-50 text-red-700 border border-red-300 rounded px-1.5 py-0.5 hover:bg-red-100 disabled:opacity-50 leading-tight"
+                            title="Dejar este renglón sin conciliar (pone los valores conciliados en 0 y quita la fecha). Lo solicitado y reconocido se conserva."
+                          >
+                            ✕ Des-<br />conciliar
                           </button>
                         )}
                         {(() => {
