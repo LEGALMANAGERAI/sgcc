@@ -885,11 +885,28 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
         }
       }
 
-      const res = await fetch(`/api/expediente/${caseId}/acreencias/crear-con-convocado`, {
+      let res = await fetch(`/api/expediente/${caseId}/acreencias/crear-con-convocado`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
+
+      // El backend puede pedir confirmación cuando la operación cruzaría este
+      // acreedor con otro (misma parte / cambio de documento). Preguntamos y
+      // reintentamos con la bandera de confirmación.
+      if (res.status === 409) {
+        const body = await res.json().catch(() => ({}));
+        if (body?.requiereConfirmacion) {
+          if (!confirm(`${body.error}\n\n¿Deseas continuar de todos modos?`)) {
+            return false;
+          }
+          res = await fetch(`/api/expediente/${caseId}/acreencias/crear-con-convocado`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...data, confirmar_cambio_acreedor: true }),
+          });
+        }
+      }
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -1304,6 +1321,24 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
     return m;
   }, [partesConvocados]);
 
+  // Partes compartidas por acreencias con NOMBRE distinto = probable cruce de datos
+  // (editar una afecta a la otra). Se marca con una advertencia en la fila.
+  const partiesEnConflicto = useMemo(() => {
+    const byParty = new Map<string, Set<string>>();
+    for (const a of acreencias) {
+      if (!a.party_id) continue;
+      const nombreNorm = (a.acreedor_nombre ?? "").replace(/\s+/g, " ").trim().toUpperCase();
+      const set = byParty.get(a.party_id) ?? new Set<string>();
+      set.add(nombreNorm);
+      byParty.set(a.party_id, set);
+    }
+    const conflicto = new Set<string>();
+    for (const [pid, nombres] of byParty) {
+      if (nombres.size > 1) conflicto.add(pid);
+    }
+    return conflicto;
+  }, [acreencias]);
+
   const gruposAcreedores = useMemo(() => {
     const map = new Map<string, {
       key: string;
@@ -1656,6 +1691,14 @@ export function HerramientaAcreencias({ caseId, acreedoresIniciales, partesConvo
                     deleteAcreencia={deleteAcreencia}
                   >
                     <td className="px-3 py-2">
+                      {a.party_id && partiesEnConflicto.has(a.party_id) && (
+                        <div
+                          className="mb-1 text-[10px] text-red-700 bg-red-50 border border-red-200 rounded px-1.5 py-0.5 leading-tight"
+                          title="Esta parte está compartida con otro acreedor de nombre distinto. Editar uno puede afectar al otro. Verifica el documento del acreedor."
+                        >
+                          ⚠ Parte compartida con otro acreedor — verifica el documento
+                        </div>
+                      )}
                       <input
                         type="text"
                         list={`acreedores-nombres-${caseId}`}
