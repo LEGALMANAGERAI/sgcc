@@ -57,6 +57,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   // privado y aqui llega como `tmp_poder_path`.
   const body = await req.json();
   const { acreedor, apoderado, acreencia_id, tmp_poder_path } = body ?? {};
+  // Bandera para saltar la advertencia anti-cruce (el usuario ya confirmó desde la UI).
+  const confirmarCambio = body?.confirmar_cambio_acreedor === true;
   if (!acreedor) return NextResponse.json({ error: "Datos del acreedor requeridos" }, { status: 400 });
 
   const tipoPersona: "natural" | "juridica" = acreedor.tipo_persona === "juridica" ? "juridica" : "natural";
@@ -94,6 +96,57 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: `Error creando parte: ${e?.message ?? "desconocido"}` }, { status: 500 });
   }
 
+  const documentoAcreencia = acreedor.numero_doc?.trim() || null;
+
+  // Guard anti-cruce: evita que editar/crear un acreedor lo vincule por error a la
+  // parte de OTRO acreedor (bug "se escribe en una y en otra"). Se dispara si:
+  //  (a) la parte resuelta ya pertenece a otra acreencia del caso con NOMBRE distinto, o
+  //  (b) es una edición que CAMBIA el documento de la acreencia.
+  // En ambos casos se pide confirmación explícita desde la UI (confirmar_cambio_acreedor).
+  if (!confirmarCambio) {
+    const normNombre = (s: string | null | undefined) =>
+      (s ?? "").replace(/\s+/g, " ").trim().toUpperCase();
+    const normDoc2 = (d: string | null | undefined) =>
+      (d ?? "").replace(/[\s.\-_]/g, "").toUpperCase();
+
+    const { data: otras } = await supabaseAdmin
+      .from("sgcc_acreencias")
+      .select("id, acreedor_nombre")
+      .eq("case_id", caseId)
+      .eq("party_id", partyId)
+      .is("deleted_at", null);
+    const conflicto = (otras ?? []).find(
+      (o) => o.id !== acreencia_id && normNombre(o.acreedor_nombre) !== normNombre(nombreVisible),
+    );
+
+    let cambioDoc: { antes: string; despues: string | null } | null = null;
+    if (acreencia_id) {
+      const { data: prev } = await supabaseAdmin
+        .from("sgcc_acreencias")
+        .select("acreedor_documento")
+        .eq("id", acreencia_id)
+        .maybeSingle();
+      if (
+        prev?.acreedor_documento &&
+        normDoc2(prev.acreedor_documento) !== normDoc2(documentoAcreencia)
+      ) {
+        cambioDoc = { antes: prev.acreedor_documento, despues: documentoAcreencia };
+      }
+    }
+
+    if (conflicto || cambioDoc) {
+      return NextResponse.json(
+        {
+          requiereConfirmacion: true,
+          error: conflicto
+            ? `Ese documento ya pertenece a otro acreedor del caso: "${conflicto.acreedor_nombre}". Si continúas, ambos quedarán vinculados a la misma parte y editar uno afectará al otro. Verifica el documento del acreedor.`
+            : `Vas a cambiar el documento del acreedor de ${cambioDoc!.antes} a ${cambioDoc!.despues ?? "(vacío)"}. Confirma solo si es una corrección del mismo acreedor.`,
+        },
+        { status: 409 },
+      );
+    }
+  }
+
   // 2. case_party con rol "convocado" (si no existe ya)
   const { data: existingCaseParty } = await supabaseAdmin
     .from("sgcc_case_parties")
@@ -114,7 +167,6 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   // 3. Acreencia: crear o actualizar existente
-  const documentoAcreencia = acreedor.numero_doc?.trim() || null;
   let acreenciaId: string;
   if (acreencia_id) {
     // Actualizar acreencia existente (caso "completar después")
