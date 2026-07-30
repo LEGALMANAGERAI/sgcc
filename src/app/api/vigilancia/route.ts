@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
+import { obtenerActuaciones, type ActuacionRama } from "@/lib/rama-judicial";
 import { randomUUID } from "crypto";
+
+export const maxDuration = 60;
 
 /**
  * GET /api/vigilancia
@@ -75,6 +78,8 @@ export async function POST(req: NextRequest) {
     fecha_proceso,
     es_privado,
     rama_ultima_actuacion_fecha,
+    // Actuaciones pre-fetched por el buscador (evita doble llamada a Rama)
+    actuaciones_prefetch,
   } = body;
 
   if (!numero_proceso?.trim()) {
@@ -148,5 +153,71 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json(data, { status: 201 });
+  // Si viene de Rama Judicial, intentar popular actuaciones de una vez.
+  // Best-effort: si falla, el proceso queda creado igual y el usuario puede
+  // sincronizar luego desde el modal.
+  let actuacionesInsertadas = 0;
+  if (rama_id_proceso) {
+    let actuaciones: ActuacionRama[] = Array.isArray(actuaciones_prefetch)
+      ? (actuaciones_prefetch as ActuacionRama[])
+      : [];
+
+    if (actuaciones.length === 0) {
+      try {
+        actuaciones = await obtenerActuaciones(rama_id_proceso, 50);
+      } catch (err: any) {
+        console.error(
+          `[vigilancia:import] Error obtenerActuaciones idProceso=${rama_id_proceso}:`,
+          err?.message
+        );
+      }
+    }
+
+    if (actuaciones.length > 0) {
+      const rows = actuaciones
+        .filter((a) => a.actuacion)
+        .map((a) => ({
+          id: randomUUID(),
+          watched_process_id: data.id,
+          tipo_actuacion: a.actuacion,
+          anotacion: a.anotacion || a.actuacion,
+          fecha_actuacion: a.fechaActuacion
+            ? new Date(a.fechaActuacion).toISOString().split("T")[0]
+            : now.split("T")[0],
+          detalles: a.fechaFinal
+            ? `Término vence: ${String(a.fechaFinal).split("T")[0]}`
+            : a.fechaRegistro
+              ? `Registrada: ${String(a.fechaRegistro).split("T")[0]}`
+              : null,
+          leida: false,
+          created_at: now,
+        }));
+
+      const { error: insertError } = await supabaseAdmin
+        .from("sgcc_process_updates")
+        .insert(rows);
+      if (!insertError) {
+        actuacionesInsertadas = rows.length;
+
+        // Actualizar última actuación en el watched_process
+        const primera = actuaciones[0];
+        await supabaseAdmin
+          .from("sgcc_watched_processes")
+          .update({
+            ultima_actuacion: primera.anotacion || primera.actuacion,
+            ultima_actuacion_fecha: primera.fechaActuacion
+              ? new Date(primera.fechaActuacion).toISOString().split("T")[0]
+              : null,
+          })
+          .eq("id", data.id);
+      } else {
+        console.error("[vigilancia:import] insert actuaciones:", insertError.message);
+      }
+    }
+  }
+
+  return NextResponse.json(
+    { ...data, actuaciones_insertadas: actuacionesInsertadas },
+    { status: 201 }
+  );
 }
