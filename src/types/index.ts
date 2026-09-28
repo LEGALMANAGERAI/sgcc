@@ -50,7 +50,7 @@ export interface SgccCenter {
 
 // ─── Staff ──────────────────────────────────────────────────────────────────
 
-export type StaffRol = "admin" | "conciliador" | "secretario";
+export type StaffRol = "admin" | "conciliador" | "secretario" | "asistente";
 
 export interface SgccStaff {
   id: string;

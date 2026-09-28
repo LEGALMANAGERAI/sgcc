@@ -28,7 +28,7 @@ export async function PATCH(
   }
 
   // Validar rol si se envia
-  if (rol && !["admin", "conciliador", "secretario"].includes(rol)) {
+  if (rol && !["admin", "conciliador", "secretario", "asistente"].includes(rol)) {
     return NextResponse.json({ error: "Rol no valido" }, { status: 400 });
   }
   // Sin esto, cualquiera podía ascenderse (o ascender a otro) a admin.

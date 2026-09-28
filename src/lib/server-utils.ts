@@ -25,7 +25,8 @@ export function isAdmin(session: any): boolean {
  * asignada. Admin y secretario del centro ven todos los casos del centro.
  */
 export function staffSoloVeSusCasos(session: any): boolean {
-  return (session?.user?.sgccRol as string) === "conciliador";
+  const rol = session?.user?.sgccRol as string;
+  return rol === "conciliador" || rol === "asistente";
 }
 
 /**
@@ -89,6 +90,30 @@ export async function resolverCasosVisiblesParaStaff(
     .in("conciliador_id", misIds)
     .eq("caso.center_id", centerId);
   for (const h of viaHearings ?? []) if (h.case_id) ids.add(h.case_id);
+
+  // Asistente: casos de sus vínculos activos (expediente puntual o todos los
+  // casos del conciliador que la vinculó).
+  if (session?.user?.sgccRol === "asistente") {
+    const { data: vinculos } = await supabaseAdmin
+      .from("sgcc_asistente_vinculos")
+      .select("conciliador_id, case_id")
+      .in("asistente_id", misIds)
+      .eq("center_id", centerId)
+      .eq("estado", "activo");
+    const conciliadores = new Set<string>();
+    for (const v of vinculos ?? []) {
+      if (v.case_id) ids.add(v.case_id);
+      else conciliadores.add(v.conciliador_id);
+    }
+    if (conciliadores.size > 0) {
+      const { data: deConciliador } = await supabaseAdmin
+        .from("sgcc_cases")
+        .select("id")
+        .eq("center_id", centerId)
+        .in("conciliador_id", Array.from(conciliadores));
+      for (const c of deConciliador ?? []) ids.add(c.id);
+    }
+  }
 
   return { modo: "lista", caseIds: Array.from(ids) };
 }

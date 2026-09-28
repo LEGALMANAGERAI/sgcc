@@ -61,8 +61,8 @@ export async function POST(req: NextRequest) {
   }
 
   // Validar rol
-  if (!["admin", "conciliador", "secretario"].includes(rol)) {
-    return NextResponse.json({ error: "Rol no valido. Use: admin, conciliador o secretario" }, { status: 400 });
+  if (!["admin", "conciliador", "secretario", "asistente"].includes(rol)) {
+    return NextResponse.json({ error: "Rol no valido. Use: admin, conciliador, secretario o asistente" }, { status: 400 });
   }
   if (rol === "admin" && !esAdmin) {
     return NextResponse.json({ error: "Solo un admin puede crear administradores" }, { status: 403 });
