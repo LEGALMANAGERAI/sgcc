@@ -31,6 +31,8 @@ export function ConciliadoresClient({ staff, conciliadores }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Credenciales del último usuario creado: la contraseña temporal solo se ve aquí, una vez.
+  const [creado, setCreado] = useState<{ email: string; password: string } | null>(null);
 
   const [form, setForm] = useState({
     nombre: "",
@@ -91,10 +93,9 @@ export function ConciliadoresClient({ staff, conciliadores }: Props) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(form),
         });
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error ?? "Error creando conciliador");
-        }
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Error creando conciliador");
+        setCreado({ email: data.email, password: data.password_temporal });
       }
       resetForm();
       setShowForm(false);
@@ -134,6 +135,19 @@ export function ConciliadoresClient({ staff, conciliadores }: Props) {
           {showForm ? "Cancelar" : "+ Agregar miembro"}
         </button>
       </div>
+
+      {creado && (
+        <div role="status" className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">
+          <p className="font-medium">Usuario creado: {creado.email}</p>
+          <p className="mt-1">
+            Contraseña temporal: <code className="select-all rounded bg-white px-2 py-0.5 font-mono">{creado.password}</code>
+          </p>
+          <p className="mt-1 text-xs text-green-800">Cópiala ahora y entrégasela al usuario; no se volverá a mostrar.</p>
+          <button type="button" onClick={() => setCreado(null)} className="mt-2 text-xs underline">
+            Ya la copié
+          </button>
+        </div>
+      )}
 
       {/* Tabla */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto mb-6">
@@ -355,7 +369,7 @@ export function ConciliadoresClient({ staff, conciliadores }: Props) {
 
           {!editingId && (
             <p className="text-xs text-gray-400 mt-3">
-              La contrasena por defecto sera &quot;Sgcc2026*&quot;. El usuario debera cambiarla al iniciar sesion.
+              Se generará una contraseña temporal que verás una sola vez para entregársela al usuario.
             </p>
           )}
         </div>

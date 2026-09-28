@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resolveCenterId } from "@/lib/server-utils";
+import { guardCasoStaff } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
 
 type Params = { params: Promise<{ id: string }> };
@@ -20,18 +20,17 @@ const MOTIVO_MIN = 20;
  *    cuando el admin la solicite a los desarrolladores.
  */
 export async function POST(req: NextRequest, { params }: Params) {
+  const { id: caseId } = await params;
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
 
-  const rol = (session.user as any).sgccRol as string | undefined;
+  const rol = (session!.user as any).sgccRol as string | undefined;
   if (rol !== "admin") {
     return NextResponse.json({ error: "Solo admin puede eliminar expedientes" }, { status: 403 });
   }
 
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
-
-  const { id: caseId } = await params;
   const body = await req.json().catch(() => ({}));
   const motivo: string = (body?.motivo ?? "").toString().trim();
 
@@ -55,9 +54,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "El expediente ya estaba eliminado" }, { status: 400 });
   }
 
-  const userId = (session.user as any).id;
-  const userName = (session.user as any).name ?? "staff";
-  const userEmail = (session.user as any).email ?? "";
+  const userId = (session!.user as any).id;
+  const userName = (session!.user as any).name ?? "staff";
+  const userEmail = (session!.user as any).email ?? "";
   const now = new Date().toISOString();
 
   const { error: updErr } = await supabaseAdmin

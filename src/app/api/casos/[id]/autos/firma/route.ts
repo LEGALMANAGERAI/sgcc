@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resolveCenterId } from "@/lib/server-utils";
+import { guardCasoStaff } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
 import { resolverVariablesAuto } from "@/lib/autos/resolver-variables";
 import { generarAutoSuspensionPdf } from "@/lib/autos/pdf-auto-suspension";
@@ -27,14 +27,12 @@ type Params = { params: Promise<{ id: string }> };
  * Response: { success: true, firma_documento_id, firmantes }
  */
 export async function POST(req: NextRequest, { params }: Params) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
-
   const { id: caseId } = await params;
-  const userId = (session.user as any)?.id;
+  const session = await auth();
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
+  const userId = (session!.user as any)?.id;
 
   try {
     const { tipo, hearing_id, opciones, confirmar_duplicado } = await req.json();

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resolveCenterId } from "@/lib/server-utils";
+import { guardCasoStaff } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
 import { recalcularPorcentajesAcreencias as recalcularPorcentajes } from "@/lib/acreencias/recalcular-porcentajes";
 
@@ -12,13 +12,11 @@ type Params = { params: Promise<{ id: string }> };
  * Listar acreencias del caso con cálculos de % y pequeño acreedor.
  */
 export async function GET(req: NextRequest, { params }: Params) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
-
   const { id: caseId } = await params;
+  const session = await auth();
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
 
   // ?eliminadas=1 → papelera: devuelve solo las acreencias borradas (deleted_at)
   // para poder restaurarlas. Sin el parámetro, devuelve solo las activas.
@@ -50,13 +48,11 @@ export async function GET(req: NextRequest, { params }: Params) {
  * Crear nueva acreencia.
  */
 export async function POST(req: NextRequest, { params }: Params) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
-
   const { id: caseId } = await params;
+  const session = await auth();
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
   const body = await req.json();
 
   // Calcular siguiente display_order para este caso
@@ -119,13 +115,11 @@ export async function POST(req: NextRequest, { params }: Params) {
  * Body: { acreencia_id, ...campos }
  */
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
-
   const { id: caseId } = await params;
+  const session = await auth();
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
   const body = await req.json();
   const { acreencia_id, ...campos } = body;
 
@@ -184,13 +178,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
  * papelera con PUT). Body: { acreencia_id }
  */
 export async function DELETE(req: NextRequest, { params }: Params) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
-
   const { id: caseId } = await params;
+  const session = await auth();
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
   const body = await req.json();
 
   const { data, error } = await supabaseAdmin
@@ -217,13 +209,11 @@ export async function DELETE(req: NextRequest, { params }: Params) {
  * Restaurar una acreencia eliminada (deshacer). Body: { acreencia_id }
  */
 export async function PUT(req: NextRequest, { params }: Params) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
-
   const { id: caseId } = await params;
+  const session = await auth();
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
   const body = await req.json();
 
   if (!body.acreencia_id) {

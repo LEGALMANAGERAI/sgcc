@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin, uploadFile } from "@/lib/supabase";
-import { resolveCenterId } from "@/lib/server-utils";
+import { guardCasoStaff } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
 
 /**
@@ -14,9 +14,8 @@ export async function GET(
 ) {
   const { id: caseId } = await params;
   const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
 
   const { data, error } = await supabaseAdmin
     .from("sgcc_documents")
@@ -41,34 +40,9 @@ export async function POST(
 ) {
   const { id: caseId } = await params;
   const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
-  // Solo staff
-  if ((session.user as any).userType !== "staff") {
-    return NextResponse.json(
-      { error: "Solo el personal del centro puede subir documentos" },
-      { status: 403 }
-    );
-  }
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) {
-    return NextResponse.json({ error: "Sin centro asignado" }, { status: 400 });
-  }
-
-  // Verificar que el caso existe y pertenece al centro
-  const { data: caso } = await supabaseAdmin
-    .from("sgcc_cases")
-    .select("id, center_id")
-    .eq("id", caseId)
-    .eq("center_id", centerId)
-    .single();
-
-  if (!caso) {
-    return NextResponse.json({ error: "Caso no encontrado" }, { status: 404 });
-  }
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
 
   // Parse FormData
   let formData: FormData;
@@ -112,7 +86,7 @@ export async function POST(
   }
 
   // Insertar registro en sgcc_documents
-  const userId = (session.user as any).id;
+  const userId = (session!.user as any).id;
   const now = new Date().toISOString();
   const docId = randomUUID();
 

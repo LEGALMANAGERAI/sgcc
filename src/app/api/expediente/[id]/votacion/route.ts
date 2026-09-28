@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resolveCenterId } from "@/lib/server-utils";
+import { guardCasoStaff } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
 
 type Params = { params: Promise<{ id: string }> };
@@ -12,14 +12,12 @@ type Params = { params: Promise<{ id: string }> };
  * Body: { propuesta_id, acreencia_id, voto, observaciones? }
  */
 export async function POST(req: NextRequest, { params }: Params) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
-
-  const userId = (session.user as any)?.id;
   const { id: caseId } = await params;
+  const session = await auth();
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
+  const userId = (session!.user as any)?.id;
   const body = await req.json();
 
   const { propuesta_id, acreencia_id, voto, observaciones } = body;

@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { supabaseAdmin } from "./supabase";
 import { sumarDiasHabiles } from "./dias-habiles-colombia";
 
@@ -100,6 +101,58 @@ export async function puedeVerCaso(session: any, centerId: string, caseId: strin
   const v = await resolverCasosVisiblesParaStaff(session, centerId);
   if (v.modo === "todos") return true;
   return v.caseIds.includes(caseId);
+}
+
+/**
+ * Guard único para las APIs de un caso (/api/casos/[id]/*, /api/expediente/[id]/*).
+ * Exige sesión de staff, que el caso pertenezca al centro de la sesión y que el
+ * usuario pueda verlo (conciliador → solo sus casos). Uso:
+ *
+ *   const g = await guardCasoStaff(session, caseId);
+ *   if ("error" in g) return g.error;
+ *   const { centerId } = g;
+ */
+export async function guardCasoStaff(
+  session: any,
+  caseId: string,
+): Promise<{ centerId: string } | { error: NextResponse }> {
+  if (!session) return { error: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
+  if (session.user?.userType !== "staff") {
+    return { error: NextResponse.json({ error: "Solo el personal del centro" }, { status: 403 }) };
+  }
+  const centerId = resolveCenterId(session);
+  if (!centerId) return { error: NextResponse.json({ error: "Sin centro" }, { status: 400 }) };
+
+  const { data: caso } = await supabaseAdmin
+    .from("sgcc_cases")
+    .select("id")
+    .eq("id", caseId)
+    .eq("center_id", centerId)
+    .maybeSingle();
+  if (!caso) return { error: NextResponse.json({ error: "Caso no encontrado" }, { status: 404 }) };
+
+  if (!(await puedeVerCaso(session, centerId, caseId))) {
+    return { error: NextResponse.json({ error: "Sin acceso a este caso" }, { status: 403 }) };
+  }
+  return { centerId };
+}
+
+/**
+ * Guard para gestionar el equipo del centro (/api/conciliadores): solo admin y
+ * secretario (igual que el menú). Quien no es admin no puede tocar admins; eso
+ * lo valida cada handler con `esAdmin`.
+ */
+export function guardGestionStaff(
+  session: any,
+): { centerId: string; esAdmin: boolean } | { error: NextResponse } {
+  if (!session) return { error: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
+  const rol = session.user?.sgccRol as string | undefined;
+  if (session.user?.userType !== "staff" || (rol !== "admin" && rol !== "secretario")) {
+    return { error: NextResponse.json({ error: "Solo admin o secretaría gestionan el equipo" }, { status: 403 }) };
+  }
+  const centerId = resolveCenterId(session);
+  if (!centerId) return { error: NextResponse.json({ error: "Sin centro asignado" }, { status: 400 }) };
+  return { centerId, esAdmin: rol === "admin" };
 }
 
 /**

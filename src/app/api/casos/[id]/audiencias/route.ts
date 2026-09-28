@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resolveCenterId } from "@/lib/server-utils";
+import { guardCasoStaff } from "@/lib/server-utils";
 import { notify } from "@/lib/notifications";
 import { randomUUID } from "crypto";
 import { recomputeCaseEstadoTrasAudiencia } from "@/lib/casos/audiencia-estado";
@@ -10,7 +10,8 @@ import { sumarDiasHabiles } from "@/lib/dias-habiles-colombia";
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: caseId } = await params;
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
 
   const { data, error } = await supabaseAdmin
     .from("sgcc_hearings")
@@ -25,10 +26,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: caseId } = await params;
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
 
   const { data: caso } = await supabaseAdmin
     .from("sgcc_cases")
@@ -166,7 +166,9 @@ export async function PATCH(
 ) {
   const { id: caseId } = await params;
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
 
   const body = await req.json();
   const { hearing_id, estado, resultado, fecha_continuacion, notas_previas } = body;
@@ -298,7 +300,6 @@ export async function PATCH(
   // para objeciones del objetante + 5 días para descorrer el traslado; al final
   // del día 10 se remite el expediente al juzgado).
   if (resultado === "suspendida_objeciones") {
-    const centerId = resolveCenterId(session);
     const { data: hearingRow } = await supabaseAdmin
       .from("sgcc_hearings")
       .select("fecha_hora")
@@ -315,7 +316,7 @@ export async function PATCH(
       const D = new Date(hearingRow.fecha_hora);
       const venceObjeciones = sumarDiasHabiles(D, 5).toISOString().split("T")[0];
       const venceTraslado = sumarDiasHabiles(D, 10).toISOString().split("T")[0];
-      const staffId = casoRow.conciliador_id ?? (session.user as any).id;
+      const staffId = casoRow.conciliador_id ?? (session!.user as any).id;
       const radicado = casoRow.numero_radicado ?? "";
 
       if (staffId) {

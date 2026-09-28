@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin, uploadFile } from "@/lib/supabase";
-import { resolveCenterId } from "@/lib/server-utils";
+import { guardCasoStaff } from "@/lib/server-utils";
 import { renderTemplate, generateDocx } from "@/lib/doc-generator";
 import { notify } from "@/lib/notifications";
 import { randomUUID } from "crypto";
@@ -9,10 +9,9 @@ import { randomUUID } from "crypto";
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: caseId } = await params;
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
 
   const { data: caso } = await supabaseAdmin
     .from("sgcc_cases")
@@ -47,6 +46,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .from("sgcc_templates")
     .select("*")
     .eq("id", template_id)
+    .or(`center_id.eq.${centerId},center_id.is.null`)
     .single();
 
   if (!template) return NextResponse.json({ error: "Plantilla no encontrada" }, { status: 404 });
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     storage_path: storagePath,
     url,
     mime_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    subido_por_staff: (session.user as any).id,
+    subido_por_staff: (session!.user as any).id,
     created_at: new Date().toISOString(),
   });
 

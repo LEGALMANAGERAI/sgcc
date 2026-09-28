@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resolveCenterId } from "@/lib/server-utils";
+import { guardCasoStaff } from "@/lib/server-utils";
 import { generateRelacionAcreenciasDocx } from "@/lib/doc-generator";
 import { generarRelacionAcreenciasPdf } from "@/lib/acreencias/pdf-relacion";
 import type { SgccAcreencia } from "@/types";
@@ -16,13 +16,11 @@ type Params = { params: Promise<{ id: string }> };
  * los de un mismo acreedor durante la audiencia).
  */
 export async function GET(req: NextRequest, { params }: Params) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
-
   const { id: caseId } = await params;
+  const session = await auth();
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
   const format = (req.nextUrl.searchParams.get("format") ?? "docx").toLowerCase();
 
   if (format !== "docx" && format !== "pdf") {

@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resolveCenterId } from "@/lib/server-utils";
+import { guardGestionStaff } from "@/lib/server-utils";
 import bcrypt from "bcryptjs";
-import { randomUUID } from "crypto";
+import { randomUUID, randomBytes } from "crypto";
 import { normalizeEmail } from "@/lib/normalize-email";
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro asignado" }, { status: 400 });
+  const g = guardGestionStaff(await auth());
+  if ("error" in g) return g.error;
+  const { centerId } = g;
 
   // Staff del centro
   const { data: staff, error } = await supabaseAdmin
@@ -50,11 +48,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro asignado" }, { status: 400 });
+  const g = guardGestionStaff(await auth());
+  if ("error" in g) return g.error;
+  const { centerId, esAdmin } = g;
 
   const body = await req.json();
   const { nombre, email: rawEmail, telefono, rol, tarjeta_profesional, codigo_interno, supervisor_id } = body;
@@ -67,6 +63,9 @@ export async function POST(req: NextRequest) {
   // Validar rol
   if (!["admin", "conciliador", "secretario"].includes(rol)) {
     return NextResponse.json({ error: "Rol no valido. Use: admin, conciliador o secretario" }, { status: 400 });
+  }
+  if (rol === "admin" && !esAdmin) {
+    return NextResponse.json({ error: "Solo un admin puede crear administradores" }, { status: 403 });
   }
 
   // Verificar email unico en el centro (case-insensitive)
@@ -81,8 +80,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Ya existe un miembro con ese email en este centro" }, { status: 409 });
   }
 
-  // Hash de contrasena por defecto
-  const password_hash = await bcrypt.hash("Sgcc2026*", 12);
+  // Contraseña temporal aleatoria: se devuelve UNA vez para que quien crea el
+  // usuario se la entregue (antes era una clave fija igual para todos).
+  const passwordTemporal = randomBytes(9).toString("base64url");
+  const password_hash = await bcrypt.hash(passwordTemporal, 12);
   const now = new Date().toISOString();
 
   const { data: newStaff, error } = await supabaseAdmin
@@ -107,5 +108,5 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json(newStaff, { status: 201 });
+  return NextResponse.json({ ...newStaff, password_temporal: passwordTemporal }, { status: 201 });
 }
