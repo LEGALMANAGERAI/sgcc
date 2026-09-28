@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resolveCenterId } from "@/lib/server-utils";
+import { guardCasoStaff } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
 
 /**
@@ -14,9 +14,8 @@ export async function GET(
 ) {
   const { id: caseId } = await params;
   const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
 
   // Obtener IDs de audiencias del caso
   const { data: hearings, error: hearingsError } = await supabaseAdmin
@@ -59,14 +58,8 @@ export async function POST(
 ) {
   const { id: caseId } = await params;
   const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) {
-    return NextResponse.json({ error: "Sin centro asignado" }, { status: 400 });
-  }
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
 
   const body = await req.json();
   const {
@@ -99,7 +92,7 @@ export async function POST(
     );
   }
 
-  const userId = (session.user as any).id;
+  const userId = (session!.user as any).id;
   const now = new Date().toISOString();
 
   // Bootstrap: si no viene party_id, crear registros iniciales para todas las partes
@@ -232,14 +225,8 @@ export async function PATCH(
 ) {
   const { id: caseId } = await params;
   const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) {
-    return NextResponse.json({ error: "Sin centro asignado" }, { status: 400 });
-  }
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
 
   const body = await req.json();
   const {
@@ -290,7 +277,7 @@ export async function PATCH(
     );
   }
 
-  const userId = (session.user as any).id;
+  const userId = (session!.user as any).id;
 
   const updateData: Record<string, any> = {
     registrado_por_staff: userId,

@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resolveCenterId, addBusinessDays } from "@/lib/server-utils";
+import { guardCasoStaff, addBusinessDays } from "@/lib/server-utils";
 import { notify } from "@/lib/notifications";
 import { randomUUID } from "crypto";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: caseId } = await params;
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
 
   // Verificar que el caso pertenece al centro
   const { data: caso } = await supabaseAdmin
@@ -31,6 +30,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!["admitido", "rechazado"].includes(decision)) {
     return NextResponse.json({ error: "Decisión inválida" }, { status: 400 });
+  }
+
+  // Los ids de staff vienen del body: deben ser personal activo de ESTE centro.
+  const staffIds = [conciliador_id, secretario_id].filter(Boolean);
+  if (staffIds.length > 0) {
+    const { data: validos } = await supabaseAdmin
+      .from("sgcc_staff")
+      .select("id")
+      .in("id", staffIds)
+      .eq("center_id", centerId)
+      .eq("activo", true);
+    if ((validos ?? []).length !== new Set(staffIds).size) {
+      return NextResponse.json({ error: "Conciliador o secretario no válido para este centro" }, { status: 400 });
+    }
   }
 
   if (decision === "rechazado" && !motivo_rechazo) {

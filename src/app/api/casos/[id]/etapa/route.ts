@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resolveCenterId } from "@/lib/server-utils";
+import { guardCasoStaff } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
 
 type Etapa = "solicitud" | "admision" | "citacion" | "audiencia" | "acta" | "archivo";
@@ -14,10 +14,9 @@ type Etapa = "solicitud" | "admision" | "citacion" | "audiencia" | "acta" | "arc
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: caseId } = await params;
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
 
   const body = await req.json();
   const etapa: Etapa = body.etapa;
@@ -41,8 +40,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       }
       if (Array.isArray(data.partes)) {
+        // Solo permitir tocar parties/case_parties que realmente pertenecen a
+        // este caso (party_id / case_party_id vienen del body sin validar).
+        const { data: casePartiesDelCaso } = await supabaseAdmin
+          .from("sgcc_case_parties")
+          .select("id, party_id")
+          .eq("case_id", caseId);
+        const partyIdsValidos = new Set((casePartiesDelCaso ?? []).map((cp) => cp.party_id));
+        const casePartyIdsValidos = new Set((casePartiesDelCaso ?? []).map((cp) => cp.id));
+
         for (const p of data.partes) {
-          if (!p.party_id) continue;
+          if (!p.party_id || !partyIdsValidos.has(p.party_id)) continue;
           const partyUpdate: Record<string, any> = { updated_at: now };
           for (const f of ["tipo_persona", "nombres", "apellidos", "tipo_doc", "numero_doc", "razon_social", "nit_empresa", "email", "telefono", "direccion", "ciudad"]) {
             if (p[f] !== undefined) {
@@ -57,12 +65,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             const { error: pErr } = await supabaseAdmin.from("sgcc_parties").update(partyUpdate).eq("id", p.party_id);
             if (pErr) return NextResponse.json({ error: `Parte: ${pErr.message}` }, { status: 500 });
           }
-          if (p.case_party_id) {
+          if (p.case_party_id && casePartyIdsValidos.has(p.case_party_id)) {
             const cpUpdate: Record<string, any> = {};
             if (p.apoderado_nombre !== undefined) cpUpdate.apoderado_nombre = p.apoderado_nombre || null;
             if (p.apoderado_doc !== undefined) cpUpdate.apoderado_doc = p.apoderado_doc || null;
             if (Object.keys(cpUpdate).length) {
-              const { error: cpErr } = await supabaseAdmin.from("sgcc_case_parties").update(cpUpdate).eq("id", p.case_party_id);
+              const { error: cpErr } = await supabaseAdmin.from("sgcc_case_parties").update(cpUpdate).eq("id", p.case_party_id).eq("case_id", caseId);
               if (cpErr) return NextResponse.json({ error: `Apoderado: ${cpErr.message}` }, { status: 500 });
             }
           }
@@ -111,7 +119,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           if (cp.citacion_enviada_at !== undefined) cpUpdate.citacion_enviada_at = cp.citacion_enviada_at || null;
           if (cp.citacion_confirmada_at !== undefined) cpUpdate.citacion_confirmada_at = cp.citacion_confirmada_at || null;
           if (Object.keys(cpUpdate).length) {
-            await supabaseAdmin.from("sgcc_case_parties").update(cpUpdate).eq("id", cp.id);
+            await supabaseAdmin.from("sgcc_case_parties").update(cpUpdate).eq("id", cp.id).eq("case_id", caseId);
           }
         }
       }

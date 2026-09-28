@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resolveCenterId } from "@/lib/server-utils";
+import { guardGestionStaff } from "@/lib/server-utils";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro asignado" }, { status: 400 });
+  const g = guardGestionStaff(await auth());
+  if ("error" in g) return g.error;
+  const { centerId, esAdmin } = g;
 
   const { id } = await params;
   const body = await req.json();
@@ -20,7 +18,7 @@ export async function PATCH(
   // Verificar que el staff pertenece al centro
   const { data: existing } = await supabaseAdmin
     .from("sgcc_staff")
-    .select("id")
+    .select("id, rol")
     .eq("id", id)
     .eq("center_id", centerId)
     .single();
@@ -32,6 +30,10 @@ export async function PATCH(
   // Validar rol si se envia
   if (rol && !["admin", "conciliador", "secretario"].includes(rol)) {
     return NextResponse.json({ error: "Rol no valido" }, { status: 400 });
+  }
+  // Sin esto, cualquiera podía ascenderse (o ascender a otro) a admin.
+  if (!esAdmin && (existing.rol === "admin" || rol === "admin")) {
+    return NextResponse.json({ error: "Solo un admin puede modificar administradores" }, { status: 403 });
   }
 
   const updates: Record<string, any> = { updated_at: new Date().toISOString() };
@@ -63,23 +65,28 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro asignado" }, { status: 400 });
+  const g = guardGestionStaff(session);
+  if ("error" in g) return g.error;
+  const { centerId, esAdmin } = g;
 
   const { id } = await params;
+  if (id === (session as any).user?.id) {
+    return NextResponse.json({ error: "No puedes desactivar tu propia cuenta" }, { status: 400 });
+  }
 
   // Verificar que el staff pertenece al centro
   const { data: existing } = await supabaseAdmin
     .from("sgcc_staff")
-    .select("id, nombre")
+    .select("id, nombre, rol")
     .eq("id", id)
     .eq("center_id", centerId)
     .single();
 
   if (!existing) {
     return NextResponse.json({ error: "Miembro no encontrado en este centro" }, { status: 404 });
+  }
+  if (existing.rol === "admin" && !esAdmin) {
+    return NextResponse.json({ error: "Solo un admin puede desactivar administradores" }, { status: 403 });
   }
 
   // No eliminar, solo desactivar

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resolveCenterId } from "@/lib/server-utils";
+import { guardCasoStaff } from "@/lib/server-utils";
 
 /**
  * GET /api/expediente/[id]/acreencias/[acreenciaId]/detalle-edicion
@@ -15,13 +15,11 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; acreenciaId: string }> },
 ) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
-
   const { id: caseId, acreenciaId } = await params;
+  const session = await auth();
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
 
   // 1. Acreencia (validar que pertenece al caso + centro)
   const { data: acreencia } = await supabaseAdmin

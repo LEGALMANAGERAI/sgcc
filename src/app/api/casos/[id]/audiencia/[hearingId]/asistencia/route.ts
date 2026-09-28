@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resolveCenterId } from "@/lib/server-utils";
+import { guardCasoStaff } from "@/lib/server-utils";
 
 interface AsistenciaItem {
   party_id: string;
@@ -21,19 +21,8 @@ export async function POST(
 ) {
   const { id: caseId, hearingId } = await params;
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
-
-  const { data: caso } = await supabaseAdmin
-    .from("sgcc_cases")
-    .select("id")
-    .eq("id", caseId)
-    .eq("center_id", centerId)
-    .maybeSingle();
-
-  if (!caso) return NextResponse.json({ error: "Caso no encontrado" }, { status: 404 });
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
 
   const { data: audiencia } = await supabaseAdmin
     .from("sgcc_hearings")
@@ -53,7 +42,7 @@ export async function POST(
     return NextResponse.json({ error: "asistencia vacía" }, { status: 400 });
   }
 
-  const staffId = (session.user as any).id;
+  const staffId = (session!.user as any).id;
 
   // Deduplicar por party_id conservando la última ocurrencia: si llegan dos
   // items con el mismo party_id, el upsert con onConflict "hearing_id,party_id"

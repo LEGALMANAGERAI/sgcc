@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resolveCenterId } from "@/lib/server-utils";
+import { guardCasoStaff } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
 
 type Params = { params: Promise<{ id: string }> };
@@ -24,13 +24,11 @@ function calcularCuota(capital: number, tasaAnual: number, meses: number): numbe
  * Obtener acuerdo de pagos del caso con detalles.
  */
 export async function GET(_req: NextRequest, { params }: Params) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
-
   const { id: caseId } = await params;
+  const session = await auth();
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
 
   const { data, error } = await supabaseAdmin
     .from("sgcc_acuerdo_pago")
@@ -52,13 +50,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
  * Body: { propuesta_id, tasa_interes_anual, plazo_meses, periodo_gracia_meses, fecha_inicio_pago, notas }
  */
 export async function POST(req: NextRequest, { params }: Params) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
-
   const { id: caseId } = await params;
+  const session = await auth();
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
+  const { centerId } = g;
   const body = await req.json();
 
   const {
@@ -107,7 +103,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   // Obtener porcentaje aprobación
   const pctAprobacion = propuesta_id
-    ? (await supabaseAdmin.from("sgcc_propuesta_pago").select("porcentaje_aprobacion").eq("id", propuesta_id).single()).data?.porcentaje_aprobacion ?? 0
+    ? (await supabaseAdmin.from("sgcc_propuesta_pago").select("porcentaje_aprobacion").eq("id", propuesta_id).eq("case_id", caseId).single()).data?.porcentaje_aprobacion ?? 0
     : 0;
 
   const now = new Date().toISOString();
@@ -189,13 +185,10 @@ export async function POST(req: NextRequest, { params }: Params) {
  * Actualizar parámetros del acuerdo y recalcular cuotas.
  */
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const centerId = resolveCenterId(session);
-  if (!centerId) return NextResponse.json({ error: "Sin centro" }, { status: 400 });
-
   const { id: caseId } = await params;
+  const session = await auth();
+  const g = await guardCasoStaff(session, caseId);
+  if ("error" in g) return g.error;
   const body = await req.json();
   const { acuerdo_id, ...campos } = body;
 
@@ -213,6 +206,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       .from("sgcc_acuerdo_pago")
       .select("capital_total, tasa_interes_anual, plazo_meses, periodo_gracia_meses")
       .eq("id", acuerdo_id)
+      .eq("case_id", caseId)
       .single();
 
     if (acuerdo) {
