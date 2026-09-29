@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
+import { notify } from "@/lib/notifications";
 
 const ROLES_PERMITIDOS = ["conciliador", "secretario", "asistente"] as const;
 type RolPermitido = (typeof ROLES_PERMITIDOS)[number];
@@ -108,7 +109,9 @@ export async function POST(req: NextRequest) {
         tarjeta_profesional:
           rol === "conciliador" ? tarjeta_profesional?.trim() || null : null,
         telefono: telefono?.trim() || null,
-        activo: true,
+        // Pendiente de aprobación: conocer el código corto del centro no basta
+        // para entrar (un secretario ve todos los casos). Un admin la activa.
+        activo: false,
       });
 
     if (insertError) {
@@ -119,7 +122,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ success: true }, { status: 201 });
+    const { data: admins } = await supabaseAdmin
+      .from("sgcc_staff")
+      .select("id, email")
+      .eq("center_id", centro.id)
+      .eq("rol", "admin")
+      .eq("activo", true);
+    if (admins?.length) {
+      await notify({
+        centerId: centro.id,
+        tipo: "nueva_solicitud",
+        titulo: "Nueva cuenta de staff por aprobar",
+        mensaje: `${nombre.trim()} (${email.trim().toLowerCase()}) se registró como ${rol}. Actívala en Staff si pertenece a tu centro.`,
+        recipients: admins.map((a) => ({ staffId: a.id, email: a.email })),
+      });
+    }
+
+    return NextResponse.json({ success: true, pendiente: true }, { status: 201 });
   } catch (error) {
     console.error("Error en registro de staff:", error);
     return NextResponse.json(
