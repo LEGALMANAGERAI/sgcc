@@ -45,6 +45,7 @@ function LoginContent() {
   }, []);
 
   const registered = params.get("registered") === "1";
+  const registeredPendiente = params.get("registered") === "pendiente";
 
   const [tab, setTab] = useState<Tab>("staff");
   const [email, setEmail] = useState("");
@@ -300,6 +301,11 @@ function LoginContent() {
           {registered && (
             <div className="bg-green-50 text-green-700 text-sm px-4 py-3 rounded-lg border border-green-200">
               Cuenta creada. Revisa tu correo para verificar.
+            </div>
+          )}
+          {registeredPendiente && (
+            <div role="status" className="bg-amber-50 text-amber-800 text-sm px-4 py-3 rounded-lg border border-amber-200">
+              Cuenta creada. Un administrador del centro debe aprobarla antes de que puedas ingresar.
             </div>
           )}
 

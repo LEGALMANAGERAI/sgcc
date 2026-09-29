@@ -47,6 +47,8 @@ export async function PATCH(
   if (cedula !== undefined) updates.cedula = cedula || null;
   if (ciudad_cedula !== undefined) updates.ciudad_cedula = ciudad_cedula || null;
   if (codigo_inscripcion !== undefined) updates.codigo_inscripcion = codigo_inscripcion || null;
+  // Activar (aprobar autorregistro o reactivar). Desactivar sigue siendo DELETE.
+  if (body.activo === true) updates.activo = true;
 
   const { data, error } = await supabaseAdmin
     .from("sgcc_staff")

@@ -54,7 +54,7 @@ export default function RegistroStaffPage() {
         return;
       }
 
-      router.push("/login?registered=1");
+      router.push("/login?registered=pendiente");
     } catch {
       setError("Error de conexion. Intenta de nuevo.");
     } finally {

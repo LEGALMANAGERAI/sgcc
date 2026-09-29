@@ -107,6 +107,28 @@ export function ConciliadoresClient({ staff, conciliadores }: Props) {
     }
   }
 
+  async function handleActivate(id: string, nombre: string, rol: string) {
+    const alcance = rol === "secretario" ? " Como secretario verá TODOS los casos del centro." : "";
+    if (!confirm(`¿Activar a ${nombre}? Podrá ingresar al sistema.${alcance}`)) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/conciliadores/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activo: true }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "Error activando");
+      }
+      router.refresh();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleDeactivate(id: string, nombre: string) {
     if (!confirm(`¿Desactivar a ${nombre}? No podrá acceder al sistema.`)) return;
     setLoading(true);
@@ -207,13 +229,21 @@ export function ConciliadoresClient({ staff, conciliadores }: Props) {
                     >
                       Editar
                     </button>
-                    {s.activo && (
+                    {s.activo ? (
                       <button
                         onClick={() => handleDeactivate(s.id, s.nombre)}
                         className="ml-3 text-red-500 hover:underline text-xs font-medium disabled:opacity-50"
                         disabled={loading}
                       >
                         Desactivar
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleActivate(s.id, s.nombre, s.rol)}
+                        className="ml-3 text-green-700 hover:underline text-xs font-medium disabled:opacity-50"
+                        disabled={loading}
+                      >
+                        Activar
                       </button>
                     )}
                   </td>
