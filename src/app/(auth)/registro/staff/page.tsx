@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Users, Gavel, Briefcase } from "lucide-react";
+import { Users, Gavel, Briefcase, PenLine } from "lucide-react";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 
-type Rol = "conciliador" | "secretario";
+type Rol = "conciliador" | "secretario" | "asistente";
 
 export default function RegistroStaffPage() {
   const router = useRouter();
@@ -79,6 +79,12 @@ export default function RegistroStaffPage() {
       title: "Funcionario",
       desc: "Personal administrativo, secretaria o auxiliar del centro",
       icon: Briefcase,
+    },
+    {
+      value: "asistente",
+      title: "Asistente de conciliador",
+      desc: "Redacta actas y constancias; accede solo a los expedientes a los que te vinculen",
+      icon: PenLine,
     },
   ];
 

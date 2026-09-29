@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { SgccLogo } from "@/components/ui/SgccLogo";
+import type { StaffRol } from "@/types";
 
 /**
  * StaffSidebar — shell del producto.
@@ -39,7 +40,6 @@ import { SgccLogo } from "@/components/ui/SgccLogo";
  */
 
 type NavBadgeKey = "vigilancia";
-type StaffRol = "admin" | "secretario" | "conciliador";
 
 interface NavItem {
   label: string;

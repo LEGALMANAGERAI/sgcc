@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 
-const ROLES_PERMITIDOS = ["conciliador", "secretario"] as const;
+const ROLES_PERMITIDOS = ["conciliador", "secretario", "asistente"] as const;
 type RolPermitido = (typeof ROLES_PERMITIDOS)[number];
 
 export async function POST(req: NextRequest) {
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Rol inválido. El auto-registro solo permite conciliador o funcionario. Los administradores deben ser invitados desde el centro.",
+            "Rol inválido. El auto-registro solo permite conciliador, funcionario o asistente. Los administradores deben ser invitados desde el centro.",
         },
         { status: 400 }
       );

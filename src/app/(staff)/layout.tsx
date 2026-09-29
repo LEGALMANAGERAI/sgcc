@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { StaffSidebar } from "@/components/layout/StaffSidebar";
 import { isSuperAdminSession } from "@/lib/superadmin";
+import type { StaffRol } from "@/types";
 
 export default async function StaffLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -14,7 +15,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   if (userType !== "staff") redirect("/login");
 
   const centerId = (session.user as any)?.centerId;
-  const sgccRol = (session.user as any)?.sgccRol as "admin" | "secretario" | "conciliador" | undefined;
+  const sgccRol = (session.user as any)?.sgccRol as StaffRol | undefined;
   const [{ data: center }, { count: vigilanciaNoLeidas }] = await Promise.all([
     supabaseAdmin
       .from("sgcc_centers")

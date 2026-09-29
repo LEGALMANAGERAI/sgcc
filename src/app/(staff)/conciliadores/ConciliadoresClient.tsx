@@ -278,7 +278,8 @@ export function ConciliadoresClient({ staff, conciliadores }: Props) {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D2340]"
               >
                 <option value="conciliador">Conciliador</option>
-                <option value="secretario">Secretario</option>
+                <option value="secretario">Secretario (ve todo el centro)</option>
+                <option value="asistente">Asistente (solo expedientes vinculados)</option>
                 <option value="admin">Administrador</option>
               </select>
             </div>
