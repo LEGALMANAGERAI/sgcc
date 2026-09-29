@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   PanelLeftClose,
   PanelLeftOpen,
+  UserCheck,
   type LucideIcon,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
@@ -83,6 +84,12 @@ const sections: NavSection[] = [
         href: "/conciliadores",
         icon: UserCog,
         rolesPermitidos: ["admin", "secretario"],
+      },
+      {
+        label: "Asistentes",
+        href: "/asistentes",
+        icon: UserCheck,
+        rolesPermitidos: ["admin", "conciliador", "asistente"],
       },
       { label: "Salas", href: "/salas", icon: DoorOpen },
       { label: "Plantillas", href: "/plantillas", icon: FileText },
