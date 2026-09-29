@@ -24,6 +24,8 @@ import {
   UserCheck,
   Paperclip,
   Upload,
+  ClipboardCheck,
+  FileClock,
 } from "lucide-react";
 import type {
   SgccCase,
@@ -36,6 +38,7 @@ import type {
   SgccHearing,
   SgccCaseParty,
   SgccParty,
+  ActaTipo,
 } from "@/types";
 import { partyDisplayName } from "@/types";
 import { redirect } from "next/navigation";
@@ -72,6 +75,23 @@ type AlertType = {
   link: string;
 };
 
+// sgcc_actas.estado_revision/redactada_por/etc no están (todavía) en el tipo
+// SgccActa compartido (types/index.ts) — se define acá lo mínimo que se
+// consulta, acotado a este panel del dashboard.
+type ActaRevisionEstado = "borrador" | "en_revision" | "devuelta" | "aprobada";
+
+type ActaRevisionRow = {
+  id: string;
+  case_id: string;
+  numero_acta: string;
+  tipo: ActaTipo;
+  es_constancia: boolean;
+  redactada_por: string | null;
+  estado_revision: ActaRevisionEstado;
+  updated_at: string;
+  caso: { id: string; numero_radicado: string; conciliador_id: string | null; center_id: string } | null;
+};
+
 /* ─── Constantes ────────────────────────────────────────────────────────── */
 
 const TIPO_BADGE: Record<TipoTramite, { label: string; color: string }> = {
@@ -85,6 +105,17 @@ const TIPO_BADGE: Record<TipoTramite, { label: string; color: string }> = {
 // Fallback para tipos de trámite no contemplados (datos legacy o nulos): evita
 // que TIPO_BADGE[tipo] sea undefined y reviente el render (SSR 500).
 const TIPO_BADGE_FALLBACK = { label: "—", color: "bg-gray-100 text-gray-600" };
+
+const ACTA_TIPO_LABEL: Record<ActaTipo, string> = {
+  acuerdo_total: "Acuerdo total",
+  acuerdo_parcial: "Acuerdo parcial",
+  no_acuerdo: "No acuerdo",
+  inasistencia: "Inasistencia",
+  desistimiento: "Desistimiento",
+  improcedente: "Improcedente",
+  suscripcion_apoyo: "Suscripción de apoyo",
+  no_suscripcion_apoyo: "No suscripción de apoyo",
+};
 
 /* ─── Page ──────────────────────────────────────────────────────────────── */
 
@@ -357,6 +388,75 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     }
   }
 
+  /* ─── Bandeja de actas en revisión ──────────────────────────────────── */
+
+  const canRevisar = userRol === "conciliador" || userRol === "admin";
+
+  let actasPorRevisarQuery = supabaseAdmin
+    .from("sgcc_actas")
+    .select(
+      "id, case_id, numero_acta, tipo, es_constancia, redactada_por, estado_revision, updated_at, caso:sgcc_cases!inner(id, numero_radicado, conciliador_id, center_id)"
+    )
+    .eq("estado_revision", "en_revision")
+    .eq("caso.center_id", centerId)
+    .order("updated_at", { ascending: true });
+  if (userRol === "conciliador") {
+    actasPorRevisarQuery = actasPorRevisarQuery.eq("caso.conciliador_id", userId);
+  }
+
+  let misActasPendientesQuery = supabaseAdmin
+    .from("sgcc_actas")
+    .select(
+      "id, case_id, numero_acta, tipo, es_constancia, redactada_por, estado_revision, updated_at, caso:sgcc_cases!inner(id, numero_radicado, conciliador_id, center_id)"
+    )
+    .eq("redactada_por", userId)
+    .in("estado_revision", ["borrador", "devuelta"])
+    .eq("caso.center_id", centerId)
+    .order("updated_at", { ascending: true });
+  if (visibles.modo === "lista") {
+    misActasPendientesQuery =
+      visibles.caseIds.length === 0
+        ? misActasPendientesQuery.eq("case_id", "00000000-0000-0000-0000-000000000000")
+        : misActasPendientesQuery.in("case_id", visibles.caseIds);
+  }
+
+  const [{ data: rawActasPorRevisar }, { data: rawMisActasPendientes }] = await Promise.all([
+    canRevisar ? actasPorRevisarQuery : Promise.resolve({ data: [] }),
+    misActasPendientesQuery,
+  ]);
+
+  const actasPorRevisar = (rawActasPorRevisar ?? []) as unknown as ActaRevisionRow[];
+  const misActasPendientes = (rawMisActasPendientes ?? []) as unknown as ActaRevisionRow[];
+
+  // Nombre de quien redactó (lista 1): consulta aparte, evita depender del
+  // nombre autogenerado del FK para el embed.
+  const redactoraIds = [...new Set(actasPorRevisar.map((a) => a.redactada_por).filter((id): id is string => !!id))];
+  const { data: rawRedactoras } = redactoraIds.length > 0
+    ? await supabaseAdmin.from("sgcc_staff").select("id, nombre").in("id", redactoraIds)
+    : { data: [] };
+  const redactoraById = new Map<string, string>();
+  for (const r of rawRedactoras ?? []) redactoraById.set(r.id, r.nombre);
+
+  // Última observación de devolución (lista 2)
+  const devueltaIds = misActasPendientes.filter((a) => a.estado_revision === "devuelta").map((a) => a.id);
+  const { data: rawObservaciones } = devueltaIds.length > 0
+    ? await supabaseAdmin
+        .from("sgcc_acta_revisiones")
+        .select("acta_id, observaciones, created_at")
+        .in("acta_id", devueltaIds)
+        .eq("accion", "devuelta")
+        .order("created_at", { ascending: false })
+    : { data: [] };
+  const ultimaObservacionByActa = new Map<string, string>();
+  for (const o of rawObservaciones ?? []) {
+    if (!ultimaObservacionByActa.has(o.acta_id) && o.observaciones) {
+      ultimaObservacionByActa.set(o.acta_id, o.observaciones);
+    }
+  }
+
+  const mostrarBandejaActas = actasPorRevisar.length > 0 || misActasPendientes.length > 0;
+  const devueltasCount = misActasPendientes.filter((a) => a.estado_revision === "devuelta").length;
+
   /* ─── Alertas ──────────────────────────────────────────────────────── */
 
   const alerts: AlertType[] = [];
@@ -512,6 +612,117 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           href="/conciliadores"
         />
       </div>
+
+      {/* ── Sección 1.5: Bandeja de actas en revisión ────────────────── */}
+      {mostrarBandejaActas && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+          {canRevisar && actasPorRevisar.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+              <div className="px-5 py-4 border-b border-gray-100">
+                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <ClipboardCheck className="w-5 h-5 text-amber-600" />
+                  Actas por revisar
+                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                    {actasPorRevisar.length}
+                  </span>
+                </h2>
+              </div>
+              <ul className="divide-y divide-gray-50">
+                {actasPorRevisar.slice(0, 8).map((acta) => (
+                  <li key={acta.id}>
+                    <Link
+                      href={`/expediente/${acta.case_id}?tab=audiencia&sub=acta`}
+                      className="px-5 py-3 flex items-center justify-between gap-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {acta.caso?.numero_radicado ?? "—"}
+                          <span className="text-gray-400 font-normal"> · Acta {acta.numero_acta}</span>
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {acta.es_constancia ? "Constancia" : ACTA_TIPO_LABEL[acta.tipo] ?? "—"}
+                          {" · Redactada por "}
+                          {(acta.redactada_por && redactoraById.get(acta.redactada_por)) ?? "—"}
+                        </p>
+                      </div>
+                      <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+                        {formatRelativeTime(acta.updated_at, now)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              {actasPorRevisar.length > 8 && (
+                <div className="px-5 py-2 border-t border-gray-100 text-center">
+                  <span className="text-xs text-gray-400">y {actasPorRevisar.length - 8} más</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {misActasPendientes.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+              <div className="px-5 py-4 border-b border-gray-100">
+                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <FileClock className="w-5 h-5 text-gray-600" />
+                  Mis actas pendientes
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      devueltasCount > 0 ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {misActasPendientes.length}
+                  </span>
+                </h2>
+              </div>
+              <ul className="divide-y divide-gray-50">
+                {misActasPendientes.slice(0, 8).map((acta) => {
+                  const devuelta = acta.estado_revision === "devuelta";
+                  const observacion = ultimaObservacionByActa.get(acta.id);
+                  return (
+                    <li key={acta.id}>
+                      <Link
+                        href={`/expediente/${acta.case_id}?tab=audiencia&sub=acta`}
+                        className="px-5 py-3 flex items-start justify-between gap-3 hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {acta.caso?.numero_radicado ?? "—"}
+                              <span className="text-gray-400 font-normal"> · Acta {acta.numero_acta}</span>
+                            </p>
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${
+                                devuelta ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
+                              }`}
+                            >
+                              {devuelta ? "Devuelta" : "Borrador"}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 truncate">
+                            {acta.es_constancia ? "Constancia" : ACTA_TIPO_LABEL[acta.tipo] ?? "—"}
+                          </p>
+                          {devuelta && observacion && (
+                            <p className="text-xs text-red-600 truncate mt-0.5">{observacion}</p>
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+                          {formatRelativeTime(acta.updated_at, now)}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+              {misActasPendientes.length > 8 && (
+                <div className="px-5 py-2 border-t border-gray-100 text-center">
+                  <span className="text-xs text-gray-400">y {misActasPendientes.length - 8} más</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Sección 2: Layout 2 columnas ─────────────────────────────── */}
       <div className="grid grid-cols-1 xl:grid-cols-[65%_35%] gap-6 mb-8">
@@ -1009,4 +1220,17 @@ function formatDate(dateStr: string): string {
     month: "short",
     year: undefined,
   });
+}
+
+// El diff entre dos instantes (ms) no depende de zona horaria; "hora Colombia"
+// ya queda cubierta porque `now` y `dateStr` son el mismo instante absoluto
+// en cualquier TZ.
+function formatRelativeTime(dateStr: string, now: Date): string {
+  const diffMin = Math.floor((now.getTime() - new Date(dateStr).getTime()) / 60000);
+  if (diffMin < 1) return "hace un momento";
+  if (diffMin < 60) return `hace ${diffMin} min`;
+  const diffHoras = Math.floor(diffMin / 60);
+  if (diffHoras < 24) return `hace ${diffHoras} h`;
+  const diffDias = Math.floor(diffHoras / 24);
+  return diffDias === 1 ? "hace 1 día" : `hace ${diffDias} días`;
 }

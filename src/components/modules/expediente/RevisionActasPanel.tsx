@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
+import { supabaseBrowser } from "@/lib/supabase-browser";
 import {
   FileText,
   Send,
@@ -125,9 +127,41 @@ export function RevisionActasPanel({ caseId, rol, staffId, conciliadorCasoId }: 
     cargarActas();
   }, [cargarActas]);
 
+  // Tiempo real: quien cambia un acta avisa por Broadcast en el canal del
+  // expediente y los demás que lo tienen abierto recargan vía API (con sus
+  // permisos). El aviso no lleva datos, solo el "recarga".
+  const canalRef = useRef<RealtimeChannel | null>(null);
   useEffect(() => {
-    window.addEventListener("actas:cambio", cargarActas);
-    return () => window.removeEventListener("actas:cambio", cargarActas);
+    if (!supabaseBrowser) return;
+    const canal = supabaseBrowser
+      .channel(`actas:${caseId}`)
+      .on("broadcast", { event: "cambio" }, () => cargarActas())
+      .subscribe();
+    canalRef.current = canal;
+    return () => {
+      supabaseBrowser.removeChannel(canal);
+      canalRef.current = null;
+    };
+  }, [caseId, cargarActas]);
+
+  // Cambio hecho en ESTA pestaña: recargar y avisar a los demás.
+  const cambioLocal = useCallback(() => {
+    cargarActas();
+    canalRef.current?.send({ type: "broadcast", event: "cambio", payload: {} });
+  }, [cargarActas]);
+
+  useEffect(() => {
+    window.addEventListener("actas:cambio", cambioLocal);
+    return () => window.removeEventListener("actas:cambio", cambioLocal);
+  }, [cambioLocal]);
+
+  // Respaldo: si la pestaña estaba oculta cuando llegó un aviso, ponerse al día al volver.
+  useEffect(() => {
+    const alVolver = () => {
+      if (document.visibilityState === "visible") cargarActas();
+    };
+    document.addEventListener("visibilitychange", alVolver);
+    return () => document.removeEventListener("visibilitychange", alVolver);
   }, [cargarActas]);
 
   if (loading && actas === null) {
@@ -162,7 +196,7 @@ export function RevisionActasPanel({ caseId, rol, staffId, conciliadorCasoId }: 
           rol={rol}
           staffId={staffId}
           conciliadorCasoId={conciliadorCasoId}
-          onCambio={cargarActas}
+          onCambio={cambioLocal}
         />
       ))}
     </div>
