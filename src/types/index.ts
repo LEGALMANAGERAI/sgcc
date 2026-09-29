@@ -419,6 +419,7 @@ export type NotifTipo =
   | "ticket_nuevo"
   | "ticket_respondido"
   | "vinculo_asistente"
+  | "acta_revision"
   | "ticket_asignado";
 
 export interface SgccNotification {

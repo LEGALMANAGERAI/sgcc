@@ -12,6 +12,7 @@ import { TabChecklistPoderes } from "@/components/modules/expediente/TabChecklis
 import { TabAsistencia } from "@/components/modules/expediente/TabAsistencia";
 import { TabProcesos } from "@/components/modules/expediente/TabProcesos";
 import { ContadorTermino } from "@/components/modules/expediente/ContadorTermino";
+import { RevisionActasPanel } from "@/components/modules/expediente/RevisionActasPanel";
 import { CrearActaInsolvencia } from "@/components/modules/expediente/CrearActaInsolvencia";
 import { CrearActaConciliacion } from "@/components/modules/expediente/CrearActaConciliacion";
 import { CrearActaAcuerdoApoyo } from "@/components/modules/expediente/CrearActaAcuerdoApoyo";
@@ -624,6 +625,12 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
 
           {subAudiencia === "acta" && hearings.length > 0 && (
             <div className="mt-6">
+              <RevisionActasPanel
+                caseId={id}
+                rol={(sgccRol as "admin" | "conciliador" | "secretario" | "asistente") ?? "conciliador"}
+                staffId={(session.user as any).id}
+                conciliadorCasoId={caso.conciliador_id ?? null}
+              />
               {caso.tipo_tramite === "insolvencia" && (
                 <CrearActaInsolvencia
                   caseId={id}
