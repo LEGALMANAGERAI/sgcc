@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { guardCasoStaff } from "@/lib/server-utils";
+import { puedeEnviarActa } from "@/lib/acta-revision";
 import { generarTokenFirma } from "@/lib/firma/tokens";
 import { calcularHashSHA256 } from "@/lib/firma/pdf";
 import { firmaActivaDelCaso, mensajeDuplicado } from "@/lib/firma/duplicados";
@@ -57,6 +58,23 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     if (actaError || !acta) {
       return NextResponse.json({ error: "Acta no encontrada" }, { status: 404 });
+    }
+
+    // Solo un acta aprobada por el conciliador va a firma; la asistente
+    // además necesita que el conciliador la haya autorizado al aprobar.
+    if (acta.estado_revision !== "aprobada") {
+      return NextResponse.json(
+        { error: "El acta debe estar aprobada por el conciliador antes de enviarla a firma" },
+        { status: 400 },
+      );
+    }
+    const { data: casoRev } = await supabaseAdmin
+      .from("sgcc_cases")
+      .select("conciliador_id")
+      .eq("id", caseId)
+      .single();
+    if (!puedeEnviarActa(session, casoRev?.conciliador_id ?? null, acta)) {
+      return NextResponse.json({ error: "No estás autorizada para enviar esta acta a firma" }, { status: 403 });
     }
 
     if (!acta.borrador_url) {

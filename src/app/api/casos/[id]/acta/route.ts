@@ -4,6 +4,7 @@ import { supabaseAdmin, uploadFile } from "@/lib/supabase";
 import { guardCasoStaff } from "@/lib/server-utils";
 import { renderTemplate, generateDocx } from "@/lib/doc-generator";
 import { notify } from "@/lib/notifications";
+import { esRevisorActa, notificarActaAPartes, TITULO_ACTA } from "@/lib/acta-revision";
 import { randomUUID } from "crypto";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -133,6 +134,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const now = new Date();
   const actaId = randomUUID();
+  const staffId = (session!.user as any).id as string;
+  // Lo que redacta el conciliador del caso (o admin) nace aprobado; lo demás
+  // (asistente, secretaría) queda en borrador hasta la revisión del conciliador.
+  const naceAprobada = esRevisorActa(session, caso.conciliador_id ?? null);
 
   // Construir contexto con la info del acta
   const actaData = {
@@ -151,6 +156,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     conciliador_id: caso.conciliador_id,
     fecha_acta: now.toISOString().split("T")[0],
     es_constancia: es_constancia ?? false,
+    estado_revision: naceAprobada ? "aprobada" : "borrador",
+    redactada_por: staffId,
+    revisada_por: naceAprobada ? staffId : null,
+    revisada_at: naceAprobada ? now.toISOString() : null,
     sicaac_estado: "pendiente" as const,
     sicaac_numero_registro: null,
     sicaac_fecha_registro: null,
@@ -197,15 +206,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ? renderTemplate(templateContent, ctx)
     : buildDefaultActaContent(tipo, hechos, consideraciones, acuerdo_texto, ctx);
 
-  const tipoTituloMap: Record<string, string> = {
-    acuerdo_total: "ACTA DE CONCILIACIÓN — ACUERDO TOTAL",
-    acuerdo_parcial: "ACTA DE CONCILIACIÓN — ACUERDO PARCIAL",
-    no_acuerdo: "ACTA DE CONCILIACIÓN — SIN ACUERDO",
-    inasistencia: "CONSTANCIA DE INASISTENCIA",
-    desistimiento: "ACTA DE DESISTIMIENTO",
-    improcedente: "CONSTANCIA DE IMPROCEDENCIA",
-  };
-  const tipoTitulo = tipoTituloMap[tipo] ?? "ACTA DE CONCILIACIÓN";
+  const tipoTitulo = TITULO_ACTA[tipo] ?? "ACTA DE CONCILIACIÓN";
 
   const docBuffer = await generateDocx(tipoTitulo, contenidoFinal, ctx);
 
@@ -262,26 +263,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     created_at: now.toISOString(),
   });
 
-  // Notificar a las partes que el acta está lista para firmar
-  const { data: caseParties } = await supabaseAdmin
-    .from("sgcc_case_parties")
-    .select("party:sgcc_parties(id, email)")
-    .eq("case_id", caseId);
-
-  const recipients = (caseParties ?? [])
-    .map((cp: any) => ({ partyId: cp.party?.id, email: cp.party?.email }))
-    .filter((r) => r.email);
-
-  if (recipients.length) {
-    await notify({
+  // Solo un acta aprobada se notifica a las partes; un borrador espera revisión.
+  if (naceAprobada) {
+    await notificarActaAPartes({
       centerId,
       caseId,
-      tipo: "acta_lista",
-      titulo: `Acta disponible — ${caso.numero_radicado}`,
-      mensaje: `El acta de su proceso de conciliación ha sido generada y está disponible para descarga y firma.\n\nNúmero de acta: ${numero_acta}\nTipo: ${tipoTitulo}`,
-      recipients,
-      canal: "both",
-      attachmentUrl: borradorUrl,
+      numeroRadicado: caso.numero_radicado,
+      numeroActa: numero_acta,
+      tipoTitulo,
+      url: borradorUrl,
     });
   }
 
@@ -301,13 +291,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (acta_firmada_url) updateData.acta_firmada_url = acta_firmada_url;
   if (estado_firma) updateData.estado_firma = estado_firma;
 
+  // Marcar firmas solo sobre un acta aprobada (si no, se saltaría la revisión).
   const { data: acta, error } = await supabaseAdmin
     .from("sgcc_actas")
     .update(updateData)
     .eq("id", acta_id)
     .eq("case_id", caseId)
+    .eq("estado_revision", "aprobada")
     .select()
-    .single();
+    .maybeSingle();
+  if (!acta && !error) {
+    return NextResponse.json({ error: "El acta no está aprobada o no existe" }, { status: 409 });
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

@@ -9,6 +9,7 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
+  AlertTriangle,
   Download,
 } from "lucide-react";
 import { InsertarClausulaButton } from "@/components/modules/plantillas/InsertarClausulaButton";
@@ -204,7 +205,12 @@ export function CrearActaInsolvencia({ caseId, hearingId, acreenciasConciliadas 
 
       const data = await res.json();
       setActaCreada(data.acta);
-      setExito("Acta generada. Puedes descargar el borrador o enviarla a firma.");
+      setExito(
+        data.acta?.estado_revision === "aprobada"
+          ? "Acta generada. Puedes descargar el borrador o enviarla a firma."
+          : "Acta generada como borrador. Envíala a revisión desde el panel de revisión."
+      );
+      window.dispatchEvent(new Event("actas:cambio"));
     } catch (err: any) {
       setApiError(err.message ?? "Error inesperado");
     } finally {
@@ -579,7 +585,7 @@ function ActaCreadaCard({
           </a>
         )}
 
-        {acta.estado_firma === "pendiente" && (
+        {acta.estado_revision === "aprobada" && acta.estado_firma === "pendiente" && (
           <button
             onClick={onEnviarFirma}
             disabled={enviando}
@@ -606,6 +612,15 @@ function ActaCreadaCard({
           </a>
         )}
       </div>
+
+      {acta.estado_revision !== "aprobada" && (
+        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-amber-800">
+            Acta en borrador: revísala y envíala a revisión del conciliador desde el panel de revisión de arriba.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
