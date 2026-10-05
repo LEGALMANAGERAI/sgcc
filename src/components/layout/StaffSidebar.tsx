@@ -70,6 +70,7 @@ const sections: NavSection[] = [
     title: "Módulos",
     items: [
       { label: "Apoderados", href: "/apoderados", icon: Briefcase },
+      { label: "Correspondencia", href: "/correspondencia", icon: Mail },
       {
         label: "Vigilancia Judicial",
         href: "/vigilancia",

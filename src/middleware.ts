@@ -44,6 +44,7 @@ export default auth((req) => {
     pathname.startsWith("/configuracion") ||
     pathname.startsWith("/expediente") ||
     pathname.startsWith("/apoderados") ||
+    pathname.startsWith("/correspondencia") ||
     pathname.startsWith("/vigilancia") ||
     pathname.startsWith("/firmas")
   ) {
