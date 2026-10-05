@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { parseApiError, validarTamanoArchivo } from "@/lib/api-error";
+import { partesFechaBogota } from "@/lib/fecha-colombia";
+import type { CorrespondenciaTipo, CorrespondenciaEstado } from "@/types";
 import {
   FileText,
   Download,
@@ -16,9 +19,22 @@ import {
   Link2,
   Pencil,
   Trash2,
+  Mail,
 } from "lucide-react";
 
 /* ─── Props ─────────────────────────────────────────────────────────────── */
+
+interface CorrespondenciaItem {
+  id: string;
+  tipo: CorrespondenciaTipo;
+  asunto: string;
+  remitente: string;
+  fecha_radicacion: string;
+  fecha_limite_respuesta: string | null;
+  estado: CorrespondenciaEstado;
+  responsable: { id: string; nombre: string } | null;
+  docs_count: number;
+}
 
 interface TabDocumentosProps {
   caseId: string;
@@ -26,6 +42,7 @@ interface TabDocumentosProps {
   expedienteDigitalUrl: string | null;
   puedeEditarLink: boolean;
   puedeEliminar: boolean;
+  correspondencia: CorrespondenciaItem[];
 }
 
 /* ─── Constantes ────────────────────────────────────────────────────────── */
@@ -57,6 +74,46 @@ const TIPO_BADGE_COLORS: Record<string, string> = {
   otro: "bg-gray-100 text-gray-600",
 };
 
+const CORR_TIPO_LABELS: Record<CorrespondenciaTipo, string> = {
+  tutela: "Tutela",
+  derecho_peticion: "D. Petición",
+  requerimiento: "Requerimiento",
+  oficio: "Oficio",
+};
+
+const CORR_ESTADO_LABELS: Record<CorrespondenciaEstado, string> = {
+  recibido: "Recibido",
+  en_tramite: "En trámite",
+  respondido: "Respondido",
+  vencido: "Vencido",
+};
+
+const CORR_ESTADO_COLORS: Record<CorrespondenciaEstado, string> = {
+  recibido: "bg-gray-100 text-gray-700",
+  en_tramite: "bg-amber-100 text-amber-800",
+  respondido: "bg-green-100 text-green-800",
+  vencido: "bg-red-100 text-red-800",
+};
+
+// Formatea una columna DATE ("YYYY-MM-DD") sin correr el día por TZ del server.
+function formatFechaCorta(fecha: string | null): string {
+  if (!fecha) return "—";
+  return new Date(`${fecha}T12:00:00`).toLocaleDateString("es-CO", {
+    day: "numeric",
+    month: "short",
+    timeZone: "America/Bogota",
+  });
+}
+
+// Días de calendario entre hoy (Bogotá) y la fecha límite (columna DATE).
+function diasHastaLimite(fechaLimite: string): number {
+  const hoy = partesFechaBogota(new Date());
+  const [y, m, d] = fechaLimite.split("-").map(Number);
+  const msHoy = Date.UTC(hoy.year, hoy.month, hoy.day);
+  const msLimite = Date.UTC(y, m - 1, d);
+  return Math.round((msLimite - msHoy) / 86400000);
+}
+
 /* ─── Component ─────────────────────────────────────────────────────────── */
 
 export function TabDocumentos({
@@ -65,6 +122,7 @@ export function TabDocumentos({
   expedienteDigitalUrl,
   puedeEditarLink,
   puedeEliminar,
+  correspondencia,
 }: TabDocumentosProps) {
   const [eliminandoId, setEliminandoId] = useState<string | null>(null);
 
@@ -518,6 +576,88 @@ export function TabDocumentos({
           </table>
         </div>
       </section>
+
+      {/* ── Correspondencia vinculada ─────────────────────────────────── */}
+      {correspondencia.length > 0 && (
+        <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
+              <Mail className="w-4 h-4 text-[#1B4F9B]" />
+              Correspondencia vinculada
+            </h3>
+            <Link
+              href="/correspondencia"
+              className="text-xs text-[#1B4F9B] hover:text-[#a07509] font-medium"
+            >
+              Ver en Correspondencia →
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {correspondencia.map((c) => {
+              const estadoColor = CORR_ESTADO_COLORS[c.estado];
+              const dias = c.fecha_limite_respuesta && c.estado !== "respondido" && c.estado !== "vencido"
+                ? diasHastaLimite(c.fecha_limite_respuesta)
+                : null;
+              const venceHoy = dias === 0;
+              const venceManana = dias === 1;
+
+              return (
+                <div
+                  key={c.id}
+                  className="flex items-start justify-between gap-3 p-3 bg-gray-50 rounded-lg"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${estadoColor}`}
+                      >
+                        {CORR_ESTADO_LABELS[c.estado]}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {CORR_TIPO_LABELS[c.tipo]}
+                      </span>
+                      {c.docs_count > 0 && (
+                        <span className="text-xs text-gray-400">
+                          {c.docs_count} doc{c.docs_count !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {c.asunto}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">
+                      De: {c.remitente}
+                      {c.responsable && ` — Responsable: ${c.responsable.nombre}`}
+                    </p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xs text-gray-500">
+                      {formatFechaCorta(c.fecha_radicacion)}
+                    </p>
+                    {c.fecha_limite_respuesta && (
+                      <p
+                        className={`text-xs mt-0.5 ${
+                          c.estado === "vencido" || (dias !== null && dias < 0)
+                            ? "text-red-600 font-semibold"
+                            : venceHoy || venceManana
+                            ? "text-amber-600 font-semibold"
+                            : "text-gray-400"
+                        }`}
+                      >
+                        {venceHoy
+                          ? "Vence hoy"
+                          : venceManana
+                          ? "Vence mañana"
+                          : `Límite: ${formatFechaCorta(c.fecha_limite_respuesta)}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
     </div>
   );

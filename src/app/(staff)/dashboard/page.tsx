@@ -33,6 +33,8 @@ import type {
   TipoTramite,
   CaseEstado,
   SgccCaseAttorney,
+  SgccCorrespondence,
+  CorrespondenciaTipo,
   SgccProcessUpdate,
   SgccStaff,
   SgccHearing,
@@ -106,6 +108,13 @@ const TIPO_BADGE: Record<TipoTramite, { label: string; color: string }> = {
 // que TIPO_BADGE[tipo] sea undefined y reviente el render (SSR 500).
 const TIPO_BADGE_FALLBACK = { label: "—", color: "bg-gray-100 text-gray-600" };
 
+const CORRESPONDENCIA_TIPO_LABEL: Record<CorrespondenciaTipo, string> = {
+  tutela: "Tutela",
+  derecho_peticion: "Derecho de petición",
+  requerimiento: "Requerimiento",
+  oficio: "Oficio",
+};
+
 const ACTA_TIPO_LABEL: Record<ActaTipo, string> = {
   acuerdo_total: "Acuerdo total",
   acuerdo_parcial: "Acuerdo parcial",
@@ -139,6 +148,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  // Fecha de CALENDARIO Colombia (no instante): para contar días hasta un
+  // vencimiento necesitamos "hoy" como fecha civil en America/Bogota, no un
+  // timestamp que puede cruzar medianoche según el huso del servidor.
+  const todayCO = now.toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
 
   /* ─── Query 1: Todos los casos del centro/conciliador ──────────────── */
   // Para conciliador usamos el resolver unificado que también incluye casos
@@ -147,6 +160,27 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   // casings.
   const { resolverCasosVisiblesParaStaff } = await import("@/lib/server-utils");
   const visibles = await resolverCasosVisiblesParaStaff(session, centerId);
+
+  // Correspondencia próxima a vencer / vencida (visibilidad igual a "visibles").
+  let correspondenceQuery = supabaseAdmin
+    .from("sgcc_correspondence")
+    .select(
+      "*, responsable:sgcc_staff!sgcc_correspondence_responsable_staff_id_fkey(nombre)"
+    )
+    .eq("center_id", centerId)
+    .in("estado", ["recibido", "en_tramite", "vencido"])
+    .not("fecha_limite_respuesta", "is", null)
+    .order("fecha_limite_respuesta", { ascending: true })
+    .limit(20);
+
+  if (visibles.modo === "lista") {
+    correspondenceQuery =
+      visibles.caseIds.length > 0
+        ? correspondenceQuery.or(
+            `responsable_staff_id.eq.${userId},case_id.in.(${visibles.caseIds.join(",")})`
+          )
+        : correspondenceQuery.eq("responsable_staff_id", userId);
+  }
 
   let casesQuery = supabaseAdmin
     .from("sgcc_cases")
@@ -177,6 +211,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     { data: rawHearingsToday },
     { data: rawHearingsUpcoming },
     { data: rawTeam },
+    { data: rawCorrespondence },
     { data: rawProcessUpdates },
   ] = await Promise.all([
     // Partes de los casos
@@ -231,6 +266,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       .eq("supervisor_id", userId)
       .eq("activo", true),
 
+    // Correspondencia próxima a vencer / vencida.
+    correspondenceQuery,
+
     // Actuaciones judiciales no leídas.
     // Para conciliador: solo de procesos vigilados vinculados a sus casos.
     // Para admin/secretario: todas las del centro.
@@ -257,6 +295,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const hearingsToday = (rawHearingsToday ?? []) as HearingWithJoins[];
   const hearingsUpcoming = (rawHearingsUpcoming ?? []) as HearingWithJoins[];
   const team = (rawTeam ?? []) as SgccStaff[];
+  const correspondence = (rawCorrespondence ?? []) as SgccCorrespondence[];
   const processUpdates = (rawProcessUpdates ?? []) as (SgccProcessUpdate & {
     watched: { case_id: string | null; numero_proceso: string } | null;
   })[];
@@ -522,6 +561,38 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     }
   }
 
+  // Correspondencia próxima a vencer / vencida
+  for (const c of correspondence) {
+    if (!c.fecha_limite_respuesta) continue;
+    const dias = diasRestantes(c.fecha_limite_respuesta, todayCO);
+    const esTutela = c.tipo === "tutela";
+    const label = CORRESPONDENCIA_TIPO_LABEL[c.tipo] ?? "Correspondencia";
+    const link = c.case_id ? `/expediente/${c.case_id}?tab=documentos` : "/correspondencia";
+
+    if (c.estado === "vencido" || dias < 0) {
+      alerts.push({
+        id: `corr-${c.id}`,
+        icon: "red",
+        text: esTutela ? `Tutela "${c.asunto}" VENCIDA` : `${label} "${c.asunto}" vencido`,
+        link,
+      });
+    } else if (esTutela && dias <= 5) {
+      alerts.push({
+        id: `corr-${c.id}`,
+        icon: "red",
+        text: `Tutela "${c.asunto}" ${dias === 0 ? "vence hoy" : `vence en ${dias} día${dias !== 1 ? "s" : ""}`}`,
+        link,
+      });
+    } else if (!esTutela && dias <= 3) {
+      alerts.push({
+        id: `corr-${c.id}`,
+        icon: "yellow",
+        text: `${label} "${c.asunto}" ${dias === 0 ? "vence hoy" : `vence en ${dias} día${dias !== 1 ? "s" : ""}`}`,
+        link,
+      });
+    }
+  }
+
   const totalAlerts = alerts.length;
 
   /* ─── Filtros de tabla ─────────────────────────────────────────────── */
@@ -540,6 +611,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   // Agregar cambios de apoderado y checklists incompletas al set de alertas
   for (const caseId of cambioApoderadoByCase) caseIdsWithAlerts.add(caseId);
   for (const caseId of checklistIncompleteByCase) caseIdsWithAlerts.add(caseId);
+  // Correspondencia vencida o próxima a vencer
+  for (const c of correspondence) {
+    if (!c.case_id || !c.fecha_limite_respuesta) continue;
+    const dias = diasRestantes(c.fecha_limite_respuesta, todayCO);
+    const esTutela = c.tipo === "tutela";
+    const enAlerta =
+      c.estado === "vencido" || dias < 0 || (esTutela && dias <= 5) || (!esTutela && dias <= 3);
+    if (enAlerta) caseIdsWithAlerts.add(c.case_id);
+  }
 
   let filteredCases = activeCases;
   if (filterTipo && filterTipo !== "todos") {
@@ -1213,6 +1293,16 @@ function FilterLink({
 }
 
 /* ─── Utilidades ─────────────────────────────────────────────────────── */
+
+// Días entre dos fechas CIVILES (YYYY-MM-DD), no instantes: construir con
+// Date.UTC sobre las partes evita que un `new Date(str)` interprete la fecha
+// en UTC y un `now` en huso local desfasen el conteo por el cruce de huso.
+function diasRestantes(fechaLimite: string, hoyCO: string): number {
+  const [y1, m1, d1] = hoyCO.split("-").map(Number);
+  const [y2, m2, d2] = fechaLimite.slice(0, 10).split("-").map(Number);
+  const ms = Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1);
+  return Math.round(ms / (1000 * 60 * 60 * 24));
+}
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("es-CO", {
