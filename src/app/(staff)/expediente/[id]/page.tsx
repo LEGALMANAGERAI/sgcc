@@ -133,6 +133,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
     { data: rawDocumentos },
     { data: rawActas },
     { data: rawTimeline },
+    { data: rawCorrespondencia },
   ] = await Promise.all([
     // 2. Partes del caso
     supabaseAdmin
@@ -174,6 +175,19 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
       .select("*")
       .eq("case_id", id)
       .order("created_at", { ascending: true }),
+
+    // 7b. Correspondencia vinculada al caso
+    supabaseAdmin
+      .from("sgcc_correspondence")
+      .select(`
+        id, tipo, asunto, remitente, fecha_radicacion, fecha_limite_respuesta, estado,
+        responsable:sgcc_staff!sgcc_correspondence_responsable_staff_id_fkey(id, nombre),
+        documentos:sgcc_correspondence_docs(id)
+      `)
+      .eq("case_id", id)
+      .eq("center_id", centerId)
+      .order("fecha_limite_respuesta", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false }),
   ]);
 
   const parties = rawParties ?? [];
@@ -188,6 +202,11 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
   const hearings = rawHearings ?? [];
   const documentos = rawDocumentos ?? [];
   const timelineRaw = rawTimeline ?? [];
+  const correspondencia = (rawCorrespondencia ?? []).map((c: any) => {
+    const docsCount = c.documentos?.length ?? 0;
+    const { documentos: _docs, ...rest } = c;
+    return { ...rest, docs_count: docsCount };
+  });
 
   // El "Flujo del caso" usa eventos de sgcc_case_timeline, pero las fechas
   // canónicas de cada etapa viven en columnas del propio caso (fecha_solicitud,
@@ -541,6 +560,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
               expedienteDigitalUrl={caso.expediente_digital_url ?? null}
               puedeEditarLink={(session.user as any).userType === "staff"}
               puedeEliminar={(session.user as any).userType === "staff"}
+              correspondencia={correspondencia}
             />
           )}
           {subDocumentos === "admision" && (

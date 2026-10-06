@@ -163,6 +163,43 @@ export async function guardCasoStaff(
 }
 
 /**
+ * Acceso a correspondencia jurídica (/api/correspondencia/*).
+ * Admin/secretario ven toda la del centro; conciliador/asistente solo la que
+ * tienen asignada como responsables o la vinculada a casos que pueden ver.
+ */
+export type AccesoCorrespondencia = {
+  centerId: string;
+  staffId: string;
+  verTodo: boolean;
+  caseIds: string[];
+  puedeVer: (row: { responsable_staff_id: string | null; case_id: string | null }) => boolean;
+};
+
+export async function guardCorrespondencia(
+  session: any,
+): Promise<AccesoCorrespondencia | { error: NextResponse }> {
+  if (!session) return { error: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
+  if (session.user?.userType !== "staff") {
+    return { error: NextResponse.json({ error: "Solo el personal del centro" }, { status: 403 }) };
+  }
+  const centerId = resolveCenterId(session);
+  if (!centerId) return { error: NextResponse.json({ error: "Sin centro" }, { status: 400 }) };
+
+  const staffId = session.user.id as string;
+  const v = await resolverCasosVisiblesParaStaff(session, centerId);
+  const verTodo = v.modo === "todos";
+  const caseIds = v.modo === "lista" ? v.caseIds : [];
+  const puedeVer: AccesoCorrespondencia["puedeVer"] = (row) =>
+    verTodo || row.responsable_staff_id === staffId || (!!row.case_id && caseIds.includes(row.case_id));
+  return { centerId, staffId, verTodo, caseIds, puedeVer };
+}
+
+/** Nombre de archivo seguro para una ruta de Storage. */
+export function nombreArchivoSeguro(nombre: string): string {
+  return nombre.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120) || "archivo";
+}
+
+/**
  * Guard para gestionar el equipo del centro (/api/conciliadores): solo admin y
  * secretario (igual que el menú). Quien no es admin no puede tocar admins; eso
  * lo valida cada handler con `esAdmin`.
