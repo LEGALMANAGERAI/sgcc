@@ -92,7 +92,8 @@ export async function GET() {
   // Estados que cuentan como "abiertos / activos". Son listas conservadoras
   // — si un estado nuevo aparece en BD, no lo cuento como cerrado por defecto.
   const ESTADOS_CASO_CERRADO = new Set(["archivado", "cerrado", "anulado"]);
-  const ESTADOS_TICKET_CERRADO = new Set(["resuelto", "cerrado"]);
+  // Valores reales del CHECK de sgcc_tickets.estado (018): 'Cerrado' con mayúscula.
+  const ESTADOS_TICKET_CERRADO = new Set(["Cerrado"]);
   const ESTADOS_AUDIENCIA_PROG = new Set(["programada", "reprogramada"]);
 
   const ahora = new Date();
