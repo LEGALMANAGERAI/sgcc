@@ -1,5 +1,6 @@
 "use client";
 
+import { archivoHref } from "@/lib/archivos-ref";
 import { useState, useEffect } from "react";
 import {
   Loader2,
@@ -200,7 +201,7 @@ export function GenerarAutoPrimeraAudiencia({
       }
       const data = await res.json();
       if (data?.url) {
-        window.open(data.url, "_blank");
+        window.open(archivoHref(data.url) ?? data.url, "_blank");
       } else {
         setError("El servidor no devolvió la URL del documento.");
       }

@@ -1,5 +1,6 @@
 "use client";
 
+import { archivoHref } from "@/lib/archivos-ref";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download } from "lucide-react";
@@ -52,7 +53,7 @@ export function CitacionForm({ caseId, templates, salas, currentSalaId }: Props)
       return;
     }
 
-    setDocUrl(data.url);
+    setDocUrl(archivoHref(data.url));
   }
 
   if (docUrl) {

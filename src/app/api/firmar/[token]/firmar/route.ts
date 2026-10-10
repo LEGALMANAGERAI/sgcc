@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, uploadFile } from "@/lib/supabase";
 import { calcularHashSHA256, sellarDocumento } from "@/lib/firma/pdf";
 import { randomUUID } from "crypto";
+import { pathDeArchivo } from "@/lib/archivos-ref";
 import { Resend } from "resend";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -75,7 +76,13 @@ export async function POST(req: NextRequest, { params }: Params) {
   try {
     // Descargar PDF original de Supabase Storage
     const archivoUrl = documento.archivo_url as string;
-    const storagePath = archivoUrl.split("/sgcc-documents/")[1];
+    const storagePath = pathDeArchivo(archivoUrl);
+    if (!storagePath) {
+      return NextResponse.json(
+        { error: "El documento original no está en el almacenamiento del centro" },
+        { status: 500 }
+      );
+    }
 
     const { data: fileData, error: downloadError } = await supabaseAdmin.storage
       .from("sgcc-documents")

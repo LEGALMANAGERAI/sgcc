@@ -4,6 +4,7 @@ import type { WizardProps } from "../WizardShell";
 import type { FormDataInsolvencia } from "@/types/solicitudes";
 import { validarInsolvencia } from "@/lib/solicitudes/validators";
 import { JURAMENTO_TEXTO } from "@/lib/solicitudes/constants";
+import { archivoHref } from "@/lib/archivos-ref";
 import { formatearFechaCorteLarga } from "@/lib/solicitudes/fecha-corte";
 
 type EstadoFirma = "no_iniciada" | "pendiente" | "enviado" | "visto" | "firmado" | "rechazado" | "expirado";
@@ -192,7 +193,7 @@ export function Paso13Confirmar({
           </button>
           {firma?.pdf_url && (
             <a
-              href={firma.pdf_url}
+              href={archivoHref(firma.pdf_url) ?? undefined}
               target="_blank"
               rel="noreferrer"
               className="text-sm text-[#1B4F9B] underline"
@@ -236,7 +237,7 @@ export function Paso13Confirmar({
             </span>
             {firma?.firmado_url && (
               <a
-                href={firma.firmado_url}
+                href={archivoHref(firma.firmado_url) ?? undefined}
                 target="_blank"
                 rel="noreferrer"
                 className="underline"

@@ -13,6 +13,8 @@
 // — así está en los autos originales y se deja igual a propósito (idéntico
 // al Word).
 // ============================================================
+import { pathDeArchivo } from "@/lib/archivos-ref";
+import { descargarArchivo } from "@/lib/archivos-acceso";
 import {
   BLOQUES_ESTANDAR,
   type ResolvedAutoVars,
@@ -57,9 +59,18 @@ async function fetchLogo(
 ): Promise<{ data: Uint8Array; type: "png" | "jpg" } | null> {
   if (!url) return null;
   try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = new Uint8Array(await res.arrayBuffer());
+    // Logos viejos en sgcc-documents (ahora privado) → descarga interna;
+    // los nuevos (bucket público sgcc-public) o externos → fetch.
+    let data: Uint8Array;
+    if (pathDeArchivo(url)) {
+      const archivo = await descargarArchivo(url);
+      if (!archivo) return null;
+      data = new Uint8Array(archivo.buffer);
+    } else {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      data = new Uint8Array(await res.arrayBuffer());
+    }
     if (data.length === 0) return null;
     if (data[0] === 0x89 && data[1] === 0x50) return { data, type: "png" };
     if (data[0] === 0xff && data[1] === 0xd8) return { data, type: "jpg" };

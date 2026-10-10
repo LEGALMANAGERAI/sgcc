@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin, uploadFile } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
+import { pathDeArchivo } from "@/lib/archivos-ref";
 import { randomUUID } from "crypto";
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -13,10 +14,9 @@ const BUCKET = "sgcc-documents";
 
 async function deleteExistingReglamento(reglamentoUrl: string | null): Promise<void> {
   if (!reglamentoUrl) return;
-  // Si el url ya es path relativo lo usamos directo. Si es URL pública vieja,
-  // extraemos el path con regex.
-  const m = reglamentoUrl.match(/\/sgcc-documents\/(.+)$/);
-  const path = m ? m[1] : reglamentoUrl;
+  // URL pública vieja o path → path dentro del bucket (null si no aplica).
+  const path = pathDeArchivo(reglamentoUrl);
+  if (!path) return;
   await supabaseAdmin.storage.from(BUCKET).remove([path]).catch(() => {});
 }
 

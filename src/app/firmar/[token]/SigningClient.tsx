@@ -199,7 +199,7 @@ export function SigningClient({ token, initialData }: Props) {
           fecha: data.firmadoAt ?? data.fecha,
           ip: data.ip,
           transaction_id: data.transactionId ?? data.transaction_id,
-          pdf_url: data.documentoFirmadoUrl ?? data.pdf_url,
+          pdf_url: `/api/firmar/${token}/archivo?tipo=firmado`,
         });
       }
       setPaso(5);
@@ -348,7 +348,7 @@ export function SigningClient({ token, initialData }: Props) {
             {/* PDF iframe */}
             <div className="border border-gray-200 rounded-lg overflow-hidden mb-6">
               <iframe
-                src={initialData.documento.archivo_url}
+                src={`/api/firmar/${token}/archivo?tipo=original`}
                 className="w-full h-[500px]"
                 title="Documento PDF"
               />

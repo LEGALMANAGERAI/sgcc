@@ -6,8 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { guardCasoStaff } from "@/lib/server-utils";
-
-const BUCKET = "sgcc-documents";
+import { DOCS_BUCKET as BUCKET, pathDeArchivo } from "@/lib/archivos-ref";
 
 export async function DELETE(
   _req: NextRequest,
@@ -31,11 +30,7 @@ export async function DELETE(
   if (!doc) return NextResponse.json({ error: "Documento no encontrado" }, { status: 404 });
 
   // Borrar archivo del bucket. Path preferido: storage_path; fallback: extraer del URL.
-  let path = doc.storage_path as string | null;
-  if (!path && doc.url) {
-    const m = String(doc.url).match(/\/sgcc-documents\/(.+?)(\?|$)/);
-    path = m ? decodeURIComponent(m[1]) : null;
-  }
+  const path = pathDeArchivo(doc.storage_path) ?? pathDeArchivo(doc.url);
   if (path) {
     await supabaseAdmin.storage.from(BUCKET).remove([path]).catch(() => {});
   }

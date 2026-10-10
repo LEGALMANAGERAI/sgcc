@@ -1,5 +1,6 @@
 "use client";
 
+import { archivoHref } from "@/lib/archivos-ref";
 import { useState, useEffect } from "react";
 import {
   FileText,
@@ -464,7 +465,7 @@ function ActaCreadaCard({
       <div className="flex flex-wrap gap-3 pt-2">
         {acta.borrador_url && (
           <a
-            href={acta.borrador_url}
+            href={archivoHref(acta.borrador_url) ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#1B4F9B] bg-blue-50 hover:bg-blue-100 rounded-lg"
@@ -491,7 +492,7 @@ function ActaCreadaCard({
 
         {acta.acta_firmada_url && (
           <a
-            href={acta.acta_firmada_url}
+            href={archivoHref(acta.acta_firmada_url) ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg"

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { archivoHref } from "@/lib/archivos-ref";
 import {
   Scale,
   Search,
@@ -488,7 +489,7 @@ export function TabProcesos({ caseId, procesos, documentos }: Props) {
                 </div>
                 {d.url && (
                   <a
-                    href={d.url}
+                    href={archivoHref(d.url) ?? undefined}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-[#1B4F9B]/10 text-[#1B4F9B] hover:bg-[#1B4F9B]/20"
