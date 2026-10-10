@@ -3,7 +3,8 @@
 // autenticada y el ticket no está cerrado.
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin, deleteFile } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { TICKETS_BUCKET } from "@/lib/tickets/adjuntos-storage";
 import { requireParte } from "@/lib/partes/auth-guard";
 
 export async function DELETE(
@@ -42,11 +43,11 @@ export async function DELETE(
     return NextResponse.json({ error: "Adjunto no encontrado" }, { status: 404 });
   }
 
-  // Borrar de storage (mejor effort) y luego de BD
-  try {
-    await deleteFile("sgcc-documents", adjunto.storage_path);
-  } catch (e) {
-    console.error("[adjuntos DELETE] storage:", e);
+  // Borrar de storage (mejor effort) y luego de BD. También del bucket público
+  // viejo: los adjuntos previos a la migración 050 pueden seguir ahí.
+  for (const bucket of [TICKETS_BUCKET, "sgcc-documents"]) {
+    const { error } = await supabaseAdmin.storage.from(bucket).remove([adjunto.storage_path]);
+    if (error) console.error(`[adjuntos DELETE] storage ${bucket}:`, error);
   }
 
   await supabaseAdmin.from("sgcc_ticket_adjuntos").delete().eq("id", adjuntoId);
