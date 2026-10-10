@@ -6,9 +6,11 @@ import { useMemo, useState } from "react";
 import { Plus, LifeBuoy } from "lucide-react";
 import { TicketEstadoBadge } from "@/components/tickets/TicketEstadoBadge";
 import type { TicketEstado } from "@/types";
+import { etiquetaTicket } from "@/lib/tickets/numero";
 
 interface TicketRow {
   id: string;
+  numero: string | null;
   titulo: string;
   estado: TicketEstado;
   prioridad: string;
@@ -90,7 +92,7 @@ export function MisTicketsClient({ ticketsIniciales }: { ticketsIniciales: Ticke
                 <tr key={t.id} className="hover:bg-gray-50 cursor-pointer">
                   <td className="px-4 py-3">
                     <Link href={`/mis-tickets/${t.id}`} className="block font-medium text-[#0D2340]">
-                      {t.titulo}
+                      <span className="text-[#7A8FA6] font-normal">{etiquetaTicket(t)} · </span>{t.titulo}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">

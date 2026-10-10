@@ -9,9 +9,11 @@ import { TicketEstadoBadge } from "@/components/tickets/TicketEstadoBadge";
 import { TicketPrioridadBadge } from "@/components/tickets/TicketPrioridadBadge";
 import { AdjuntosUpload } from "@/components/tickets/AdjuntosUpload";
 import type { TicketEstado, TicketPrioridad, SgccTicketAdjunto } from "@/types";
+import { etiquetaTicket } from "@/lib/tickets/numero";
 
 interface TicketDetalle {
   id: string;
+  numero: string | null;
   titulo: string;
   descripcion: string | null;
   estado: TicketEstado;
@@ -98,7 +100,10 @@ export function TicketDetalleClient({
 
       <header className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
         <div className="flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-bold text-[#0D2340]">{ticket.titulo}</h1>
+          <h1 className="text-2xl font-bold text-[#0D2340]">
+            <span className="text-[#7A8FA6] font-normal">{etiquetaTicket(ticket)} · </span>
+            {ticket.titulo}
+          </h1>
           <div className="flex flex-col gap-1 items-end">
             <TicketEstadoBadge estado={ticket.estado} />
             <TicketPrioridadBadge prioridad={ticket.prioridad} />

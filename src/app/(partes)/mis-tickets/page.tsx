@@ -15,7 +15,7 @@ export default async function MisTicketsPage() {
   const { data: tickets } = await supabaseAdmin
     .from("sgcc_tickets")
     .select(`
-      id, titulo, estado, prioridad, created_at, updated_at, case_id,
+      id, numero, titulo, estado, prioridad, created_at, updated_at, case_id,
       caso:sgcc_cases(numero_radicado)
     `)
     .eq("solicitante_party_id", userId)

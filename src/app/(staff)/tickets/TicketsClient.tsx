@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Plus, MessageSquare, X, Filter, CheckCircle2, Loader2 } from "lucide-react";
 import { AdjuntosUpload } from "@/components/tickets/AdjuntosUpload";
 import { AdjuntosUploadBuffered } from "@/components/tickets/AdjuntosUploadBuffered";
+import { etiquetaTicket } from "@/lib/tickets/numero";
 
 interface StaffLite {
   id: string;
@@ -16,6 +17,7 @@ interface StaffLite {
 
 interface TicketRow {
   id: string;
+  numero: string | null;
   titulo: string;
   descripcion: string | null;
   categoria: "soporte" | "administrativo" | "operativo";
@@ -257,7 +259,7 @@ export default function TicketsClient({ initialTickets, staff }: Props) {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
                           <span className={`text-sm font-bold ${cerrado ? "line-through text-[#7A8FA6]" : "text-[#0D2340]"}`}>
-                            #{t.id.slice(-6)} · {t.titulo}
+                            {etiquetaTicket(t)} · {t.titulo}
                           </span>
                           <span
                             className={`text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize ${
@@ -659,7 +661,7 @@ function ResponderModal({
 
         <div className="p-5 space-y-4">
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-            <div className="text-xs font-bold text-[#3D5068] mb-1">#{ticket.id.slice(-6)} · {ticket.titulo}</div>
+            <div className="text-xs font-bold text-[#3D5068] mb-1">{etiquetaTicket(ticket)} · {ticket.titulo}</div>
             {ticket.descripcion && (
               <p className="text-xs text-[#7A8FA6] whitespace-pre-line">{ticket.descripcion}</p>
             )}

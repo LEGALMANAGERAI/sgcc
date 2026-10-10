@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
         centerId,
         caseId: caseId ?? undefined,
         tipo: "ticket_nuevo",
-        titulo: `🎫 Nuevo ticket de parte — ${titulo}`,
+        titulo: `🎫 Nuevo ticket de parte ${data.numero ?? ""} — ${titulo}`,
         mensaje: `${nombreParte} ha abierto un ticket con prioridad ${prioridad}.${
           descripcion ? `\n\n${descripcion}` : ""
         }`,
