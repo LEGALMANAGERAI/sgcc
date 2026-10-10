@@ -75,7 +75,7 @@ export async function PATCH(
   // múltiples PATCH concurrentes (dos tabs cerrando al mismo tiempo).
   const { data: ticket } = await supabaseAdmin
     .from("sgcc_tickets")
-    .select("id, center_id, titulo")
+    .select("id, numero, center_id, titulo")
     .eq("id", id)
     .eq("solicitante_party_id", guard.userId)
     .maybeSingle();
@@ -115,7 +115,7 @@ export async function PATCH(
       await notify({
         centerId: ticket.center_id,
         tipo: "ticket_respondido",
-        titulo: `✅ Ticket cerrado por la parte — ${ticket.titulo}`,
+        titulo: `✅ Ticket cerrado por la parte ${ticket.numero ?? ""} — ${ticket.titulo}`,
         mensaje: `La parte cerró el ticket "${ticket.titulo}".`,
         recipients,
         canal: "in_app",

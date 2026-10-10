@@ -56,7 +56,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Verificar que el ticket pertenece al centro
   const { data: ticket, error: findErr } = await supabaseAdmin
     .from("sgcc_tickets")
-    .select("id, solicitante_staff_id, solicitante_party_id, asignado_staff_id, titulo, center_id")
+    .select("id, numero, solicitante_staff_id, solicitante_party_id, asignado_staff_id, titulo, center_id")
     .eq("id", id)
     .eq("center_id", centerId)
     .single();
@@ -121,7 +121,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           await notify({
             centerId,
             tipo: "ticket_respondido",
-            titulo: `💬 Respuesta a tu ticket — ${ticket.titulo}`,
+            titulo: `💬 Respuesta a tu ticket ${ticket.numero ?? ""} — ${ticket.titulo}`,
             mensaje: `Tu ticket ha sido respondido.\n\n${respuestaNueva}`,
             recipients: [{ staffId: solicitante.id, email: solicitante.email ?? undefined }],
             canal: "both",
@@ -140,7 +140,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           await notify({
             centerId,
             tipo: "ticket_respondido",
-            titulo: `💬 Respuesta a tu ticket — ${ticket.titulo}`,
+            titulo: `💬 Respuesta a tu ticket ${ticket.numero ?? ""} — ${ticket.titulo}`,
             mensaje: `El centro respondió tu ticket.\n\n${respuestaNueva}`,
             recipients: [{ partyId: parte.id, email: parte.email ?? undefined }],
             canal: "both",
