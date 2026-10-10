@@ -2,6 +2,7 @@ import { supabaseAdmin } from "./supabase";
 import { Resend } from "resend";
 import { randomUUID } from "crypto";
 import type { NotifTipo } from "@/types";
+import { descargarArchivo } from "./archivos-acceso";
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY || "re_placeholder");
@@ -15,11 +16,21 @@ interface NotifyOptions {
   mensaje: string;
   recipients: Array<{ staffId?: string; partyId?: string; email?: string }>;
   canal?: "in_app" | "email" | "both";
+  /**
+   * Documento del correo. Si es un archivo de sgcc-documents (bucket privado)
+   * se ADJUNTA al email: muchos destinatarios (convocados) no tienen cuenta y
+   * un link al proxy no les abriría. Otras URLs se muestran como botón.
+   */
   attachmentUrl?: string;
 }
 
 export async function notify(opts: NotifyOptions) {
   const canal = opts.canal ?? "both";
+  const adjunto =
+    opts.attachmentUrl && (canal === "email" || canal === "both")
+      ? await descargarArchivo(opts.attachmentUrl)
+      : null;
+  const linkDocumento = adjunto ? undefined : opts.attachmentUrl;
 
   for (const r of opts.recipients) {
     // 1. Notificación in-app
@@ -47,7 +58,10 @@ export async function notify(opts: NotifyOptions) {
           from: "SIGECC <notificaciones@sgcc.app>",
           to: r.email,
           subject: opts.titulo,
-          html: buildEmailHtml(opts.titulo, opts.mensaje, opts.attachmentUrl),
+          html: buildEmailHtml(opts.titulo, opts.mensaje, linkDocumento, !!adjunto),
+          ...(adjunto && {
+            attachments: [{ filename: adjunto.nombre, content: adjunto.buffer }],
+          }),
         });
 
         if (result.data?.id && (r.staffId || r.partyId)) {
@@ -66,7 +80,7 @@ export async function notify(opts: NotifyOptions) {
   }
 }
 
-function buildEmailHtml(titulo: string, mensaje: string, url?: string): string {
+function buildEmailHtml(titulo: string, mensaje: string, url?: string, conAdjunto = false): string {
   return `
     <!DOCTYPE html>
     <html>
@@ -78,6 +92,7 @@ function buildEmailHtml(titulo: string, mensaje: string, url?: string): string {
         <h3 style="color: #0D2340; margin-top: 0;">${titulo}</h3>
         <p style="white-space: pre-line; line-height: 1.6;">${mensaje}</p>
         ${url ? `<a href="${url}" style="display: inline-block; background: #1B4F9B; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; margin-top: 16px;">Ver documento</a>` : ""}
+        ${conAdjunto ? `<p style="margin-top: 16px; font-size: 14px;">📎 El documento va adjunto a este correo.</p>` : ""}
         <hr style="margin-top: 24px; border: none; border-top: 1px solid #e0e0e0;" />
         <p style="font-size: 12px; color: #888; margin-bottom: 0;">Este es un mensaje automático del Sistema de Gestión de Centros de Conciliación.</p>
       </div>

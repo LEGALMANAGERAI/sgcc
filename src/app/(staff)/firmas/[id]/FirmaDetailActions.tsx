@@ -1,5 +1,6 @@
 "use client";
 
+import { archivoHref } from "@/lib/archivos-ref";
 import { useState } from "react";
 import {
   Send,
@@ -149,7 +150,7 @@ export function FirmaDetailActions({
 
           {/* Descargar PDF original */}
           <a
-            href={archivoUrl}
+            href={archivoHref(archivoUrl) ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
@@ -161,7 +162,7 @@ export function FirmaDetailActions({
           {/* Descargar PDF firmado */}
           {canDescargarFirmado && (
             <a
-              href={archivoFirmadoUrl!}
+              href={archivoHref(archivoFirmadoUrl) ?? undefined}
               target="_blank"
               rel="noopener noreferrer"
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"

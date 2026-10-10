@@ -8,6 +8,8 @@
 // el RESUELVE cita el Art. 550 — así está en los autos originales y se
 // deja igual a propósito.
 // ============================================================
+import { pathDeArchivo } from "@/lib/archivos-ref";
+import { descargarArchivo } from "@/lib/archivos-acceso";
 import {
   Document,
   Packer,
@@ -66,9 +68,18 @@ async function fetchLogo(
 ): Promise<{ data: Buffer; type: "png" | "jpg" | "gif" | "bmp" } | null> {
   if (!url) return null;
   try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = Buffer.from(await res.arrayBuffer());
+    // Logos viejos en sgcc-documents (ahora privado) → descarga interna;
+    // los nuevos (bucket público sgcc-public) o externos → fetch.
+    let data: Buffer;
+    if (pathDeArchivo(url)) {
+      const archivo = await descargarArchivo(url);
+      if (!archivo) return null;
+      data = archivo.buffer;
+    } else {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      data = Buffer.from(await res.arrayBuffer());
+    }
     if (data.length === 0) return null;
     // Detección por firma de bytes (magic numbers).
     if (data[0] === 0x89 && data[1] === 0x50) return { data, type: "png" };

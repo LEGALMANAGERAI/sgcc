@@ -6,6 +6,7 @@ import { AutoSaveIndicator } from "@/components/partes/AutoSaveIndicator";
 import { PersonaForm } from "@/components/partes/PersonaForm";
 import { RepeatableList } from "@/components/partes/RepeatableList";
 import { FileUploadBox } from "@/components/partes/FileUploadBox";
+import { archivoHref } from "@/lib/archivos-ref";
 import { validarConciliacion } from "@/lib/solicitudes/validators";
 import type {
   FormDataConciliacion,
@@ -418,7 +419,7 @@ export function WizardConciliacion({
                 </button>
                 {firma?.pdf_url && (
                   <a
-                    href={firma.pdf_url}
+                    href={archivoHref(firma.pdf_url) ?? undefined}
                     target="_blank"
                     rel="noreferrer"
                     className="text-sm text-[#1B4F9B] underline"
@@ -463,7 +464,7 @@ export function WizardConciliacion({
                   </span>
                   {firma?.firmado_url && (
                     <a
-                      href={firma.firmado_url}
+                      href={archivoHref(firma.firmado_url) ?? undefined}
                       target="_blank"
                       rel="noreferrer"
                       className="underline"

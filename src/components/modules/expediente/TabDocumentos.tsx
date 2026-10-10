@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { parseApiError, validarTamanoArchivo } from "@/lib/api-error";
 import { partesFechaBogota } from "@/lib/fecha-colombia";
+import { archivoHref } from "@/lib/archivos-ref";
 import type { CorrespondenciaTipo, CorrespondenciaEstado } from "@/types";
 import {
   FileText,
@@ -534,7 +535,7 @@ export function TabDocumentos({
                           {doc.url && (
                             <>
                               <a
-                                href={doc.url}
+                                href={archivoHref(doc.url) ?? undefined}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-[#0D2340] transition-colors"
@@ -543,8 +544,7 @@ export function TabDocumentos({
                                 <Eye className="w-3.5 h-3.5" />
                               </a>
                               <a
-                                href={doc.url}
-                                download
+                                href={archivoHref(doc.url, doc.nombre) ?? undefined}
                                 className="inline-flex items-center gap-1 text-xs text-[#1B4F9B] hover:text-[#a07509] transition-colors"
                                 title="Descargar"
                               >

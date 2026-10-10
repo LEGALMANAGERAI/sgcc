@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Loader2, Upload, Trash2, FileText, X } from "lucide-react";
+import { archivoHref } from "@/lib/archivos-ref";
 
 export interface ArchivoCentro {
   id: string;
@@ -223,8 +224,7 @@ export function ArchivosCentroClient({ archivosIniciales }: Props) {
                   <td className="px-4 py-2.5">
                     <div className="flex items-center justify-end gap-2">
                       <a
-                        href={a.url}
-                        download={a.nombre}
+                        href={archivoHref(a.url, a.nombre) ?? undefined}
                         className="inline-flex items-center gap-1 text-xs text-[#1B4F9B] hover:bg-[#1B4F9B]/10 px-2 py-1 rounded"
                         title="Descargar"
                       >

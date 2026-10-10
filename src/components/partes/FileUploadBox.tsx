@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Upload, File as FileIcon, X } from "lucide-react";
 import type { TipoAnexo, AdjuntoDraft } from "@/types/solicitudes";
 import { TIPO_ANEXO_LABEL } from "@/lib/solicitudes/constants";
+import { archivoHref } from "@/lib/archivos-ref";
 
 export function FileUploadBox({
   draftId,
@@ -81,7 +82,7 @@ export function FileUploadBox({
               className="flex items-center justify-between text-xs bg-gray-50 rounded px-2 py-1.5"
             >
               <a
-                href={a.url}
+                href={archivoHref(a.url) ?? undefined}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-gray-700 hover:text-[#1B4F9B]"

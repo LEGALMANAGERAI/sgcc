@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, deleteFile } from "@/lib/supabase";
 import { requireParte } from "@/lib/partes/auth-guard";
+import { DOCS_BUCKET, pathDeArchivo } from "@/lib/archivos-ref";
 
 export async function DELETE(
   _req: NextRequest,
@@ -26,13 +27,11 @@ export async function DELETE(
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
 
-  // Extraer path del URL público: ".../sgcc-documents/<path>"
-  const marker = "/sgcc-documents/";
-  const idx = (doc as { url: string }).url.indexOf(marker);
-  if (idx !== -1) {
-    const path = (doc as { url: string }).url.slice(idx + marker.length);
+  // Path en sgcc-documents a partir del URL (público viejo o path)
+  const path = pathDeArchivo((doc as { url: string | null }).url);
+  if (path) {
     try {
-      await deleteFile("sgcc-documents", path);
+      await deleteFile(DOCS_BUCKET, path);
     } catch (e) {
       console.error("[adjuntos DELETE] falló delete en Storage:", e);
       // Seguimos con el borrado del registro de todos modos

@@ -1,5 +1,6 @@
 "use client";
 
+import { archivoHref } from "@/lib/archivos-ref";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase-browser";
@@ -386,7 +387,7 @@ function ActaRevisionCard({
       <div className="flex flex-wrap gap-3">
         {acta.borrador_url && (
           <a
-            href={acta.borrador_url}
+            href={archivoHref(acta.borrador_url) ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[#1B4F9B] bg-blue-50 hover:bg-blue-100 rounded-lg"
@@ -397,7 +398,7 @@ function ActaRevisionCard({
         )}
         {acta.acta_firmada_url && (
           <a
-            href={acta.acta_firmada_url}
+            href={archivoHref(acta.acta_firmada_url) ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg"
@@ -591,7 +592,7 @@ function ActaRevisionCard({
                 {h.observaciones && <p className="text-gray-500 mt-0.5">{h.observaciones}</p>}
                 {h.documento_url && (
                   <a
-                    href={h.documento_url}
+                    href={archivoHref(h.documento_url) ?? undefined}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[#1B4F9B] hover:underline"

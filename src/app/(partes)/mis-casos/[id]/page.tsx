@@ -3,6 +3,8 @@ export const dynamic = "force-dynamic";
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { archivoHref } from "@/lib/archivos-ref";
+import { TIPOS_DOC_OFICIALES_PARTE } from "@/lib/archivos-acceso";
 import Link from "next/link";
 import type {
   CaseEstado,
@@ -138,19 +140,12 @@ export default async function CasoDetallePage({
   }
 
   // Documentos del caso: los oficiales + los que subió esta parte
-  const tiposOficiales: DocTipo[] = [
-    "citacion",
-    "acta_firmada",
-    "constancia",
-    "admision",
-    "rechazo",
-  ];
   const [{ data: docsOficiales }, { data: docsPartes }] = await Promise.all([
     supabaseAdmin
       .from("sgcc_documents")
       .select("*")
       .eq("case_id", caseId)
-      .in("tipo", tiposOficiales)
+      .in("tipo", [...TIPOS_DOC_OFICIALES_PARTE] as DocTipo[])
       .order("created_at", { ascending: false }),
     supabaseAdmin
       .from("sgcc_documents")
@@ -416,7 +411,7 @@ export default async function CasoDetallePage({
                 </div>
                 {doc.url && (
                   <a
-                    href={doc.url}
+                    href={archivoHref(doc.url) ?? undefined}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-[#1B4F9B] hover:underline font-medium"

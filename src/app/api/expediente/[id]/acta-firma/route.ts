@@ -7,6 +7,7 @@ import { generarTokenFirma } from "@/lib/firma/tokens";
 import { calcularHashSHA256 } from "@/lib/firma/pdf";
 import { firmaActivaDelCaso, mensajeDuplicado } from "@/lib/firma/duplicados";
 import { randomUUID } from "crypto";
+import { descargarArchivo } from "@/lib/archivos-acceso";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -135,20 +136,16 @@ export async function POST(req: NextRequest, { params }: Params) {
       (a: any) => a.party?.id === insolvente.id
     );
 
-    // 6. Descargar el borrador desde Storage para calcular hash
-    // Extraer el path relativo del storage a partir de la URL pública
-    const borradorUrl = acta.borrador_url as string;
-
-    // Descargar el archivo via fetch
-    const fileResponse = await fetch(borradorUrl);
-    if (!fileResponse.ok) {
+    // 6. Descargar el borrador desde Storage (bucket privado) para calcular hash
+    const borrador = await descargarArchivo(acta.borrador_url as string);
+    if (!borrador) {
       return NextResponse.json(
         { error: "No se pudo descargar el borrador del acta" },
         { status: 500 }
       );
     }
 
-    const fileBuffer = Buffer.from(await fileResponse.arrayBuffer());
+    const fileBuffer = borrador.buffer;
     const archivoHash = calcularHashSHA256(fileBuffer);
 
     // 7. Subir como documento de firma en storage

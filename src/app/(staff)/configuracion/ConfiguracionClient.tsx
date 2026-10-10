@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { archivoHref } from "@/lib/archivos-ref";
 import type {
   SgccCenter,
   SgccChecklist,
@@ -953,7 +954,7 @@ export function ConfiguracionClient({ center, checklists: initialChecklists }: P
               <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <div className="min-w-0">
                   <a
-                    href={reglamento.url}
+                    href={archivoHref(reglamento.url) ?? undefined}
                     target="_blank"
                     rel="noreferrer"
                     className="text-[#1B4F9B] hover:underline font-medium text-sm break-all"
