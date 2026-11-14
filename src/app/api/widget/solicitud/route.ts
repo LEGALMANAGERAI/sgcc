@@ -145,7 +145,8 @@ export async function POST(req: Request) {
         rol: "convocante",
         created_at: new Date().toISOString(),
       },
-      ...convocadoIds.map((pid) => ({
+      // Sin repetidos ni el propio convocante: uq_case_parties_case_party (047) rechaza el lote entero.
+      ...[...new Set(convocadoIds)].filter((pid) => pid !== convocanteId).map((pid) => ({
         id: randomUUID(),
         case_id: caseId,
         party_id: pid,
