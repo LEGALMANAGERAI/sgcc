@@ -159,7 +159,20 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  await supabaseAdmin.from("sgcc_case_parties").insert(casePartyRecords);
+  // Dos filas del formulario pueden resolver a la misma parte (p. ej. BANCOLOMBIA
+  // y SUFI BANCOLOMBIA con el mismo NIT). uq_case_parties_case_party (047) rechaza
+  // el lote completo si va repetida, así que se vincula una sola vez. casePartyRecords
+  // se conserva íntegro porque acreencias/apoderados lo indexan por posición.
+  const vistas = new Set<string>();
+  const partesUnicas = casePartyRecords.filter((r) => !vistas.has(r.party_id) && vistas.add(r.party_id));
+  const { error: partiesError } = await supabaseAdmin.from("sgcc_case_parties").insert(partesUnicas);
+  if (partiesError) {
+    console.error(`[CASOS] insert case_parties falló (caso ${caseId}): ${partiesError.message}`);
+    return NextResponse.json(
+      { error: `El caso ${numero_radicado} se creó pero no se pudieron vincular las partes: ${partiesError.message}` },
+      { status: 500 },
+    );
+  }
 
   // Para insolvencia: crear una acreencia inicial por cada convocado (acreedor)
   if (tipo_tramite === "insolvencia") {
