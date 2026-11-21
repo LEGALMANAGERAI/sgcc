@@ -6,15 +6,12 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { Resend } from "resend";
+import { enviarCorreo } from "@/lib/resend";
 import {
   puedeEditarPropuesta,
   requireParteDeCaso,
 } from "@/lib/partes/caso-guard";
 
-function getResend() {
-  return new Resend(process.env.RESEND_API_KEY || "re_placeholder");
-}
 
 export async function POST(
   _req: NextRequest,
@@ -83,7 +80,7 @@ export async function POST(
 
     if (conciliador?.email) {
       try {
-        await getResend().emails.send({
+        await enviarCorreo({
           from: "SIGECC <notificaciones@sgcc.app>",
           to: conciliador.email,
           subject: `Nueva versión de propuesta de pago — caso ${id.slice(0, 8)}`,

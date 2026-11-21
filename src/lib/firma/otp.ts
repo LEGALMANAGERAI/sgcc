@@ -32,9 +32,8 @@ export async function crearYEnviarOtp(
   // Enviar por email (Resend)
   if (canal === "email" && email) {
     try {
-      const { Resend } = await import("resend");
-      const resend = new Resend(process.env.RESEND_API_KEY || "");
-      await resend.emails.send({
+      const { enviarCorreo } = await import("@/lib/resend");
+      await enviarCorreo({
         from: "SIGECC <notificaciones@sgcc.app>",
         to: email,
         subject: "Código de verificación — SIGECC",

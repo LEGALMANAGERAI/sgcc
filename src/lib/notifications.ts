@@ -1,12 +1,9 @@
 import { supabaseAdmin } from "./supabase";
-import { Resend } from "resend";
+import { enviarCorreo } from "@/lib/resend";
 import { randomUUID } from "crypto";
 import type { NotifTipo } from "@/types";
 import { descargarArchivo } from "./archivos-acceso";
 
-function getResend() {
-  return new Resend(process.env.RESEND_API_KEY || "re_placeholder");
-}
 
 interface NotifyOptions {
   centerId: string;
@@ -54,7 +51,7 @@ export async function notify(opts: NotifyOptions) {
     // 2. Email
     if ((canal === "email" || canal === "both") && r.email) {
       try {
-        const result = await getResend().emails.send({
+        const result = await enviarCorreo({
           from: "SIGECC <notificaciones@sgcc.app>",
           to: r.email,
           subject: opts.titulo,
