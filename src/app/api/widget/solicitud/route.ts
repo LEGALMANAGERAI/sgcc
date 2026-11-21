@@ -4,6 +4,14 @@ import { generateRadicado } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
 import { asignarConciliador } from "@/lib/asignacion-conciliador";
 import { findOrCreateParty } from "@/lib/parties";
+import { crearLimitador, ipDe } from "@/lib/rate-limit";
+
+// Endpoint público (botón embebible): frenos anti-spam.
+const porIp = crearLimitador(5, 60 * 60 * 1000); // 5 solicitudes/hora por IP (por instancia)
+const MAX_POR_CENTRO_HORA = 20; // tope global por centro, contado en BD
+const MAX_DESCRIPCION = 10_000;
+const MAX_CONVOCADOS = 100; // insolvencia puede traer muchos acreedores
+const DEMASIADAS = { error: "Demasiadas solicitudes. Intente de nuevo más tarde." };
 
 interface PersonaPayload {
   tipo_persona: "natural" | "juridica";
@@ -63,6 +71,10 @@ async function findOrCreatePartyForWidget(
 
 export async function POST(req: Request) {
   try {
+    if (!porIp(ipDe(req))) {
+      return NextResponse.json(DEMASIADAS, { status: 429 });
+    }
+
     const body: SolicitudPayload = await req.json();
 
     // Validaciones básicas
@@ -81,6 +93,12 @@ export async function POST(req: Request) {
     if (!body.descripcion?.trim()) {
       return NextResponse.json({ error: "Descripción es requerida" }, { status: 400 });
     }
+    if (body.descripcion.length > MAX_DESCRIPCION) {
+      return NextResponse.json({ error: "La descripción es demasiado larga" }, { status: 400 });
+    }
+    if (body.convocados.length > MAX_CONVOCADOS) {
+      return NextResponse.json({ error: "Demasiados convocados" }, { status: 400 });
+    }
 
     // 1. Verificar que el centro existe y está activo.
     // OJO: sgcc_centers usa la columna booleana `activo`, NO `estado` (esta
@@ -98,6 +116,18 @@ export async function POST(req: Request) {
 
     if (!center.activo) {
       return NextResponse.json({ error: "El centro no se encuentra activo" }, { status: 400 });
+    }
+
+    // Tope por centro: solo el widget crea casos con created_by_party al insertar.
+    const haceUnaHora = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: recientes } = await supabaseAdmin
+      .from("sgcc_cases")
+      .select("id", { count: "exact", head: true })
+      .eq("center_id", body.center_id)
+      .not("created_by_party", "is", null)
+      .gte("created_at", haceUnaHora);
+    if ((recientes ?? 0) >= MAX_POR_CENTRO_HORA) {
+      return NextResponse.json(DEMASIADAS, { status: 429 });
     }
 
     // 2. Crear o buscar partes (match por documento, NUNCA por email)
