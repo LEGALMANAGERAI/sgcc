@@ -31,7 +31,7 @@ Documento probatorio: **"Constancia de notificación — Evidencia técnica de e
 | Canal | Rol | Evidencia que deja |
 |---|---|---|
 | **Correo (Resend)** | Principal y probatorio | aceptado, entregado, rebotado (webhook firmado Svix) |
-| **WhatsApp (Meta Cloud API)** | Complementario: mismo enlace | aceptado, entregado, leído (webhook firmado) |
+| **WhatsApp (Meta Cloud API)** | Probatorio igual que el correo (STC16733-2022: basta concluir que lo recibió; juzgados piden doble check / leído) | aceptado, entregado (doble check), leído (check azul, si el destinatario no lo desactivó) |
 | **Enlace personal** (en ambos) | La prueba fuerte | accedió (IP, user-agent, hora), descargó, acusó recibo |
 | **Físico / manual** | Respaldo si los digitales fallan | registro manual con soporte (guía 4-72, foto) |
 
@@ -89,6 +89,38 @@ No se registra "abierto" por píxel de correo (poco confiable, decisión ya toma
 
 Base a portar desde Legal Manager: `src/lib/firma/resend-webhook.ts` (Svix manual),
 `src/lib/firma/constancia-entrega.ts` (pdf-lib), tabla append-only de eventos.
+
+## 8b. Revisión 21-nov (diagnóstico, sin implementar)
+
+**Legal Manager como proveedor (preferencia del usuario).** LM ya tiene en producción:
+API partner que SIGECC consume para firma (auth por API key, webhooks HMAC salientes,
+idempotencia, anti-SSRF), WhatsApp Cloud API con estados entregado/leído llegando
+desde 13-nov, webhook Resend con Svix, tabla append-only de eventos y constancia PDF.
+Propuesta: nuevo endpoint `POST /api/partner/v1/notificaciones` en LM; LM envía
+(correo + WhatsApp), aloja la página del enlace, guarda la traza, emite la constancia
+y avisa a SIGECC por webhook (entregado, leído, accedió, acusó recibo). SIGECC solo
+muestra estado y archiva la constancia en el expediente. Se cobra como consumo
+(igual que firma partner).
+
+Riesgos a resolver:
+- **Reputación del número de WhatsApp**: los convocados no dieron su número (lo dio
+  el convocante) → si bloquean/reportan, baja la calidad del número que usa la firma
+  de LM. Mitigar con un **número separado para notificaciones** en la misma cuenta de Meta.
+- **Plantilla nueva** en Meta (categoría Utilidad) con el nombre del centro en el cuerpo;
+  el nombre visible del remitente es el de LM.
+- **Juramento** (Ley 2213 art. 8 y jurisprudencia de WhatsApp): el solicitante debe
+  afirmar bajo juramento que el correo/número es del destinatario y cómo lo obtuvo →
+  agregar casilla en la solicitud de SIGECC.
+
+**Referente: Servientrega e-entrega** (fuentes comerciales, a verificar): por
+destinatario, testigo PDF con resumen, trazabilidad, contenido y adjuntos; firma digital
+del mensaje (integridad); estado en tiempo real y entrega al servidor; planes de 10 a
+200 envíos. Equivalentes nuestros: huella SHA-256 + constancia + estado "entregado".
+Brecha: ellos firman con certificado digital de una entidad certificada; nosotros
+podríamos sellar la constancia con firma digital/estampa de tiempo de una ECD (costo
+adicional, evaluar). Ventaja nuestra: WhatsApp + acceso al enlace + acuse dentro del
+trámite. Su prueba también ha sido debatida en juzgados (destino no registrado, captura
+pedida al operador): la dirección correcta y el juramento pesan tanto como la traza.
 
 ## 9. Decisiones pendientes del usuario
 
