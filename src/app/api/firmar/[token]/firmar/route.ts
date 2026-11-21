@@ -3,10 +3,9 @@ import { supabaseAdmin, uploadFile } from "@/lib/supabase";
 import { calcularHashSHA256, sellarDocumento } from "@/lib/firma/pdf";
 import { randomUUID } from "crypto";
 import { pathDeArchivo } from "@/lib/archivos-ref";
-import { Resend } from "resend";
+import { enviarCorreo } from "@/lib/resend";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-function getResend() { return new Resend(process.env.RESEND_API_KEY || "re_placeholder"); }
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -188,7 +187,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       if (siguienteFirmante) {
         const linkFirma = `${APP_URL}/firmar/${siguienteFirmante.token}`;
         try {
-          await getResend().emails.send({
+          await enviarCorreo({
             from: "SIGECC <notificaciones@sgcc.app>",
             to: siguienteFirmante.email,
             subject: `Documento pendiente de firma — ${documento.nombre}`,

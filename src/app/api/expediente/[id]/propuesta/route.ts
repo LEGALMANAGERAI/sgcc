@@ -3,9 +3,8 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { guardCasoStaff } from "@/lib/server-utils";
 import { randomUUID, randomBytes } from "crypto";
-import { Resend } from "resend";
+import { enviarCorreo } from "@/lib/resend";
 
-function getResend() { return new Resend(process.env.RESEND_API_KEY || "re_placeholder"); }
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 type Params = { params: Promise<{ id: string }> };
@@ -227,7 +226,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
                </ul>`
             : "";
           try {
-            await getResend().emails.send({
+            await enviarCorreo({
               from: "SIGECC <notificaciones@sgcc.app>",
               to: party.email,
               subject: `Votación — Proceso de Insolvencia`,
