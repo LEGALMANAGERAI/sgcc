@@ -158,6 +158,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       case_id: caseId,
       nombre: nombreDoc,
       descripcion: `Auto de suspensión del caso ${caso.numero_radicado}`,
+      proveedor: "lm", // la firma vive en Legal Manager; el motor propio está congelado
       archivo_url: archivoUrl,
       archivo_hash: archivoHash,
       archivo_firmado_url: null,

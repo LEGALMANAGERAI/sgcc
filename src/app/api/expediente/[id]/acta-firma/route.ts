@@ -146,17 +146,30 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
 
     const fileBuffer = borrador.buffer;
+
+    // La firma vive en Legal Manager y LM solo firma PDF. Un borrador Word ya no
+    // cae al motor propio (congelado): se pide subir el PDF en Firmas → Nueva.
+    // ponytail: sin conversión Word→PDF; agregarla si este paso manual molesta.
+    if (fileBuffer.subarray(0, 5).toString("latin1") !== "%PDF-") {
+      return NextResponse.json(
+        {
+          error:
+            "El acta está en Word. Revísela, guárdela en PDF y súbala en Firmas → Nueva firma para enviarla a firmar.",
+        },
+        { status: 422 }
+      );
+    }
+
     const archivoHash = calcularHashSHA256(fileBuffer);
 
-    // 7. Subir como documento de firma en storage
+    // 7. Subir como documento de firma en storage (ruta que usa el envío vía LM)
     const docId = randomUUID();
-    const storagePath = `firmas/${centerId}/${docId}.docx`;
+    const storagePath = `firmas/${centerId}/${docId}.pdf`;
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from("sgcc-documents")
       .upload(storagePath, fileBuffer, {
-        contentType:
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        contentType: "application/pdf",
         upsert: true,
       });
 
@@ -241,6 +254,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         case_id: caseId,
         nombre: nombreDoc,
         descripcion: `Acta de audiencia de insolvencia del caso ${caso.numero_radicado}`,
+        proveedor: "lm", // la firma vive en Legal Manager; el motor propio está congelado
         archivo_url: archivoUrl,
         archivo_hash: archivoHash,
         archivo_firmado_url: null,
