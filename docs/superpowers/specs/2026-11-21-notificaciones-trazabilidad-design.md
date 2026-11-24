@@ -130,3 +130,36 @@ pedida al operador): la dirección correcta y el juramento pesan tanto como la t
    (Recomendado: modelo general, se estrena con citaciones.)
 3. Remitente: `notificaciones@sgcc.app` con "responder a" del centro, o dominio
    propio de cada centro (requiere verificar DNS por centro).
+
+## 8c. Análisis de un testigo de e-entrega (24-nov)
+
+Se revisó un testigo real (datos del caso omitidos a propósito). Estructura:
+
+| Elemento del testigo | Qué es en realidad | Cómo lo replicamos |
+|---|---|---|
+| "E-entrega certifica… acreditado ONAC (ECD)" | El proveedor es Entidad de Certificación Digital acreditada | No decimos "certifica": "constancia / evidencia técnica de entrega" |
+| Resumen: id, remitente (el centro), cuenta remitente del proveedor, destinatario, asunto, fecha, estado, adjuntos descargables | Envía desde SU dominio a nombre del cliente | Enviar desde dominio de LM a nombre del centro, "responder a" el centro; adjuntos descargables por enlace |
+| "Mensaje enviado con estampa de tiempo" (art. 23 Ley 527) | Hora de salida + sello de tiempo | Hora del servidor + sello propio (ver abajo) |
+| "Acuse de recibo" (art. 24) con línea SMTP `250 2.0.0 OK` del servidor destino | Es la ENTREGA al servidor del destinatario, no la lectura | Evento "entregado" de Resend. VERIFICAR si Resend expone la respuesta SMTP; si no, evaluar Amazon SES (sí la da) |
+| Estampa por evento: "Tiempo de firmado" + Política (OID) | Sellado de tiempo RFC 3161 de la ECD | Sello propio (ver abajo) |
+| Pie: arts. 20-21 Ley 527 (presunción de recepción con acuse automatizado) | Fundamento jurídico | Misma base legal, redacción propia |
+
+**Decisión del usuario (24-nov): NO contratar servicios de terceros (ECD/TSA).
+Replicamos la prestación del servicio con infraestructura propia (LM como proveedor).**
+
+Sello propio en lugar de estampa de ECD:
+- Cada evento guarda: hora del servidor, hora del proveedor (Resend/Meta) cuando exista,
+  y `hash = SHA-256(evento + hash del evento anterior)` → **cadena de hashes**: alterar o
+  borrar un evento rompe la cadena (además de la tabla append-only).
+- La constancia PDF lleva la huella del documento notificado, la cadena de eventos y se
+  **firma con una llave propia de LM** (verificable en una página pública de verificación,
+  como la de la firma electrónica).
+- Límite honesto: no es estampa de entidad acreditada; su valor lo aprecia el juez por
+  confiabilidad (art. 11 Ley 527). Por eso NO se usa "certifica" ni "plena validez".
+
+Ventajas frente al testigo analizado: su "acuse de recibo" es solo la entrega SMTP.
+Nuestra traza suma WhatsApp (entregado/leído), acceso al enlace (IP/hora) y acuse
+expreso del destinatario.
+
+Idea posterior: sugerir/validar el correo de notificaciones judiciales registrado de
+las entidades (personas jurídicas) para evitar discusiones por destino equivocado.
