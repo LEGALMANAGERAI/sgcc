@@ -10,7 +10,8 @@ import { lmVerificarWebhook } from "@/lib/firma/lm-client";
  * Verifica SIEMPRE la firma HMAC (X-LM-Signature) + anti-replay (X-LM-Timestamp)
  * sobre el body CRUDO antes de procesar. Responde 2xx para que LM no reintente.
  *
- * Eventos: firmante.firmado | firmante.rechazado | solicitud.completada
+ * Eventos: firmante.firmado | firmante.rechazado | solicitud.completada |
+ * solicitud.expirada | solicitud.cancelada (un cancelado nunca pasa a completado)
  */
 export async function POST(req: NextRequest) {
   // 1) Body crudo (NO parseado): necesario para verificar el HMAC.
@@ -111,7 +112,8 @@ export async function POST(req: NextRequest) {
       case "solicitud.completada": {
         // Idempotente: solo procesar la primera vez (evita auditoría duplicada
         // y no revierte si ya estaba completado).
-        if (documento.estado !== "completado") {
+        // Un documento cancelado NUNCA pasa a completado.
+        if (!["completado", "cancelado"].includes(documento.estado)) {
           await supabaseAdmin
             .from("sgcc_firma_documentos")
             .update({
@@ -141,6 +143,33 @@ export async function POST(req: NextRequest) {
           .update({ estado: "expirado" })
           .eq("firma_documento_id", docId)
           .in("estado", ["pendiente", "enviado", "visto"]);
+        break;
+      }
+
+      case "solicitud.cancelada": {
+        // LM canceló la solicitud. No tocar un documento completado; idempotente
+        // (si ya está cancelado no se audita de nuevo).
+        if (documento.estado !== "completado" && documento.estado !== "cancelado") {
+          await supabaseAdmin
+            .from("sgcc_firma_documentos")
+            .update({ estado: "cancelado", updated_at: now })
+            .eq("id", docId);
+          await supabaseAdmin.from("sgcc_firma_registros").insert({
+            firma_documento_id: docId,
+            firmante_id: null,
+            accion: "cancelado",
+            canal_otp: "lm",
+            metadatos: { proveedor: "lm", via: "webhook", motivo: evento.motivo ?? null },
+          });
+        }
+        // sgcc_firmantes no tiene updated_at.
+        if (documento.estado !== "completado") {
+          await supabaseAdmin
+            .from("sgcc_firmantes")
+            .update({ estado: "cancelado" })
+            .eq("firma_documento_id", docId)
+            .in("estado", ["pendiente", "enviado", "visto"]);
+        }
         break;
       }
 

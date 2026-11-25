@@ -10,6 +10,7 @@ import {
   Loader2,
   CheckCircle2,
   FileDown,
+  FileCheck,
   RefreshCw,
 } from "lucide-react";
 import type { FirmaEstado, FirmaProveedor } from "@/types/firma";
@@ -37,6 +38,7 @@ export function FirmaDetailActions({
   const canRecordatorio = estado === "enviado" || estado === "en_proceso";
   // Firma vía Legal Manager: permitir re-consultar el estado real (respaldo si se perdió un webhook).
   const canSincronizar = proveedor === "lm" && (estado === "enviado" || estado === "en_proceso");
+  const canConstancia = proveedor === "lm" && estado !== "pendiente";
   const canCancelar = estado !== "completado" && estado !== "rechazado" && estado !== "expirado" && estado !== "cancelado";
   const canDescargarFirmado = estado === "completado" && archivoFirmadoUrl;
 
@@ -169,6 +171,17 @@ export function FirmaDetailActions({
             >
               <FileDown className="w-4 h-4" />
               Descargar PDF firmado
+            </a>
+          )}
+
+          {/* Constancia de entrega (evidencia técnica, solo LM y ya enviado) */}
+          {canConstancia && (
+            <a
+              href={`/api/firmas/${documentId}/constancia-entrega`}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+            >
+              <FileCheck className="w-4 h-4" />
+              Constancia de entrega
             </a>
           )}
 

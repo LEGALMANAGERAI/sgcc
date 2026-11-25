@@ -136,7 +136,11 @@ export async function POST(_req: NextRequest, { params }: Params) {
   const completados = count ?? 0;
 
   // Actualizar el documento.
-  const nuevoEstadoDoc = ESTADO_DOC[lm?.estado] ?? documento.estado;
+  // En LM una cancelación queda "Expirado" + cancelada:true; distinguirla de un vencimiento.
+  let nuevoEstadoDoc = lm?.cancelada === true ? "cancelado" : (ESTADO_DOC[lm?.estado] ?? documento.estado);
+  // Nunca revertir un completado ni pasar de cancelado a completado/en_proceso.
+  if (documento.estado === "completado" && nuevoEstadoDoc === "cancelado") nuevoEstadoDoc = "completado";
+  if (documento.estado === "cancelado" && nuevoEstadoDoc !== "cancelado") nuevoEstadoDoc = "cancelado";
   const docUpdate: Record<string, any> = {
     estado: nuevoEstadoDoc,
     firmantes_completados: completados,
