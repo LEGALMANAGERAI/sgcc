@@ -140,6 +140,46 @@ export async function lmDescargarDocumento(solicitudId: string): Promise<Respons
   return lmFetch(`/solicitudes/${solicitudId}/documento`, { method: "GET" });
 }
 
+/** Lanza LmApiError con el mensaje de LM si la respuesta no es OK. */
+async function lmJsonOk(res: Response): Promise<any> {
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new LmApiError(res.status, data.error || `Legal Manager respondió ${res.status}`, data);
+  return data;
+}
+
+/**
+ * POST /solicitudes/{id}/cancelar — cancela en LM (deja de poder firmarse).
+ * 200 {cancelada, ya_cancelada}. 409 si ya está completada o vencida (LmApiError).
+ */
+export async function lmCancelarSolicitud(
+  solicitudId: string,
+  motivo?: string,
+): Promise<{ cancelada: boolean; ya_cancelada?: boolean }> {
+  const res = await lmFetch(`/solicitudes/${solicitudId}/cancelar`, {
+    method: "POST",
+    body: JSON.stringify(motivo ? { motivo } : {}),
+  });
+  return lmJsonOk(res);
+}
+
+/**
+ * POST /solicitudes/{id}/recordatorio — LM reenvía por sus canales (WhatsApp +
+ * correo) y lo deja en su traza. Sin firmante_id recuerda a los pendientes.
+ * 409 ya firmó / no es su turno / doc no activo; 429 si pasó menos de 1 h.
+ */
+export async function lmEnviarRecordatorio(solicitudId: string, lmFirmanteId?: string): Promise<any> {
+  const res = await lmFetch(`/solicitudes/${solicitudId}/recordatorio`, {
+    method: "POST",
+    body: JSON.stringify(lmFirmanteId ? { firmante_id: lmFirmanteId } : {}),
+  });
+  return lmJsonOk(res);
+}
+
+/** GET /solicitudes/{id}/constancia-entrega — PDF de evidencia técnica de entrega (Response cruda). */
+export async function lmDescargarConstancia(solicitudId: string): Promise<Response> {
+  return lmFetch(`/solicitudes/${solicitudId}/constancia-entrega`, { method: "GET" });
+}
+
 /**
  * Verifica la firma HMAC de un webhook de LM + anti-replay.
  * Firma = HMAC_SHA256(WEBHOOK_SECRET, "<timestamp>.<raw_body>").

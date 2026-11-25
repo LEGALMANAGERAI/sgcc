@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
 import { randomUUID } from "crypto";
+import { lmConfigured, lmCancelarSolicitud, LmApiError } from "@/lib/firma/lm-client";
 
 /**
  * POST /api/firmas/[id]/cancelar
@@ -24,7 +25,7 @@ export async function POST(
   // Verificar documento
   const { data: documento } = await supabaseAdmin
     .from("sgcc_firma_documentos")
-    .select("id, estado, nombre")
+    .select("id, estado, nombre, proveedor, lm_solicitud_id")
     .eq("id", id)
     .eq("center_id", centerId)
     .single();
@@ -44,6 +45,37 @@ export async function POST(
   const body = await req.json().catch(() => ({}));
   const motivo = body.motivo ?? "Cancelado por el operador";
   const now = new Date().toISOString();
+
+  // Documentos de Legal Manager: cancelar primero allá; si falla, no tocar nada
+  // local (evita estados divergentes).
+  let lmMeta: { ya_cancelada: boolean } | undefined;
+  if (documento.proveedor === "lm" && documento.lm_solicitud_id) {
+    if (!lmConfigured()) {
+      return NextResponse.json(
+        { error: "La firma con Legal Manager no está configurada (faltan credenciales del partner)." },
+        { status: 502 },
+      );
+    }
+    try {
+      const r = await lmCancelarSolicitud(documento.lm_solicitud_id, motivo);
+      lmMeta = { ya_cancelada: !!r.ya_cancelada };
+    } catch (err: any) {
+      if (err instanceof LmApiError && err.status === 409) {
+        return NextResponse.json(
+          {
+            error:
+              "Legal Manager no permite cancelar: el documento ya fue firmado o venció. Use Sincronizar para ver el estado real.",
+          },
+          { status: 409 },
+        );
+      }
+      console.error("Error cancelando en Legal Manager:", err?.message);
+      return NextResponse.json(
+        { error: `No se pudo cancelar en Legal Manager: ${err?.message ?? "error desconocido"}` },
+        { status: 502 },
+      );
+    }
+  }
 
   // Actualizar estado del documento. Si esto falla, abortamos y reportamos el
   // error (antes se ignoraba y se devolvía ok aunque no se guardara nada).
@@ -81,7 +113,7 @@ export async function POST(
     accion: "cancelado",
     ip: req.headers.get("x-forwarded-for") || "unknown",
     user_agent: req.headers.get("user-agent") || "unknown",
-    metadatos: { cancelado_por: userId, motivo },
+    metadatos: { cancelado_por: userId, motivo, ...(lmMeta ? { lm: lmMeta } : {}) },
     created_at: now,
   });
 

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resolveCenterId } from "@/lib/server-utils";
 import { enviarCorreo } from "@/lib/resend";
+import { lmConfigured, lmEnviarRecordatorio, LmApiError } from "@/lib/firma/lm-client";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     .from("sgcc_firma_documentos")
     .select(`
       *,
-      firmantes:sgcc_firmantes(id, nombre, email, token, estado)
+      firmantes:sgcc_firmantes(id, nombre, email, token, estado, lm_firmante_id)
     `)
     .eq("id", id)
     .eq("center_id", centerId)
@@ -41,8 +42,55 @@ export async function POST(req: NextRequest, { params }: Params) {
     (f: any) => f.estado === "enviado" || f.estado === "visto"
   );
 
-  if (!pendientes.length) {
+  // En documentos LM decide LM (el estado local de firmantes secuenciales puede ir atrasado).
+  if (!pendientes.length && documento.proveedor !== "lm") {
     return NextResponse.json({ error: "No hay firmantes pendientes de recordatorio" }, { status: 400 });
+  }
+
+  // Documentos de Legal Manager: LM recuerda a los pendientes (respeta el turno).
+  if (documento.proveedor === "lm" && documento.lm_solicitud_id) {
+    if (!lmConfigured()) {
+      return NextResponse.json(
+        { error: "La firma con Legal Manager no está configurada (faltan credenciales del partner)." },
+        { status: 502 },
+      );
+    }
+    try {
+      await lmEnviarRecordatorio(documento.lm_solicitud_id);
+    } catch (err: any) {
+      if (err instanceof LmApiError && err.status === 429) {
+        return NextResponse.json(
+          { error: "Ya se envió un recordatorio hace menos de 1 hora. Intente más tarde." },
+          { status: 429 },
+        );
+      }
+      if (err instanceof LmApiError && err.status === 409) {
+        return NextResponse.json(
+          {
+            error:
+              err.message ||
+              "Legal Manager no puede enviar el recordatorio: el firmante ya firmó, no es su turno o el documento no está activo.",
+          },
+          { status: 409 },
+        );
+      }
+      console.error("Error enviando recordatorio en Legal Manager:", err?.message);
+      return NextResponse.json(
+        { error: `No se pudo enviar el recordatorio en Legal Manager: ${err?.message ?? "error desconocido"}` },
+        { status: 502 },
+      );
+    }
+
+    await supabaseAdmin.from("sgcc_firma_registros").insert({
+      firma_documento_id: id,
+      firmante_id: null,
+      accion: "recordatorio_enviado",
+      ip: req.headers.get("x-forwarded-for") || "unknown",
+      user_agent: req.headers.get("user-agent") || "unknown",
+      metadatos: { proveedor: "lm" },
+    });
+
+    return NextResponse.json({ ok: true, proveedor: "lm" });
   }
 
   let enviados = 0;
