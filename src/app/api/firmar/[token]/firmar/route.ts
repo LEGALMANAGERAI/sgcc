@@ -4,6 +4,7 @@ import { calcularHashSHA256, sellarDocumento } from "@/lib/firma/pdf";
 import { randomUUID } from "crypto";
 import { pathDeArchivo } from "@/lib/archivos-ref";
 import { enviarCorreo } from "@/lib/resend";
+import { rechazarSiEsDeLm } from "@/lib/firma/guard-motor-propio";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -34,6 +35,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!firmante) {
     return NextResponse.json({ error: "Token inválido" }, { status: 404 });
   }
+
+  // Motor propio congelado: los documentos de Legal Manager no se firman por aquí.
+  const bloqueoLm = await rechazarSiEsDeLm(firmante.firma_documento_id);
+  if (bloqueoLm) return bloqueoLm;
 
   if (firmante.estado === "firmado") {
     return NextResponse.json({ error: "Ya fue firmado" }, { status: 400 });
