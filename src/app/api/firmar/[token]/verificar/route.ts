@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verificarOtp } from "@/lib/firma/otp";
+import { rechazarSiEsDeLm } from "@/lib/firma/guard-motor-propio";
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -21,6 +22,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!firmante) {
     return NextResponse.json({ error: "Token inválido" }, { status: 404 });
   }
+
+  // Motor propio congelado: los documentos de Legal Manager no se firman por aquí.
+  const bloqueoLm = await rechazarSiEsDeLm(firmante.firma_documento_id);
+  if (bloqueoLm) return bloqueoLm;
 
   if (firmante.estado === "firmado") {
     return NextResponse.json({ error: "Ya fue firmado" }, { status: 400 });
