@@ -68,6 +68,8 @@ async function lmFetch(path: string, init?: RequestInit): Promise<Response> {
     },
     // No cachear llamadas a la API partner.
     cache: "no-store",
+    // Si LM no responde, no colgar la página/ruta que llama (p. ej. el detalle de firma).
+    signal: init?.signal ?? AbortSignal.timeout(15_000),
   });
 }
 
@@ -171,6 +173,49 @@ export async function lmEnviarRecordatorio(solicitudId: string, lmFirmanteId?: s
   const res = await lmFetch(`/solicitudes/${solicitudId}/recordatorio`, {
     method: "POST",
     body: JSON.stringify(lmFirmanteId ? { firmante_id: lmFirmanteId } : {}),
+  });
+  return lmJsonOk(res);
+}
+
+export type LmCanal = "email" | "whatsapp" | "sms";
+
+/**
+ * PATCH /solicitudes/{id}/firmantes/{firmanteId} — cambia correo, celular y/o
+ * canales de un firmante que no ha firmado (no nombre ni cédula). Con
+ * reenviar:true LM reenvía de inmediato si es su turno.
+ * 422 datos inválidos; 409 ya firmó/rechazó o doc cerrado; 404 ajeno.
+ */
+export async function lmEditarFirmante(
+  solicitudId: string,
+  lmFirmanteId: string,
+  cambios: { email?: string; telefono?: string; canales?: LmCanal[]; reenviar?: boolean },
+): Promise<{
+  firmante_id: string;
+  email: string;
+  telefono: string | null;
+  canales: LmCanal[];
+  reenvio?: Array<{ canal: string; ok: boolean; error?: string }> | null;
+  reenvio_omitido?: string;
+}> {
+  const res = await lmFetch(`/solicitudes/${solicitudId}/firmantes/${lmFirmanteId}`, {
+    method: "PATCH",
+    body: JSON.stringify(cambios),
+  });
+  return lmJsonOk(res);
+}
+
+/**
+ * POST /solicitudes/{id}/reactivar — nuevo plazo a una firma VENCIDA; conserva
+ * las firmas hechas y reenvía a quienes faltan. 409 si no está vencida, si fue
+ * cancelada o si alguien rechazó; 422 si dias_expiracion no está entre 1 y 90.
+ */
+export async function lmReactivarSolicitud(
+  solicitudId: string,
+  diasExpiracion?: number,
+): Promise<{ solicitud_id: string; estado: string; fecha_expiracion: string; firmas_conservadas: number; reenvios: any }> {
+  const res = await lmFetch(`/solicitudes/${solicitudId}/reactivar`, {
+    method: "POST",
+    body: JSON.stringify(diasExpiracion ? { dias_expiracion: diasExpiracion } : {}),
   });
   return lmJsonOk(res);
 }

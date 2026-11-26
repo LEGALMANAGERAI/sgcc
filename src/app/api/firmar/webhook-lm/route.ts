@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { lmVerificarWebhook } from "@/lib/firma/lm-client";
+import { notify } from "@/lib/notifications";
 
 /**
  * POST /api/firmar/webhook-lm
@@ -11,7 +12,9 @@ import { lmVerificarWebhook } from "@/lib/firma/lm-client";
  * sobre el body CRUDO antes de procesar. Responde 2xx para que LM no reintente.
  *
  * Eventos: firmante.firmado | firmante.rechazado | solicitud.completada |
- * solicitud.expirada | solicitud.cancelada (un cancelado nunca pasa a completado)
+ * solicitud.expirada | solicitud.cancelada (un cancelado nunca pasa a completado) |
+ * solicitud.reactivada (expirada con nuevo plazo; conserva firmas) |
+ * solicitud.por_vencer (<24 h; audita y notifica al creador y al conciliador)
  */
 export async function POST(req: NextRequest) {
   // 1) Body crudo (NO parseado): necesario para verificar el HMAC.
@@ -134,15 +137,54 @@ export async function POST(req: NextRequest) {
         // expirado (sin degradar un estado terminal) y sus firmantes aún abiertos.
         if (!DOC_TERMINAL.includes(documento.estado)) {
           await supabaseAdmin.from("sgcc_firma_documentos").update({ estado: "expirado" }).eq("id", docId);
-          // Auditoría: "cancelado" es la acción válida más cercana; el evento real
-          // (solicitud.expirada) queda en metadatos vía registrar().
-          await registrar(docId, null, "cancelado", evento);
+          await registrar(docId, null, "expirado", evento);
         }
         await supabaseAdmin
           .from("sgcc_firmantes")
           .update({ estado: "expirado" })
           .eq("firma_documento_id", docId)
           .in("estado", ["pendiente", "enviado", "visto"]);
+        break;
+      }
+
+      case "solicitud.reactivada": {
+        // Solo un documento expirado se reactiva (nunca cancelado/completado/rechazado).
+        // Idempotente: la ruta local de reactivar también actualiza; si ya no está
+        // expirado no se audita de nuevo.
+        if (documento.estado === "expirado") {
+          const { data: d } = await supabaseAdmin
+            .from("sgcc_firma_documentos")
+            .select("firmantes_completados")
+            .eq("id", docId)
+            .maybeSingle();
+          await supabaseAdmin
+            .from("sgcc_firma_documentos")
+            .update({
+              estado: (d?.firmantes_completados ?? 0) > 0 ? "en_proceso" : "enviado",
+              fecha_expiracion: evento.fecha_expiracion ?? null,
+              updated_at: now,
+            })
+            .eq("id", docId);
+          // sgcc_firmantes no tiene updated_at.
+          await supabaseAdmin
+            .from("sgcc_firmantes")
+            .update({ estado: "enviado" })
+            .eq("firma_documento_id", docId)
+            .eq("estado", "expirado");
+          await registrar(docId, null, "reactivado", evento);
+        }
+        break;
+      }
+
+      case "solicitud.por_vencer": {
+        if (!DOC_TERMINAL.includes(documento.estado)) {
+          await registrar(docId, null, "por_vencer", evento);
+          try {
+            await notificarPorVencer(docId, evento);
+          } catch (e: any) {
+            console.error("Webhook LM: error notificando por_vencer:", e?.message);
+          }
+        }
         break;
       }
 
@@ -186,6 +228,58 @@ export async function POST(req: NextRequest) {
   }
 
   return new Response("ok", { status: 200 });
+}
+
+async function notificarPorVencer(docId: string, evento: any) {
+  const { data: doc } = await supabaseAdmin
+    .from("sgcc_firma_documentos")
+    .select("center_id, case_id, nombre, creado_por")
+    .eq("id", docId)
+    .maybeSingle();
+  if (!doc) return;
+
+  const ids = new Set<string>();
+  if (doc.creado_por) ids.add(doc.creado_por);
+  if (doc.case_id) {
+    const { data: caso } = await supabaseAdmin
+      .from("sgcc_cases")
+      .select("conciliador_id")
+      .eq("id", doc.case_id)
+      .maybeSingle();
+    if (caso?.conciliador_id) ids.add(caso.conciliador_id);
+  }
+  if (ids.size === 0) return;
+
+  const { data: staff } = await supabaseAdmin
+    .from("sgcc_staff")
+    .select("id, email")
+    .in("id", [...ids]);
+  const recipients = (staff ?? []).map((s: any) => ({ staffId: s.id, email: s.email ?? undefined }));
+  if (recipients.length === 0) return;
+
+  const cuando = evento.fecha_expiracion
+    ? new Date(evento.fecha_expiracion).toLocaleString("es-CO", {
+        timeZone: "America/Bogota",
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : "pronto";
+  const faltan = (evento.firmantes_pendientes ?? [])
+    .map((f: any) => f.nombre || f.email)
+    .filter(Boolean)
+    .join(", ");
+
+  await notify({
+    centerId: doc.center_id,
+    caseId: doc.case_id ?? undefined,
+    tipo: "firma_por_vencer",
+    titulo: "Firma por vencer",
+    mensaje:
+      `La solicitud de firma "${doc.nombre}" vence el ${cuando} (hora de Colombia).` +
+      (faltan ? ` Faltan por firmar: ${faltan}.` : ""),
+    recipients,
+    canal: "both",
+  });
 }
 
 async function registrar(docId: string, lmFirmanteId: string | null, accion: string, evento: any) {
