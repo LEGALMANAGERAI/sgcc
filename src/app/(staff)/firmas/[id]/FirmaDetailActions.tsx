@@ -33,6 +33,10 @@ export function FirmaDetailActions({
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [result, setResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showReactivarModal, setShowReactivarModal] = useState(false);
+  const [diasPlazo, setDiasPlazo] = useState("");
+  const [reactivarError, setReactivarError] = useState<string | null>(null);
+  const canReactivar = proveedor === "lm" && estado === "expirado";
 
   const canEnviar = estado === "pendiente";
   const canRecordatorio = estado === "enviado" || estado === "en_proceso";
@@ -67,6 +71,35 @@ export function FirmaDetailActions({
       }
     } catch {
       setResult({ type: "error", message: "Error de conexi\u00f3n" });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const handleReactivar = async () => {
+    const n = diasPlazo.trim() === "" ? undefined : Number(diasPlazo);
+    if (n !== undefined && (!Number.isInteger(n) || n < 1 || n > 90)) {
+      setReactivarError("Los días de plazo deben ser un número entero entre 1 y 90.");
+      return;
+    }
+    setReactivarError(null);
+    setLoadingAction("reactivar");
+    try {
+      const res = await fetch(`/api/firmas/${documentId}/reactivar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(n === undefined ? {} : { dias_expiracion: n }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setReactivarError(data.error ?? "Error al reactivar la firma");
+        return;
+      }
+      setShowReactivarModal(false);
+      setResult({ type: "success", message: "Firma reactivada. Se reenvió el enlace a quienes faltan por firmar." });
+      setTimeout(() => window.location.reload(), 1500);
+    } catch {
+      setReactivarError("Error de conexión");
     } finally {
       setLoadingAction(null);
     }
@@ -185,6 +218,25 @@ export function FirmaDetailActions({
             </a>
           )}
 
+          {/* Reactivar (solo LM, expirado) */}
+          {canReactivar && (
+            <button
+              onClick={() => {
+                setReactivarError(null);
+                setShowReactivarModal(true);
+              }}
+              disabled={!!loadingAction}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1B4F9B] text-white rounded-lg text-sm font-medium hover:bg-[#a07609] transition-colors disabled:opacity-50"
+            >
+              {loadingAction === "reactivar" ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              Reactivar firma
+            </button>
+          )}
+
           {/* Cancelar */}
           {canCancelar && (
             <button
@@ -202,6 +254,59 @@ export function FirmaDetailActions({
           )}
         </div>
       </div>
+
+      {showReactivarModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reactivar-titulo"
+            className="bg-white rounded-xl shadow-xl p-6 max-w-sm mx-4 w-full"
+          >
+            <h4 id="reactivar-titulo" className="text-lg font-semibold text-gray-900 mb-2">
+              Reactivar firma
+            </h4>
+            <p className="text-sm text-gray-600 mb-4">
+              Se dar\u00e1 un nuevo plazo y se reenviar\u00e1 el enlace solo a quienes faltan por firmar. Las
+              firmas ya hechas se conservan. Verifique que el contenido del documento siga vigente.
+            </p>
+            <label htmlFor="dias-plazo" className="block text-sm text-gray-700 mb-1">
+              D\u00edas de plazo (opcional)
+            </label>
+            <input
+              id="dias-plazo"
+              type="number"
+              min={1}
+              max={90}
+              value={diasPlazo}
+              onChange={(e) => setDiasPlazo(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-[#1B4F9B]"
+            />
+            {reactivarError && (
+              <p role="alert" className="mb-4 text-sm text-red-600">
+                {reactivarError}
+              </p>
+            )}
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowReactivarModal(false)}
+                disabled={loadingAction === "reactivar"}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                Volver
+              </button>
+              <button
+                onClick={handleReactivar}
+                disabled={loadingAction === "reactivar"}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#1B4F9B] text-white rounded-lg text-sm font-medium hover:bg-[#a07609] transition-colors disabled:opacity-50"
+              >
+                {loadingAction === "reactivar" && <Loader2 className="w-4 h-4 animate-spin" />}
+                Reactivar firma
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de confirmaci\u00f3n de cancelaci\u00f3n */}
       {showCancelModal && (

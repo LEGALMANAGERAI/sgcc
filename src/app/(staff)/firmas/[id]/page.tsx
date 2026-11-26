@@ -22,6 +22,27 @@ import type {
   FirmanteEstado,
 } from "@/types/firma";
 import { FirmaDetailActions } from "./FirmaDetailActions";
+import { EditarContactoFirmante } from "./EditarContactoFirmante";
+import { lmGetSolicitud, lmConfigured } from "@/lib/firma/lm-client";
+
+interface EntregaItem {
+  canal: string;
+  estado: string;
+  at?: string | null;
+}
+
+const CANAL_LABEL: Record<string, string> = { email: "Correo", whatsapp: "WhatsApp", sms: "SMS" };
+const ENTREGA_LABEL: Record<string, { label: string; error: boolean }> = {
+  aceptado: { label: "Enviado", error: false },
+  sent: { label: "Enviado", error: false },
+  delivered: { label: "Entregado", error: false },
+  read: { label: "Leído", error: false },
+  failed: { label: "Falló", error: true },
+  bounced: { label: "Rebotó", error: true },
+  complained: { label: "Marcado como spam", error: true },
+};
+const FIRMANTE_FINAL = ["firmado", "rechazado", "cancelado", "expirado"];
+const DOC_FINAL = ["completado", "cancelado", "rechazado", "expirado"];
 
 /* ─── Colores de estado ──────────────────────────────────────────────── */
 
@@ -106,6 +127,25 @@ export default async function FirmaDetailPage({ params }: PageProps) {
   const registros = (rawRegistros ?? []) as (SgccFirmaRegistro & {
     firmante: { nombre: string } | null;
   })[];
+
+  // Estado de entrega por firmante (solo LM); si falla, no se muestra y no rompe la página.
+  const entregaPorFirmante = new Map<string, EntregaItem[]>();
+  if (doc.proveedor === "lm" && doc.lm_solicitud_id && doc.estado !== "pendiente" && lmConfigured()) {
+    try {
+      const sol = await lmGetSolicitud(doc.lm_solicitud_id);
+      const lista: unknown = sol?.firmantes;
+      if (Array.isArray(lista)) {
+        for (const x of lista as Array<{ firmante_id?: string; entrega?: EntregaItem[] }>) {
+          if (x?.firmante_id && Array.isArray(x.entrega)) {
+            entregaPorFirmante.set(x.firmante_id, x.entrega);
+          }
+        }
+      }
+    } catch {
+      /* sin datos de entrega */
+    }
+  }
+  const docEditable = doc.proveedor === "lm" && !DOC_FINAL.includes(doc.estado);
 
   const estado = estadoDocConfig[doc.estado] ?? ESTADO_FALLBACK;
   const progreso = doc.total_firmantes > 0
@@ -269,7 +309,48 @@ export default async function FirmaDetailPage({ params }: PageProps) {
                         </td>
                         <td className="px-3 py-3 font-medium text-gray-900">{f.nombre}</td>
                         <td className="px-3 py-3 text-gray-600">{f.cedula}</td>
-                        <td className="px-3 py-3 text-gray-600">{f.email}</td>
+                        <td className="px-3 py-3 text-gray-600">
+                          {f.email}
+                          {(entregaPorFirmante.get(f.lm_firmante_id ?? "") ?? []).length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {(entregaPorFirmante.get(f.lm_firmante_id ?? "") ?? []).map((e, i) => {
+                                const cfg = ENTREGA_LABEL[e.estado];
+                                if (!cfg) return null;
+                                const hora = e.at
+                                  ? new Date(e.at).toLocaleString("es-CO", {
+                                      timeZone: "America/Bogota",
+                                      dateStyle: "short",
+                                      timeStyle: "short",
+                                    })
+                                  : "";
+                                return (
+                                  <span
+                                    key={`${e.canal}-${i}`}
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${
+                                      cfg.error ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"
+                                    }`}
+                                  >
+                                    {CANAL_LABEL[e.canal] ?? e.canal}: {cfg.label}
+                                    {hora && ` · ${hora}`}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {docEditable &&
+                            f.lm_firmante_id &&
+                            !FIRMANTE_FINAL.includes(f.estado) && (
+                              <EditarContactoFirmante
+                                documentId={doc.id}
+                                firmanteId={f.id}
+                                nombre={f.nombre}
+                                cedula={f.cedula}
+                                email={f.email}
+                                telefono={f.telefono}
+                                canalNotificacion={f.canal_notificacion}
+                              />
+                            )}
+                        </td>
                         <td className="px-3 py-3">
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${est.bg} ${est.text}`}

@@ -414,6 +414,7 @@ export type NotifTipo =
   | "acta_lista"
   | "acta_firmada"
   | "caso_cerrado"
+  | "firma_por_vencer"
   | "vigilancia"
   | "documento_subido"
   | "ticket_nuevo"
