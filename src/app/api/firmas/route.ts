@@ -94,6 +94,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Debe incluir al menos un firmante" }, { status: 400 });
     }
 
+    // Canales por firmante (default email). Validar antes de crear nada.
+    const canalesPorFirmante: string[] = [];
+    for (const f of firmantes) {
+      const raw = (f as any).canales ?? ["email"];
+      if (
+        !Array.isArray(raw) ||
+        !raw.length ||
+        !raw.every((c: any) => c === "email" || c === "whatsapp") ||
+        new Set(raw).size !== raw.length
+      ) {
+        return NextResponse.json(
+          { error: `Canales inválidos para el firmante ${f.nombre} (use email y/o whatsapp, sin repetir)` },
+          { status: 400 },
+        );
+      }
+      if (raw.includes("whatsapp") && String(f.telefono ?? "").replace(/\D/g, "").length < 10) {
+        return NextResponse.json(
+          { error: `El firmante ${f.nombre} necesita un celular válido para WhatsApp` },
+          { status: 400 },
+        );
+      }
+      canalesPorFirmante.push(["email", "whatsapp"].filter((c) => raw.includes(c)).join(","));
+    }
+
     // Evitar solicitudes de firma duplicadas: si el caso ya tiene un documento
     // de firma activo, avisar (salvo que el usuario lo confirme explícitamente).
     if (caseId && !confirmarDuplicado) {
@@ -147,7 +171,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Crear firmantes con tokens únicos
-    const firmantesData = firmantes.map((f) => ({
+    const firmantesData = firmantes.map((f, i) => ({
       id: randomUUID(),
       firma_documento_id: docId,
       nombre: f.nombre,
@@ -157,7 +181,7 @@ export async function POST(req: NextRequest) {
       orden: f.orden,
       token: generarTokenFirma(),
       estado: "pendiente" as const,
-      canal_notificacion: "email",
+      canal_notificacion: canalesPorFirmante[i],
     }));
 
     const { data: firmantesCreados, error: firmError } = await supabaseAdmin

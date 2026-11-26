@@ -92,9 +92,9 @@ export async function POST(req: NextRequest, { params }: Params) {
         *,
         partes:sgcc_case_parties(
           id, rol,
-          party:sgcc_parties(id, nombres, apellidos, razon_social, tipo_persona, numero_doc, nit_empresa, email)
+          party:sgcc_parties(id, nombres, apellidos, razon_social, tipo_persona, numero_doc, nit_empresa, email, telefono)
         ),
-        conciliador:sgcc_staff!sgcc_cases_conciliador_id_fkey(id, nombre, email, tarjeta_profesional)
+        conciliador:sgcc_staff!sgcc_cases_conciliador_id_fkey(id, nombre, email, telefono, tarjeta_profesional)
       `)
       .eq("id", caseId)
       .eq("center_id", centerId)
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       .from("sgcc_case_attorneys")
       .select(`
         *,
-        attorney:sgcc_attorneys(id, nombre, tarjeta_profesional, email),
+        attorney:sgcc_attorneys(id, nombre, tarjeta_profesional, email, telefono),
         party:sgcc_parties(id, nombres, apellidos, razon_social, tipo_persona)
       `)
       .eq("case_id", caseId)
@@ -191,6 +191,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       nombre: string;
       cedula: string;
       email: string;
+      telefono: string | null;
       orden: number;
     }> = [];
 
@@ -199,6 +200,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       nombre: insolventeNombre || "Insolvente",
       cedula: insolvente.numero_doc || insolvente.nit_empresa || "",
       email: insolvente.email || "",
+      telefono: insolvente.telefono || null,
       orden: 1,
     });
 
@@ -208,6 +210,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         nombre: apoderadoInsolvente.attorney.nombre || "Apoderado",
         cedula: apoderadoInsolvente.attorney.tarjeta_profesional || "",
         email: apoderadoInsolvente.attorney.email || "",
+        telefono: apoderadoInsolvente.attorney.telefono || null,
         orden: 2,
       });
     }
@@ -218,6 +221,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         nombre: caso.conciliador.nombre || "Operador",
         cedula: "",
         email: caso.conciliador.email || "",
+        telefono: caso.conciliador.telefono || null,
         orden: firmantesRaw.length + 1,
       });
     }
@@ -280,7 +284,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       nombre: f.nombre,
       cedula: f.cedula,
       email: f.email,
-      telefono: null,
+      telefono: f.telefono,
       orden: f.orden,
       token: generarTokenFirma(),
       estado: "pendiente" as const,

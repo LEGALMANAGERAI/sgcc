@@ -337,10 +337,16 @@ export default async function FirmaDetailPage({ params }: PageProps) {
                               })}
                             </div>
                           )}
-                          {docEditable &&
-                            f.lm_firmante_id &&
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {(f.canal_notificacion || "email")
+                              .split(",")
+                              .map((c) => CANAL_LABEL[c.trim()] ?? c.trim())
+                              .join(" · ")}
+                          </div>
+                          {((docEditable && f.lm_firmante_id) || doc.estado === "pendiente") &&
                             !FIRMANTE_FINAL.includes(f.estado) && (
                               <EditarContactoFirmante
+                                enviado={doc.estado !== "pendiente"}
                                 documentId={doc.id}
                                 firmanteId={f.id}
                                 nombre={f.nombre}

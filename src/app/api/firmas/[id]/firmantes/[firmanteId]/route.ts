@@ -62,7 +62,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   // Anti-IDOR: documento del centro y firmante dentro de ese documento.
   const { data: documento } = await supabaseAdmin
     .from("sgcc_firma_documentos")
-    .select("id, proveedor, lm_solicitud_id")
+    .select("id, proveedor, lm_solicitud_id, estado")
     .eq("id", id)
     .eq("center_id", centerId)
     .single();
@@ -75,6 +75,49 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .eq("firma_documento_id", id)
     .single();
   if (!firmante) return NextResponse.json({ error: "Firmante no encontrado" }, { status: 404 });
+
+  // Documento aún no enviado: edición solo local.
+  if (documento.estado === "pendiente" && !documento.lm_solicitud_id) {
+    const telFinal = telefono ?? firmante.telefono;
+    const canalesFinal = canales ?? String(firmante.canal_notificacion ?? "email").split(",");
+    if (canalesFinal.includes("whatsapp") && String(telFinal ?? "").replace(/\D/g, "").length < 10) {
+      return NextResponse.json(
+        { error: "WhatsApp requiere un celular válido (mínimo 10 dígitos)" },
+        { status: 422 },
+      );
+    }
+    const nuevo = {
+      email: email ?? firmante.email,
+      telefono: telFinal,
+      canal_notificacion: canales ? canales.join(",") : firmante.canal_notificacion,
+    };
+    const { error: updErr } = await supabaseAdmin.from("sgcc_firmantes").update(nuevo).eq("id", firmanteId);
+    if (updErr) {
+      console.error("Error actualizando firmante local:", updErr.message);
+      return NextResponse.json({ error: "No se pudo guardar el cambio" }, { status: 500 });
+    }
+    await supabaseAdmin.from("sgcc_firma_registros").insert({
+      id: randomUUID(),
+      firma_documento_id: id,
+      firmante_id: firmanteId,
+      accion: "contacto_actualizado",
+      ip: req.headers.get("x-forwarded-for") || "unknown",
+      user_agent: req.headers.get("user-agent") || "unknown",
+      metadatos: {
+        local: true,
+        actualizado_por: userId,
+        antes: { email: firmante.email, telefono: firmante.telefono, canal: firmante.canal_notificacion },
+        despues: { email: nuevo.email, telefono: nuevo.telefono, canal: nuevo.canal_notificacion },
+      },
+      created_at: new Date().toISOString(),
+    });
+    return NextResponse.json({
+      ok: true,
+      firmante: { id: firmanteId, ...nuevo },
+      reenvio: null,
+      reenvio_omitido: "El documento aún no se ha enviado",
+    });
+  }
 
   if (documento.proveedor !== "lm" || !documento.lm_solicitud_id || !firmante.lm_firmante_id) {
     return NextResponse.json({ error: "Solo disponible para firmas de Legal Manager" }, { status: 400 });
