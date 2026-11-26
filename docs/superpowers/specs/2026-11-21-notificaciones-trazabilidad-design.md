@@ -208,3 +208,19 @@ clientes propios de LM, con {remitente} = empresa/consultor).
 
 Pendiente de validar por el usuario (abogado): la frase "no se entenderán presentados" y si
 cada centro enlaza su política de tratamiento de datos en la sección de confidencialidad.
+
+## 8e. Separación de responsabilidades LM / SIGECC (26-nov, decisión del usuario)
+
+LM NO es una plataforma de notificaciones (sus clientes firman poderes/contratos). Las
+notificaciones son producto de SIGECC.
+
+- **LM = transporte.** Una función genérica en la API partner: "enviar mensaje con
+  trazabilidad" (correo + plantilla WhatsApp con variables) y devolver estados por webhook
+  (aceptado/entregado/leído/rebotó) + respuesta automática en buzón/WhatsApp. LM no sabe que
+  es una citación; no expone "notificaciones" a sus clientes propios.
+- **SIGECC = contenido.** Define la citación (PDF + hash), el texto, la leyenda formal, la
+  página del enlace personal, el acuse de recibo, el panel de seguimiento y la constancia.
+- **Remitente: sigue siendo LM**: `{centro} vía Legal Manager <notificaciones@legalmanager.com.co>`
+  (coincide con el nombre fijo de WhatsApp "Legal Manager").
+- **Firma:** clientes propios de LM sin cambios (opcional futuro: leyenda formal SOLO de firma).
+  Firmas que llegan desde SIGECC (origen partner) usan la leyenda de SIGECC a nombre del centro.
