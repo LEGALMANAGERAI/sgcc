@@ -25,7 +25,8 @@ export interface LmFirmantePayload {
   cedula: string;
   email: string;
   telefono?: string | null;
-  canal?: "email" | "sms" | "whatsapp";
+  /** Uno o varios canales separados por coma: "email", "whatsapp" o "email,whatsapp". */
+  canal?: string;
   orden?: number;
 }
 

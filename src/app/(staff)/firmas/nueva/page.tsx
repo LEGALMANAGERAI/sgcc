@@ -22,8 +22,14 @@ interface Firmante {
   cedula: string;
   email: string;
   telefono: string;
+  canales: Canal[];
   orden: number;
 }
+
+type Canal = "email" | "whatsapp";
+
+// WhatsApp exige un celular con al menos 10 dígitos.
+const celularValido = (tel: string) => tel.replace(/\D/g, "").length >= 10;
 
 interface CasoOption {
   id: string;
@@ -47,7 +53,7 @@ export default function NuevaFirmaPage() {
   // deshabilitó en la UI por no usarse). El backend aún la soporta como fallback.
   const proveedor = "lm" as const;
   const [firmantes, setFirmantes] = useState<Firmante[]>([
-    { id: crypto.randomUUID(), nombre: "", cedula: "", email: "", telefono: "", orden: 1 },
+    { id: crypto.randomUUID(), nombre: "", cedula: "", email: "", telefono: "", canales: ["email"], orden: 1 },
   ]);
   const [casos, setCasos] = useState<CasoOption[]>([]);
   const [casosLoaded, setCasosLoaded] = useState(false);
@@ -107,10 +113,37 @@ export default function NuevaFirmaPage() {
         cedula: "",
         email: "",
         telefono: "",
+        canales: ["email"],
         orden: prev.length + 1,
       },
     ]);
   };
+
+  // Al cambiar el celular: si deja de ser válido, se desmarca WhatsApp (queda al menos Correo).
+  const setTelefono = (id: string, telefono: string) =>
+    setFirmantes((prev) =>
+      prev.map((f) => {
+        if (f.id !== id) return f;
+        const canales: Canal[] = celularValido(telefono)
+          ? f.canales
+          : f.canales.filter((c) => c !== "whatsapp");
+        return { ...f, telefono, canales: canales.length ? canales : ["email"] };
+      })
+    );
+
+  const toggleCanal = (id: string, canal: Canal) =>
+    setFirmantes((prev) =>
+      prev.map((f) =>
+        f.id === id
+          ? {
+              ...f,
+              canales: f.canales.includes(canal)
+                ? f.canales.filter((c) => c !== canal)
+                : [...f.canales, canal],
+            }
+          : f
+      )
+    );
 
   const removeFirmante = (id: string) => {
     setFirmantes((prev) => {
@@ -151,6 +184,21 @@ export default function NuevaFirmaPage() {
       return;
     }
 
+    const sinCanal = firmantes.find((f) => f.canales.length === 0);
+    if (sinCanal) {
+      setError(`Selecciona al menos un canal (Correo o WhatsApp) para ${sinCanal.nombre.trim()}`);
+      return;
+    }
+    const waSinCelular = firmantes.find(
+      (f) => f.canales.includes("whatsapp") && !celularValido(f.telefono)
+    );
+    if (waSinCelular) {
+      setError(
+        `WhatsApp requiere un celular de al menos 10 dígitos (${waSinCelular.nombre.trim()})`
+      );
+      return;
+    }
+
     await enviar(false);
   };
 
@@ -175,6 +223,7 @@ export default function NuevaFirmaPage() {
           cedula: f.cedula.trim(),
           email: f.email.trim(),
           telefono: f.telefono.trim() || null,
+          canales: f.canales,
           orden: f.orden,
         }))
       ));
@@ -393,6 +442,9 @@ export default function NuevaFirmaPage() {
             </button>
           </div>
 
+          <p className="text-xs text-gray-500 mb-3">
+            WhatsApp: la solicitud, el c&#243;digo y los recordatorios llegan tambi&#233;n por WhatsApp.
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -453,11 +505,40 @@ export default function NuevaFirmaPage() {
                     <td className="py-2 px-2">
                       <input
                         type="tel"
+                        aria-label={`Celular del firmante ${f.orden}`}
                         value={f.telefono}
-                        onChange={(e) => updateFirmante(f.id, "telefono", e.target.value)}
+                        onChange={(e) => setTelefono(f.id, e.target.value)}
                         placeholder="3001234567"
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-[#0D2340] outline-none"
                       />
+                      <div className="flex gap-3 mt-1.5 text-xs text-gray-700">
+                        <label className="flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            checked={f.canales.includes("email")}
+                            onChange={() => toggleCanal(f.id, "email")}
+                          />
+                          Correo
+                        </label>
+                        <label
+                          className={`flex items-center gap-1 ${
+                            celularValido(f.telefono) ? "" : "text-gray-400"
+                          }`}
+                          title={
+                            celularValido(f.telefono)
+                              ? "Enviar también por WhatsApp (tiene costo)"
+                              : "Ingresa un celular de al menos 10 dígitos para habilitar WhatsApp"
+                          }
+                        >
+                          <input
+                            type="checkbox"
+                            disabled={!celularValido(f.telefono)}
+                            checked={f.canales.includes("whatsapp")}
+                            onChange={() => toggleCanal(f.id, "whatsapp")}
+                          />
+                          WhatsApp
+                        </label>
+                      </div>
                     </td>
                     <td className="py-2 px-2">
                       {firmantes.length > 1 && (

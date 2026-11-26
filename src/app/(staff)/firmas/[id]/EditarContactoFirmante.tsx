@@ -12,6 +12,8 @@ interface Props {
   email: string;
   telefono: string | null;
   canalNotificacion: string;
+  /** false = documento aún no enviado: no hay nada que reenviar. */
+  enviado: boolean;
 }
 
 type Canal = "email" | "whatsapp";
@@ -24,6 +26,7 @@ export function EditarContactoFirmante({
   email: emailInicial,
   telefono: telefonoInicial,
   canalNotificacion,
+  enviado,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -61,7 +64,7 @@ export function EditarContactoFirmante({
           email: email.trim(),
           telefono: telefono.trim() || undefined,
           canales,
-          reenviar,
+          reenviar: enviado && reenviar,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -73,11 +76,13 @@ export function EditarContactoFirmante({
         setMsg({ type: "error", text: data.error ?? "Error al guardar el contacto" });
         return;
       }
-      const extra = data.reenvio
-        ? " Se reenvió el enlace de firma."
-        : data.reenvio_omitido
-          ? ` No se reenvió: ${data.reenvio_omitido}`
-          : "";
+      const extra = !enviado
+        ? " Se usará al enviar."
+        : data.reenvio
+          ? " Se reenvió el enlace de firma."
+          : data.reenvio_omitido
+            ? ` No se reenvió: ${data.reenvio_omitido}`
+            : "";
       setMsg({ type: "success", text: `Contacto actualizado.${extra}` });
       setOpen(false);
       router.refresh();
@@ -169,10 +174,12 @@ export function EditarContactoFirmante({
               </label>
             </div>
           </fieldset>
-          <label className="flex items-center gap-1.5 text-sm">
-            <input type="checkbox" checked={reenviar} onChange={(e) => setReenviar(e.target.checked)} />
-            Reenviar ahora
-          </label>
+          {enviado && (
+            <label className="flex items-center gap-1.5 text-sm">
+              <input type="checkbox" checked={reenviar} onChange={(e) => setReenviar(e.target.checked)} />
+              Reenviar ahora
+            </label>
+          )}
           {msg && (
             <p role="alert" className="text-xs text-red-600">
               {msg.text}

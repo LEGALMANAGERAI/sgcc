@@ -50,7 +50,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     // Verificar scope del centro.
     const { data: caso } = await supabaseAdmin
       .from("sgcc_cases")
-      .select("id, numero_radicado")
+      .select("id, numero_radicado, conciliador:sgcc_staff!sgcc_cases_conciliador_id_fkey(telefono)")
       .eq("id", caseId)
       .eq("center_id", centerId)
       .single();
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const archivoHash = calcularHashSHA256(pdfBuffer);
 
     // 2. Determinar los firmantes (operador + insolvente/apoderado).
-    const firmantesRaw: Array<{ nombre: string; cedula: string; email: string; orden: number }> = [];
+    const firmantesRaw: Array<{ nombre: string; cedula: string; email: string; telefono: string | null; orden: number }> = [];
 
     // (1) Operador (conciliador) — siempre firma.
     const op = vars.operador;
@@ -89,6 +89,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       nombre: op.nombre || "Operador de insolvencia",
       cedula: op.cedula ?? "",
       email: op.email ?? "",
+      telefono: (caso as any).conciliador?.telefono ?? null,
       orden: 1,
     });
 
@@ -99,6 +100,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         nombre: d.nombre || "Insolvente",
         cedula: d.documento ?? "",
         email: d.email ?? "",
+        telefono: d.telefono ?? null,
         orden: 2,
       });
     } else if (d.apoderado) {
@@ -106,6 +108,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         nombre: d.apoderado.nombre || "Apoderado del insolvente",
         cedula: d.apoderado.cedula ?? "",
         email: d.apoderado.email ?? "",
+        telefono: d.apoderado.telefono ?? null,
         orden: 2,
       });
     } else {
@@ -181,7 +184,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       nombre: f.nombre,
       cedula: f.cedula,
       email: f.email,
-      telefono: null,
+      telefono: f.telefono,
       orden: f.orden,
       token: generarTokenFirma(),
       estado: "pendiente" as const,
