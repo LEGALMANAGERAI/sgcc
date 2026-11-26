@@ -163,3 +163,48 @@ expreso del destinatario.
 
 Idea posterior: sugerir/validar el correo de notificaciones judiciales registrado de
 las entidades (personas jurídicas) para evitar discusiones por destino equivocado.
+
+## 8d. Decisiones del usuario (26-nov)
+
+1. **WhatsApp: mismo número de LM** (como otros proveedores). Vigilar la calidad del número
+   en WhatsApp Manager; separar solo si baja. El nombre visible en WhatsApp es fijo: "Legal Manager".
+2. **Alcance inicial: citaciones** (modelo general, se estrena con citaciones).
+3. **Remitente (opción B, modelo e-entrega):** `{nombre del centro} vía Legal Manager
+   <notificaciones@legalmanager.com.co>`. Por centro, sin DNS: nombre (+ campo opcional
+   "nombre para notificaciones" si es largo), `logo_url`, `telefono`, `email_radicacion`
+   (o `email_contacto`). Nombre saneado (sin comillas ni direcciones) contra suplantación.
+   Opción C (dominio propio del centro) queda como extra futuro.
+4. **Sin "Responder a"**: el buzón de envío no recibe correspondencia (práctica de la Rama
+   Judicial). **Respuesta automática** en el buzón y en WhatsApp (gratis dentro de 24 h):
+   "Esta cuenta de Legal Manager está habilitada exclusivamente para el envío de
+   notificaciones y solicitudes de firma electrónica. Su mensaje no ha sido leído ni
+   tramitado, y no se entiende presentado ante {remitente}. Diríjase a: {correo} · {teléfono}."
+
+### Leyenda formal (larga) — correo y página del enlace personal
+Aplica a notificaciones Y firma electrónica (para firma se cambia en LM: también alcanza a
+clientes propios de LM, con {remitente} = empresa/consultor).
+
+> AVISO IMPORTANTE
+> Este es un mensaje de datos generado de forma automática por Legal Manager, plataforma de
+> notificaciones y firma electrónica, por encargo de {remitente} (Ley 527 de 1999).
+> Esta cuenta está habilitada EXCLUSIVAMENTE para el envío de notificaciones y solicitudes de
+> firma electrónica, y no para la recepción de solicitudes, memoriales, escritos, poderes ni
+> documentos. Los mensajes que se remitan a esta dirección no serán leídos ni tramitados y NO
+> se entenderán presentados ante {remitente}.
+> Toda solicitud o comunicación dirigida a {remitente} debe enviarse por sus canales oficiales:
+> Correo: {correo} · Teléfono: {teléfono}.
+> Verificación: para confirmar la autenticidad de este mensaje, consulte el enlace personal
+> incluido o comuníquese con {remitente} por los canales anteriores. {remitente} no le
+> solicitará pagos, contraseñas ni datos bancarios por este medio.
+> Confidencialidad: este mensaje y sus anexos contienen información dirigida exclusivamente a
+> su destinatario y pueden contener datos personales protegidos por la Ley 1581 de 2012. Si lo
+> recibió por error, informe a {remitente} por sus canales oficiales y elimínelo.
+
+### Leyenda corta — mensaje de WhatsApp (límite de plantilla ~1.000 caracteres)
+> AVISO: Mensaje automático enviado por Legal Manager, plataforma de notificaciones y firma
+> electrónica, por encargo de {remitente}. Este número NO recibe mensajes, solicitudes ni
+> documentos; lo que envíe aquí no se entenderá presentado ante {remitente}. Canales oficiales:
+> {correo} · {teléfono}. {remitente} no le pedirá pagos ni contraseñas por este medio.
+
+Pendiente de validar por el usuario (abogado): la frase "no se entenderán presentados" y si
+cada centro enlaza su política de tratamiento de datos en la sección de confidencialidad.
