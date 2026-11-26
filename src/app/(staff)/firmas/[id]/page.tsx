@@ -208,6 +208,23 @@ export default async function FirmaDetailPage({ params }: PageProps) {
                 </dt>
                 <dd className="text-gray-900 font-mono text-xs break-all">{doc.archivo_hash}</dd>
               </div>
+              {doc.lm_verificacion_url?.startsWith("https://") && (
+                <div>
+                  <dt className="text-gray-500 mb-1 flex items-center gap-1">
+                    <Shield className="w-3.5 h-3.5" /> Verificación pública
+                  </dt>
+                  <dd>
+                    <a
+                      href={doc.lm_verificacion_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#1B4F9B] hover:underline break-all"
+                    >
+                      Verificar autenticidad del documento firmado
+                    </a>
+                  </dd>
+                </div>
+              )}
               {doc.fecha_expiracion && (
                 <div>
                   <dt className="text-gray-500 mb-1">Expira</dt>
